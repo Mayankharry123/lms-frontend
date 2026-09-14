@@ -25,7 +25,7 @@ const ITEMS_PER_PAGE = 10;
 const DeviceInventory: React.FC = () => {
   const filterAnchorRef = useRef<HTMLButtonElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterOpen, setFilterOpen] = useState(true);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [appliedLocation, setAppliedLocation] = useState(DEFAULT_APPLIED_LOCATION);
   const [selectedDevice, setSelectedDevice] = useState<DeviceData | null>(null);
 

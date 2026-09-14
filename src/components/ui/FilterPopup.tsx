@@ -1345,13 +1345,13 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
           }`}
         >
           <span
-            className={`flex h-3 w-3 items-center justify-center rounded border ${
+            className={`flex h-4 w-4 items-center justify-center rounded border ${
               allFiltersSelected
                 ? 'border-[#007B83] bg-[#007B83] text-white'
                 : 'border-gray-400 bg-white'
             }`}
           >
-            {allFiltersSelected && <Check className="h-2 w-2 stroke-[3]" />}
+            {allFiltersSelected && <Check className="h-3 w-3 stroke-[3]" />}
           </span>
           All
         </button>
@@ -1385,7 +1385,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
               }`}
             >
               <span
-                className={`flex h-3 w-3 items-center justify-center rounded border ${
+                className={`flex h-4 w-4 items-center justify-center rounded border ${
                   !canSelect
                     ? 'border-gray-200 bg-gray-100'
                     : isVisible
@@ -1393,7 +1393,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
                     : 'border-gray-300 bg-white'
                 }`}
               >
-                {isVisible && <Check className="h-2 w-2 stroke-[3]" />}
+                {isVisible && <Check className="h-3 w-3 stroke-[3]" />}
               </span>
               <span>{field.label.replace(' (Screen Type)', '')}</span>
             </button>
