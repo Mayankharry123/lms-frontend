@@ -134,7 +134,7 @@ type FilterPopupProps = {
 
 const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Location: MapPin,
-  Category: LayoutGrid,
+  Properties: LayoutGrid,
   Device: Monitor,
 };
 
@@ -154,7 +154,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   const [allOptions, setAllOptions] = useState<FilterOptions>(options);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     Location: true,
-    Category: false,
+    Properties: false,
     Device: false,
   });
   const stateCascadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1005,12 +1005,12 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       ],
     },
     {
-      title: 'Category',
+      title: 'Properties',
       fields: [
         { name: 'modeOfMedia', label: 'Mode of Media (Screen Type)' },
         { name: 'publisher', label: 'Publisher' },
         { name: 'mainCategory', label: 'Main Category' },
-        { name: 'category', label: 'Category' },
+        { name: 'category', label: 'Properties' },
         { name: 'categorySub', label: 'Sub Category' },
       ],
     },
@@ -1040,7 +1040,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
 
   const sectionGridClass = (title: string) => {
     if (title === 'Location') return 'grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7';
-    if (title === 'Category') return 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5';
+    if (title === 'Properties') return 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5';
     return 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6';
   };
 
@@ -1094,13 +1094,25 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
           onChange={(vals) => handleFieldChange(field.name, joinCsvTokens(vals))}
           disabled={isLoading || !enabled}
           className="w-full"
-          inputClassName="h-10 !rounded-xl overflow-hidden"
+          inputClassName="h-10 !rounded-xl"
           multi
           horizontalScroll
           hideScrollbar
         />
       </label>
     );
+  };
+
+  const getFieldSelectedLabels = (fieldName: keyof LocationFilterValues): string[] => {
+    const raw = String(draft[fieldName] ?? '').trim();
+    if (!raw) return [];
+    if (fieldName === 'country') return [raw];
+    return splitCsvTokens(raw).map((token) => {
+      const opt = (allOptions[fieldName as string] || []).find(
+        (item) => String(item.id) === token || getNormalizedOptionLabel(item) === token
+      );
+      return opt ? getNormalizedOptionLabel(opt) : token;
+    });
   };
 
   if (!isOpen) return null;
@@ -1111,43 +1123,67 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
         {sectionsToRender.map((section) => {
           const Icon = SECTION_ICONS[section.title];
           const isExpanded = openSections[section.title] ?? section.title === 'Location';
+          const selectedLabels = section.fields.flatMap((field) => getFieldSelectedLabels(field.name));
           return (
             <section
               key={section.title}
-              className="rounded-lg border border-gray-200 bg-white"
+              className={`rounded-lg border border-gray-200 bg-white ${isExpanded ? 'relative z-20' : ''}`}
             >
               <button
                 type="button"
                 onClick={() =>
-                  setOpenSections((prev) => ({
-                    ...prev,
+                  setOpenSections({
+                    Location: false,
+                    Properties: false,
+                    Device: false,
                     [section.title]: !isExpanded,
-                  }))
+                  })
                 }
                 aria-expanded={isExpanded}
                 className="!flex !h-auto !w-full !items-center !justify-between !gap-3 !rounded-lg !border-0 !bg-transparent !px-4 !py-3 !text-left !shadow-none hover:!bg-gray-50 !outline-none"
               >
-                <span className="flex items-center gap-2">
-                  {Icon ? <Icon className="h-3.5 w-3.5 text-[#f26222]" strokeWidth={2.25} /> : null}
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f26222]">
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  {Icon ? <Icon className="h-3.5 w-3.5 shrink-0 text-[#f26222]" strokeWidth={2.25} /> : null}
+                  <h3 className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f26222]">
                     {section.title}
                   </h3>
+                  {!isExpanded && selectedLabels.length > 0 ? (
+                    <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+                      {selectedLabels.slice(0, 3).map((label) => (
+                        <span
+                          key={label}
+                          className="inline-flex max-w-[9rem] truncate rounded-md bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-gray-700"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                      {selectedLabels.length > 3 ? (
+                        <span className="shrink-0 rounded-md bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">
+                          +{selectedLabels.length - 3}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : null}
                 </span>
                 <ChevronDown
                   className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                   aria-hidden
                 />
               </button>
-              {isExpanded ? (
-                <div className={`border-t border-gray-100 px-4 py-4 ${sectionGridClass(section.title)}`}>
-                  {section.fields.map((field) =>
-                    renderField(
-                      field,
-                      'mb-1.5 block text-[10px] font-medium uppercase tracking-[0.12em] text-gray-400'
-                    )
-                  )}
-                </div>
-              ) : null}
+              <div
+                className={
+                  isExpanded
+                    ? `border-t border-gray-100 px-4 py-4 ${sectionGridClass(section.title)}`
+                    : 'hidden'
+                }
+              >
+                {section.fields.map((field) =>
+                  renderField(
+                    field,
+                    'mb-1.5 block text-[10px] font-medium uppercase tracking-[0.12em] text-gray-400'
+                  )
+                )}
+              </div>
             </section>
           );
         })}

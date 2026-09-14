@@ -82,15 +82,23 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
 
   const optionHeight = 60; // px approx per option
   const maxHeight = Math.min(filtered.length, maxVisibleOptions) * optionHeight;
+  const visibleValues = hideScrollbar ? safeValue.slice(0, 1) : safeValue;
+  const extraCount = hideScrollbar ? Math.max(0, safeValue.length - visibleValues.length) : 0;
+  const fieldScrollClass = horizontalScroll
+    ? `flex-nowrap overflow-x-auto ${hideScrollbar ? 'msd-field-no-scroll' : 'msd-scroll'}`
+    : 'flex-wrap';
+  const tagsScrollClass = horizontalScroll
+    ? `flex-1 flex-nowrap ${hideScrollbar ? 'overflow-hidden' : 'overflow-x-auto overflow-y-hidden'}`
+    : 'flex-wrap';
 
   return (
     <div ref={ref} className={`relative ${className}`}>
       <div className="w-full">
-  <div className={`flex items-center overflow-y-hidden ${horizontalScroll ? `flex-nowrap overflow-x-auto ${hideScrollbar ? 'msd-field-no-scroll' : 'msd-scroll'}` : 'flex-wrap'} gap-2 w-full h-11 px-3 rounded-[10px] bg-white border border-[#DDE1E7] ${inputClassName} ${disabled ? 'opacity-60' : ''}`} onClick={() => { if (disabled) return; setOpen(true); }}>
+  <div className={`flex items-center overflow-y-hidden ${fieldScrollClass} gap-2 w-full h-11 px-3 rounded-[10px] bg-white border border-[#DDE1E7] ${inputClassName} ${disabled ? 'opacity-60' : ''}`} onClick={() => { if (disabled) return; setOpen(true); }}>
           {/* tags */}
           {safeValue.length > 0 && (
-            <div className={`flex items-center gap-2 min-w-0 ${horizontalScroll ? 'flex-1 flex-nowrap overflow-x-auto overflow-y-hidden' : 'flex-wrap'} ${hideScrollbar ? 'msd-field-no-scroll' : ''}`}>
-              {safeValue.map((v) => {
+            <div className={`flex items-center gap-2 min-w-0 ${tagsScrollClass} ${hideScrollbar ? 'msd-field-no-scroll' : ''}`}>
+              {visibleValues.map((v) => {
                 // First try to find label in options, then fallback to labelMap
                 const label = (normalized.find(n => String(n.value) === String(v))?.label) || labelMap[v] || v;
                 return (
@@ -111,6 +119,11 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
                   </span>
                 );
               })}
+              {extraCount > 0 && (
+                <span className="inline-flex shrink-0 items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-600">
+                  +{extraCount}
+                </span>
+              )}
             </div>
           )}
 
@@ -121,7 +134,9 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
             onChange={(e) => { setQuery(e.target.value); if (!open) setOpen(true); }}
             onFocus={() => { if (!open) setOpen(true); }}
             placeholder={safeValue.length > 0 ? '' : placeholder}
-            className="flex-1 min-w-[80px] h-10 text-sm bg-transparent placeholder-[#9CA3AF] focus:outline-none"
+            className={`h-10 text-sm bg-transparent placeholder-[#9CA3AF] focus:outline-none ${
+              hideScrollbar && safeValue.length > 0 ? 'min-w-[12px] w-4 flex-none' : 'flex-1 min-w-[80px]'
+            }`}
             disabled={disabled}
             autoComplete="off"
           />
