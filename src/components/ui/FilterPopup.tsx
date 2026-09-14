@@ -142,6 +142,33 @@ export const ALL_FILTER_FIELDS: FieldDefinition[] = [
   { name: 'stretch', label: 'Stretch', category: 'Device', icon: Monitor },
 ];
 
+const FIELD_PREREQUISITES: Partial<Record<keyof LocationFilterValues, keyof LocationFilterValues>> = {
+  state: 'country',
+  city: 'state',
+  zoneArea: 'city',
+  subZoneArea: 'zoneArea',
+  pincode: 'state',
+  arterialRoute: 'city',
+  category: 'mainCategory',
+  categorySub: 'category',
+  orientation: 'locationType',
+  resolution: 'orientation',
+  screenLocation: 'resolution',
+  stretch: 'screenLocation',
+};
+
+function fieldHasValue(values: LocationFilterValues, name: keyof LocationFilterValues): boolean {
+  return Boolean(String(values[name] ?? '').trim());
+}
+
+function fieldCanBeSelected(
+  values: LocationFilterValues,
+  name: keyof LocationFilterValues
+): boolean {
+  const prerequisite = FIELD_PREREQUISITES[name];
+  return !prerequisite || fieldHasValue(values, prerequisite);
+}
+
 type FilterPopupProps = {
   isOpen?: boolean;
   onClose?: () => void;
@@ -182,6 +209,99 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   allOptionsRef.current = allOptions;
 
   const [cardSearchQueries, setCardSearchQueries] = useState<Record<string, string>>({});
+  const [extraVisibleFields, setExtraVisibleFields] = useState<Set<keyof LocationFilterValues>>(new Set());
+  const [focusedField, setFocusedField] = useState<keyof LocationFilterValues | null>(null);
+  const [pendingFocusField, setPendingFocusField] = useState<keyof LocationFilterValues | null>(null);
+  const cardRefs = useRef<Partial<Record<keyof LocationFilterValues, HTMLDivElement | null>>>({});
+  const focusClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const visibleFields = useMemo(() => {
+    const next = new Set<keyof LocationFilterValues>();
+    extraVisibleFields.forEach((fieldName) => {
+      if (fieldCanBeSelected(draft, fieldName)) next.add(fieldName);
+    });
+    return next;
+  }, [draft, extraVisibleFields]);
+
+  const selectableFields = useMemo(
+    () => ALL_FILTER_FIELDS.filter((field) => fieldCanBeSelected(draft, field.name)),
+    [draft]
+  );
+
+  const allFiltersSelected = selectableFields.every((field) => visibleFields.has(field.name));
+
+  const focusFilterCard = useCallback((fieldName: keyof LocationFilterValues) => {
+    if (focusClearTimerRef.current) {
+      clearTimeout(focusClearTimerRef.current);
+      focusClearTimerRef.current = null;
+    }
+    setPendingFocusField(fieldName);
+  }, []);
+
+  useEffect(() => {
+    if (!pendingFocusField) return;
+    const card = cardRefs.current[pendingFocusField];
+    if (!card) return;
+
+    card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    setFocusedField(pendingFocusField);
+    const searchInput = card.querySelector('input');
+    searchInput?.focus();
+
+    focusClearTimerRef.current = setTimeout(() => {
+      setFocusedField(null);
+      focusClearTimerRef.current = null;
+    }, 1800);
+    setPendingFocusField(null);
+  }, [pendingFocusField, visibleFields]);
+
+  const handleToggleFieldVisibility = useCallback(
+    (fieldName: keyof LocationFilterValues) => {
+      if (!fieldCanBeSelected(draft, fieldName)) return;
+      if (visibleFields.has(fieldName)) {
+        setExtraVisibleFields((previous) => {
+          const next = new Set(previous);
+          next.delete(fieldName);
+          return next;
+        });
+        return;
+      }
+
+      setExtraVisibleFields((previous) => {
+        const next = new Set(previous);
+        next.add(fieldName);
+        return next;
+      });
+      focusFilterCard(fieldName);
+    },
+    [draft, focusFilterCard, visibleFields]
+  );
+
+  const handleOpenFilterField = useCallback(
+    (fieldName: keyof LocationFilterValues) => {
+      if (!fieldCanBeSelected(draft, fieldName)) return;
+      setExtraVisibleFields((previous) => new Set(previous).add(fieldName));
+      focusFilterCard(fieldName);
+    },
+    [draft, focusFilterCard]
+  );
+
+  useEffect(() => {
+    setExtraVisibleFields((previous) => {
+      const next = new Set(
+        [...previous].filter((fieldName) => fieldCanBeSelected(draft, fieldName))
+      );
+      return next.size === previous.size ? previous : next;
+    });
+  }, [draft]);
+
+  const handleToggleSelectAllFilters = useCallback(() => {
+    if (allFiltersSelected) {
+      setExtraVisibleFields(new Set());
+      return;
+    }
+    setExtraVisibleFields(new Set(selectableFields.map((field) => field.name)));
+  }, [allFiltersSelected, selectableFields]);
 
   useEffect(() => {
     setDraft(appliedValues);
@@ -1066,6 +1186,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       Object.keys(draft).map((fieldName) => [fieldName, ''])
     ) as LocationFilterValues;
     setDraft(emptyValues);
+    setExtraVisibleFields(new Set());
     onReset();
     onApply(emptyValues);
   }, [draft, onReset, onApply]);
@@ -1115,6 +1236,10 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
         clearTimeout(stateCascadeTimerRef.current);
         stateCascadeTimerRef.current = null;
       }
+      if (focusClearTimerRef.current) {
+        clearTimeout(focusClearTimerRef.current);
+        focusClearTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -1128,6 +1253,23 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
     });
     return count;
   }, [draft]);
+
+  const appliedFilterSummaries = useMemo(
+    () =>
+      ALL_FILTER_FIELDS.flatMap((field) => {
+        const rawValue = String(draft[field.name] ?? '').trim();
+        if (!rawValue) return [];
+        const tokens = field.name === 'country' ? [rawValue] : splitCsvTokens(rawValue);
+        const values = tokens.map((token) => {
+          const option = (allOptions[field.name] || []).find(
+            (item) => String(item.id) === token || getNormalizedOptionLabel(item) === token
+          );
+          return option ? getNormalizedOptionLabel(option) : token;
+        });
+        return [{ name: field.name, label: field.label, values }];
+      }),
+    [allOptions, draft, getNormalizedOptionLabel]
+  );
 
   if (!isOpen) return null;
 
@@ -1172,9 +1314,96 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
         </div>
       </div>
 
-      {/* Single Horizontal Row of All Filter Cards */}
-      <div className="flex flex-row overflow-x-auto gap-3.5 pb-2 pt-1 scrollbar-thin scroll-smooth w-full">
+      {appliedFilterSummaries.length > 0 && (
+        <div className="mb-2 flex items-center gap-1.5 overflow-x-auto scrollbar-thin whitespace-nowrap pb-0.5">
+          <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+            Applied
+          </span>
+          {appliedFilterSummaries.map((item) => (
+            <button
+              key={item.name}
+              type="button"
+              onClick={() => handleOpenFilterField(item.name)}
+              title={`Change ${item.label}`}
+              className="inline-flex max-w-[220px] shrink-0 items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-[10px] text-[#007B83] hover:border-[#007B83]"
+            >
+              <span className="font-semibold">{item.label.replace(' (Screen Type)', '')}:</span>
+              <span className="truncate font-medium">{item.values.join(', ')}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="mb-3 flex items-center gap-2 overflow-x-auto scrollbar-thin whitespace-nowrap rounded-lg border border-gray-100 bg-gray-50/70 px-2.5 py-1.5">
+        <button
+          type="button"
+          onClick={handleToggleSelectAllFilters}
+          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold transition-colors ${
+            allFiltersSelected
+              ? 'border-[#007B83] bg-teal-50 text-[#007B83]'
+              : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <span
+            className={`flex h-3 w-3 items-center justify-center rounded border ${
+              allFiltersSelected
+                ? 'border-[#007B83] bg-[#007B83] text-white'
+                : 'border-gray-400 bg-white'
+            }`}
+          >
+            {allFiltersSelected && <Check className="h-2 w-2 stroke-[3]" />}
+          </span>
+          All
+        </button>
+
         {ALL_FILTER_FIELDS.map((field) => {
+          const isVisible = visibleFields.has(field.name);
+          const prerequisite = FIELD_PREREQUISITES[field.name];
+          const canSelect = fieldCanBeSelected(draft, field.name);
+          const prerequisiteLabel = prerequisite
+            ? ALL_FILTER_FIELDS.find((item) => item.name === prerequisite)?.label
+            : undefined;
+          return (
+            <button
+              key={field.name}
+              type="button"
+              disabled={!canSelect}
+              onClick={() => handleToggleFieldVisibility(field.name)}
+              title={
+                !canSelect
+                  ? `Select ${prerequisiteLabel} first`
+                  : isVisible
+                    ? `Hide ${field.label}`
+                    : `Show ${field.label}`
+              }
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
+                !canSelect
+                  ? 'cursor-not-allowed border-transparent bg-transparent text-gray-300 opacity-70'
+                  : isVisible
+                  ? 'border-gray-300 bg-white text-gray-800'
+                  : 'border-transparent bg-transparent text-gray-500 hover:border-gray-200 hover:bg-white'
+              }`}
+            >
+              <span
+                className={`flex h-3 w-3 items-center justify-center rounded border ${
+                  !canSelect
+                    ? 'border-gray-200 bg-gray-100'
+                    : isVisible
+                    ? 'border-[#007B83] bg-[#007B83] text-white'
+                    : 'border-gray-300 bg-white'
+                }`}
+              >
+                {isVisible && <Check className="h-2 w-2 stroke-[3]" />}
+              </span>
+              <span>{field.label.replace(' (Screen Type)', '')}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Horizontal row of selected filter cards */}
+      <div className="flex flex-row overflow-x-auto gap-3.5 pb-2 pt-1 scrollbar-thin scroll-smooth w-full">
+        {ALL_FILTER_FIELDS.filter((field) => visibleFields.has(field.name)).map((field) => {
           const opts = allOptions[field.name] || [];
           const isLoading = loadingFields.has(field.name as string);
           const IconComponent = field.icon;
@@ -1235,7 +1464,14 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
           return (
             <div
               key={field.name}
-              className="w-[270px] min-w-[270px] shrink-0 flex flex-col rounded-xl border border-gray-200 bg-white shadow-xs hover:shadow-sm transition-all overflow-hidden"
+              ref={(node) => {
+                cardRefs.current[field.name] = node;
+              }}
+              className={`w-[270px] min-w-[270px] shrink-0 flex flex-col rounded-xl border bg-white shadow-xs hover:shadow-sm transition-all overflow-hidden ${
+                focusedField === field.name
+                  ? 'border-[#007B83] ring-2 ring-[#007B83]/30 shadow-md'
+                  : 'border-gray-200'
+              }`}
             >
               {/* Card Header */}
               <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/70 px-3.5 py-2.5 shrink-0">
