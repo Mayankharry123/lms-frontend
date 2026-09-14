@@ -177,6 +177,58 @@ export function mapMenu(apiItems: ApiSidebarItem[]): NavigationItem[] {
   });
 }
 
-// Example usage:
-// import { mapMenu } from './Side';
-// const sidebarData = mapMenu(apiResponse.data);
+const DEVICE_INVENTORY_PATH = '/inventory/device';
+const ADVANCED_DEVICE_INVENTORY_PATH = '/inventory/device-advanced';
+
+function normalizeSidebarPath(path: string): string {
+  let next = path.startsWith('/') ? path : `/${path}`;
+  if (next.length > 1 && next.endsWith('/')) {
+    next = next.slice(0, -1);
+  }
+  return next;
+}
+
+/**
+ * Surface the frontend-only Advanced Device Inventory page next to Device Inventory
+ * when the user already has access to the original inventory list.
+ */
+export function withAdvancedDeviceInventoryPage(
+  menu: NavigationItem[],
+  paths: string[]
+): { menu: NavigationItem[]; paths: string[] } {
+  const hasDeviceInventory = paths.some(
+    (path) => normalizeSidebarPath(path) === DEVICE_INVENTORY_PATH
+  );
+  if (!hasDeviceInventory) {
+    return { menu, paths };
+  }
+
+  const nextPaths = paths.some(
+    (path) => normalizeSidebarPath(path) === ADVANCED_DEVICE_INVENTORY_PATH
+  )
+    ? paths
+    : [...paths, ADVANCED_DEVICE_INVENTORY_PATH];
+
+  const nextMenu = menu.map((item) => {
+    const children = item.children;
+    if (!children?.some((child) => child.path === DEVICE_INVENTORY_PATH)) {
+      return item;
+    }
+    if (children.some((child) => child.path === ADVANCED_DEVICE_INVENTORY_PATH)) {
+      return item;
+    }
+    return {
+      ...item,
+      children: [
+        ...children,
+        {
+          name: 'Advanced Device Inventory',
+          path: ADVANCED_DEVICE_INVENTORY_PATH,
+          icon: null,
+        },
+      ],
+    };
+  });
+
+  return { menu: nextMenu, paths: nextPaths };
+}

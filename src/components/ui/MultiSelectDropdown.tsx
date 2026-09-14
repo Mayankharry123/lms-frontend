@@ -15,6 +15,7 @@ type MultiSelectDropdownProps = {
   multi?: boolean; // whether multiple selection allowed
   maxVisibleOptions?: number; // how many options visible at once
   horizontalScroll?: boolean; // whether to scroll horizontally instead of wrapping
+  hideScrollbar?: boolean;
   labelMap?: Record<string, string>; // optional map for value -> label fallback
 };
 
@@ -33,6 +34,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
   multi = true,
   maxVisibleOptions = 3,
   horizontalScroll = false,
+  hideScrollbar = false,
   labelMap = {},
 }) => {
   const [open, setOpen] = useState(false);
@@ -84,10 +86,10 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
   return (
     <div ref={ref} className={`relative ${className}`}>
       <div className="w-full">
-  <div className={`flex items-center overflow-y-hidden ${horizontalScroll ? 'flex-nowrap overflow-x-auto msd-scroll' : 'flex-wrap'} gap-2 w-full h-11 px-3 rounded-[10px] bg-white border border-[#DDE1E7] ${inputClassName} ${disabled ? 'opacity-60' : ''}`} onClick={() => { if (disabled) return; setOpen(true); }}>
+  <div className={`flex items-center overflow-y-hidden ${horizontalScroll ? `flex-nowrap overflow-x-auto ${hideScrollbar ? 'msd-field-no-scroll' : 'msd-scroll'}` : 'flex-wrap'} gap-2 w-full h-11 px-3 rounded-[10px] bg-white border border-[#DDE1E7] ${inputClassName} ${disabled ? 'opacity-60' : ''}`} onClick={() => { if (disabled) return; setOpen(true); }}>
           {/* tags */}
           {safeValue.length > 0 && (
-            <div className={`flex items-center gap-2 ${horizontalScroll ? 'flex-1 flex-nowrap' : 'flex-wrap'}`}>
+            <div className={`flex items-center gap-2 min-w-0 ${horizontalScroll ? 'flex-1 flex-nowrap overflow-x-auto overflow-y-hidden' : 'flex-wrap'} ${hideScrollbar ? 'msd-field-no-scroll' : ''}`}>
               {safeValue.map((v) => {
                 // First try to find label in options, then fallback to labelMap
                 const label = (normalized.find(n => String(n.value) === String(v))?.label) || labelMap[v] || v;
@@ -141,7 +143,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
         className={`absolute z-50 left-0 text-xs right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg transition-all duration-150 hide-scrollbar ${open ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
         style={{ maxHeight: `${maxHeight}px`, overflowY: 'auto' }}
       >
-        <div className="msd-scroll msd-dropdown hide-scrollbar">
+        <div className={`msd-dropdown hide-scrollbar ${hideScrollbar ? '' : 'msd-scroll'}`}>
           {filtered.length === 0 ? (
             <div className="px-4 py-2 text-gray-500">No matches found</div>
           ) : (

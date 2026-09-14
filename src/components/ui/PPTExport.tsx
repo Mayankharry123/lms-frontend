@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { Download } from 'lucide-react';
 import {
   forEachDeviceInventoryPage,
@@ -19,6 +19,8 @@ type PPTExportProps = {
   /** Total rows matching filters (for confirm + progress). */
   recordCount?: number;
   className?: string;
+  buttonClassName?: string;
+  icon?: ReactNode;
   disabled?: boolean;
 };
 
@@ -74,6 +76,8 @@ function PPTExport({
   getExportFilters,
   recordCount = 0,
   className = '',
+  buttonClassName = 'btn-primary inline-flex items-center whitespace-nowrap shrink-0',
+  icon,
   disabled = false,
 }: PPTExportProps) {
   const [loading, setLoading] = useState(false);
@@ -167,11 +171,11 @@ function PPTExport({
         type="button"
         onClick={handleExport}
         disabled={loading || disabled}
-        className="btn-primary inline-flex items-center whitespace-nowrap shrink-0"
+        className={buttonClassName}
         aria-label="Export filtered device inventory to PowerPoint"
         aria-busy={loading}
       >
-        <Download className="h-4 w-4 mr-2 shrink-0 text-gray-700" aria-hidden />
+        {icon ?? <Download className="h-4 w-4 mr-2 shrink-0 text-gray-700" aria-hidden />}
         {loading ? 'Exporting PPT…' : 'PPT Export'}
       </button>
       <LoadingModal

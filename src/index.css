@@ -468,6 +468,8 @@ html.dark {
 }
 .hide-scrollbar::-webkit-scrollbar {
   display: none;  /* Chrome, Safari, Opera */
+  width: 0;
+  height: 0;
 }
 
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, type ReactNode } from 'react';
 import { Download } from 'lucide-react';
 import LoadingModal from './LoadingModal';
 import SweetAlert from '../../utils/SweetAlert';
@@ -12,6 +12,7 @@ export type ExportExcelButtonProps = {
   exportingLabel?: string;
   className?: string;
   buttonClassName?: string;
+  icon?: ReactNode;
   disabled?: boolean;
   'aria-label'?: string;
 };
@@ -23,6 +24,7 @@ const ExportExcelButton: React.FC<ExportExcelButtonProps> = ({
   exportingLabel = 'Exporting…',
   className = '',
   buttonClassName = 'btn-primary !bg-gray-800',
+  icon,
   disabled = false,
   'aria-label': ariaLabel,
 }) => {
@@ -67,7 +69,7 @@ const ExportExcelButton: React.FC<ExportExcelButtonProps> = ({
         aria-label={ariaLabel ?? 'Export data as Excel'}
         aria-busy={exporting}
       >
-        <Download className="h-4 w-4 mr-2 shrink-0" aria-hidden />
+        {icon ?? <Download className="h-4 w-4 mr-2 shrink-0" aria-hidden />}
         {exporting ? exportingLabel : label}
       </button>
       <LoadingModal

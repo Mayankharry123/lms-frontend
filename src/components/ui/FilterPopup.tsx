@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useId, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useState, useRef } from 'react';
 import { IoMdClose } from 'react-icons/io';
+import { ChevronDown, LayoutGrid, MapPin, Monitor, RotateCcw } from 'lucide-react';
 import SelectDropdown from './SelectDropdown';
 import MultiSelectDropdown from './MultiSelectDropdown';
 import {
@@ -127,6 +128,14 @@ type FilterPopupProps = {
   filterSections?: FilterSection[];
   /** Options for each select field */
   options?: FilterOptions;
+  /** `modal` keeps the existing popup. `inline` renders the on-page advanced filter. */
+  variant?: 'modal' | 'inline';
+};
+
+const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  Location: MapPin,
+  Category: LayoutGrid,
+  Device: Monitor,
 };
 
 const FilterPopup: React.FC<FilterPopupProps> = ({
@@ -137,11 +146,17 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   onReset,
   filterSections,
   options = EMPTY_FILTER_OPTIONS,
+  variant = 'modal',
 }) => {
   const titleId = useId();
   const [draft, setDraft] = useState<LocationFilterValues>(appliedValues);
   const [loadingFields, setLoadingFields] = useState<Set<string>>(new Set());
   const [allOptions, setAllOptions] = useState<FilterOptions>(options);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    Location: true,
+    Category: false,
+    Device: false,
+  });
   const stateCascadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Latest generation per cascade target — stale async completions must not call updateFieldOptions. */
   const cascadeGenRef = useRef<Record<string, number>>({});
@@ -887,8 +902,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       outgoing[field] = idsCsvToLabelsCsv(String(draft[field] ?? ''), opts, getNormalizedOptionLabel);
     }
     onApply(outgoing);
-    onClose();
-  }, [allOptions, draft, getNormalizedOptionLabel, onApply, onClose]);
+    if (variant !== 'inline') onClose();
+  }, [allOptions, draft, getNormalizedOptionLabel, onApply, onClose, variant]);
 
   const handleReset = useCallback(() => {
     setDraft({
@@ -912,12 +927,12 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       property: '',
     });
     onReset();
-    onClose();
-  }, [onReset, onClose]);
+    if (variant !== 'inline') onClose();
+  }, [onReset, onClose, variant]);
 
   // Close only on Escape key press (not on outside click)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || variant === 'inline') return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -926,7 +941,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, variant]);
 
   useEffect(() => {
     return () => {
@@ -936,8 +951,6 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       }
     };
   }, []);
-
-  if (!isOpen) return null;
 
   const getCountrySelectOptions = (): string[] => {
     const opts = allOptions.country;
@@ -1015,6 +1028,155 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   ];
 
   const sectionsToRender = filterSections || defaultFilterSections;
+
+  const activeDimensionCount = useMemo(
+    () =>
+      Object.entries(draft).filter(([key, value]) => {
+        if (key === 'country' && String(value).trim() === 'India') return false;
+        return Boolean(String(value).trim());
+      }).length,
+    [draft]
+  );
+
+  const sectionGridClass = (title: string) => {
+    if (title === 'Location') return 'grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7';
+    if (title === 'Category') return 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5';
+    return 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6';
+  };
+
+  const renderField = (
+    field: FilterSection['fields'][number],
+    labelClassName: string
+  ) => {
+    const isLoading = loadingFields.has(field.name as string);
+    const enabled = isFieldEnabled(field.name);
+
+    if (field.name === 'country') {
+      const countryOptions = getCountrySelectOptions();
+      return (
+        <label key={field.name} className="block min-w-0">
+          <span className={labelClassName}>
+            {field.label}
+            {isLoading && <span className="ml-1 text-xs text-blue-600">• Loading...</span>}
+          </span>
+          <SelectDropdown
+            name={field.name as string}
+            value={draft[field.name]}
+            placeholder={`Select ${field.label.toLowerCase()}`}
+            options={countryOptions}
+            onChange={(val) =>
+              handleFieldChange(
+                field.name,
+                typeof val === 'string' ? val : val[0] || ''
+              )
+            }
+            disabled={isLoading || !enabled}
+            className="w-full"
+            inputClassName="h-10 !rounded-xl"
+            searchable
+          />
+        </label>
+      );
+    }
+
+    const multiOptions = getMultiSelectStructuredOptions(field.name as string);
+    return (
+      <label key={field.name} className="block min-w-0">
+        <span className={labelClassName}>
+          {field.label}
+          {isLoading && <span className="ml-1 text-xs text-blue-600">• Loading...</span>}
+        </span>
+        <MultiSelectDropdown
+          name={field.name as string}
+          value={splitCsvTokens(draft[field.name])}
+          placeholder={`Select ${field.label.toLowerCase()}`}
+          options={multiOptions}
+          onChange={(vals) => handleFieldChange(field.name, joinCsvTokens(vals))}
+          disabled={isLoading || !enabled}
+          className="w-full"
+          inputClassName="h-10 !rounded-xl overflow-hidden"
+          multi
+          horizontalScroll
+          hideScrollbar
+        />
+      </label>
+    );
+  };
+
+  if (!isOpen) return null;
+
+  if (variant === 'inline') {
+    return (
+      <div className="space-y-3">
+        {sectionsToRender.map((section) => {
+          const Icon = SECTION_ICONS[section.title];
+          const isExpanded = openSections[section.title] ?? section.title === 'Location';
+          return (
+            <section
+              key={section.title}
+              className="rounded-lg border border-gray-200 bg-white"
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenSections((prev) => ({
+                    ...prev,
+                    [section.title]: !isExpanded,
+                  }))
+                }
+                aria-expanded={isExpanded}
+                className="!flex !h-auto !w-full !items-center !justify-between !gap-3 !rounded-lg !border-0 !bg-transparent !px-4 !py-3 !text-left !shadow-none hover:!bg-gray-50 !outline-none"
+              >
+                <span className="flex items-center gap-2">
+                  {Icon ? <Icon className="h-3.5 w-3.5 text-[#f26222]" strokeWidth={2.25} /> : null}
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f26222]">
+                    {section.title}
+                  </h3>
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                  aria-hidden
+                />
+              </button>
+              {isExpanded ? (
+                <div className={`border-t border-gray-100 px-4 py-4 ${sectionGridClass(section.title)}`}>
+                  {section.fields.map((field) =>
+                    renderField(
+                      field,
+                      'mb-1.5 block text-[10px] font-medium uppercase tracking-[0.12em] text-gray-400'
+                    )
+                  )}
+                </div>
+              ) : null}
+            </section>
+          );
+        })}
+
+        <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-gray-400">
+            {activeDimensionCount} active filter dimension{activeDimensionCount === 1 ? '' : 's'} configured
+          </p>
+          <div className="flex items-center justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={handleReset}
+              className="!inline-flex !h-10 !items-center !justify-center !gap-2 !rounded-lg !border !border-solid !border-gray-200 !bg-white !px-4 !py-0 !text-sm !font-medium !text-gray-700 !shadow-sm hover:!bg-gray-50 !outline-none focus-visible:!ring-2 focus-visible:!ring-gray-300"
+            >
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={handleApply}
+              className="!inline-flex !h-10 !items-center !justify-center !rounded-lg !border-0 !bg-[#f26222] !px-5 !py-0 !text-sm !font-medium !text-white !shadow-sm hover:!bg-[#d9551c] !outline-none focus-visible:!ring-2 focus-visible:!ring-orange-200"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

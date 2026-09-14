@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { apiClient } from "../../utils/apiClient";
-import { extractAllPaths, extractAllSlugs, mapMenu } from "../../services/Side";
+import { extractAllPaths, extractAllSlugs, mapMenu, withAdvancedDeviceInventoryPage } from "../../services/Side";
 import type { ApiSidebarItem, NavigationItem } from "../../services/Side";
 
 interface PermissionsState {
@@ -25,10 +25,14 @@ export const fetchSidebarPermissions = createAsyncThunk(
     try {
       const res = await apiClient.get<any>("/permissions/sidebar");
       const rawItems = Array.isArray(res?.data) ? (res.data as ApiSidebarItem[]) : [];
+      const { menu, paths } = withAdvancedDeviceInventoryPage(
+        mapMenu(rawItems),
+        extractAllPaths(rawItems)
+      );
 
       return {
-        sidebarMenu: mapMenu(rawItems),
-        allPermittedPaths: extractAllPaths(rawItems),
+        sidebarMenu: menu,
+        allPermittedPaths: paths,
         allPermittedSlugs: extractAllSlugs(rawItems),
       };
     } catch (error: any) {

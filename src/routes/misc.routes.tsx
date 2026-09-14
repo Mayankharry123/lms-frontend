@@ -4,6 +4,7 @@ import Profile from '../pages/Profile';
 import LeadSource from '../pages/LeadSource';
 import Notifications from '../pages/Notifications';
 import DeviceInventory from '../pages/Inventory/DeviceInventory';
+import AdvancedDeviceInventory from '../pages/Inventory/AdvancedDeviceInventory';
 import { ROUTE_SEGMENTS } from '../constants/routes';
 import { permissionElement } from './PermissionElement';
 
@@ -14,5 +15,6 @@ export const miscRoutes = (
     <Route path={ROUTE_SEGMENTS.PROFILE} element={permissionElement(<Profile />)} />
     <Route path={ROUTE_SEGMENTS.LEAD_SOURCE} element={permissionElement(<LeadSource />)} />
     <Route path={ROUTE_SEGMENTS.INVENTORY_DEVICE} element={permissionElement(<DeviceInventory />)} />
+    <Route path={ROUTE_SEGMENTS.INVENTORY_DEVICE_ADVANCED} element={permissionElement(<AdvancedDeviceInventory />)} />
   </>
 );
