@@ -12,7 +12,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { listBrands } from '../../services/BrandMaster';
 import { listAgencies } from '../../services/AgencyMaster';
 import { listChildPlaningUsers } from '../../api/lookups';
-import { listLeads } from '../../services/AllLeads';
+import { listLeadContacts } from '../../services/AllLeads';
 import { fetchBriefStatuses } from '../../services/BriefStatus';
 import { getPriorities } from '../../services/Priority';
 import { motion } from 'framer-motion';
@@ -548,16 +548,25 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
     (async () => {
       try {
         setContactPersonsLoading(true);
-        const res = await listLeads(1, 200);
+        setContactPersonsError(null);
+        const leads = await listLeadContacts();
         if (!mounted) return;
-        const opts = (res.data || []).map((l) => {
-          const id = String(l.id);
-          const name = String(l.name || l.contact_person || l.email || `Lead ${l.id}`);
-          return {
-            value: id,
-            label: `${name} #${id}` // Show as "Name #ID"
-          };
-        });
+        const opts = leads.length > 0
+          ? leads.map((l) => {
+            const id = String(l.id);
+            return {
+              value: id,
+              label: `${String(l.name || '')} #${id}`
+            };
+          })
+          : (() => {
+            const fallback = initialData?.contact_person ?? initialData?.contactPerson;
+            if (!fallback || typeof fallback !== 'object') return [];
+
+            const id = String(fallback.id ?? '').trim();
+            const name = String(fallback.name ?? '').trim();
+            return id && name ? [{ value: id, label: `${name} #${id}` }] : [];
+          })();
         setContactPersons(opts);
 
         // Autofill Contact Person field for edit mode
@@ -1593,6 +1602,9 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                     name="briefDetail"
                     value={form.briefDetail}
                     onChange={handleChange}
+                    spellCheck={false}
+                    data-gramm="false"
+                    data-quillbot-element="false"
                     rows={4}
                     placeholder="Show all data regarding to Brief"
                     className="w-full px-3 py-2 border border-gray-200 text-gray-800 rounded-lg bg-white resize-none"

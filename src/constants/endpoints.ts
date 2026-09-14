@@ -47,6 +47,7 @@ export const ENDPOINTS = {
   },
   LEADS: {
     LIST: '/leads',
+    CONTACT_LIST: '/leads/list',
     DETAIL: (id: string | number) => `/leads/${id}`,
     CREATE: '/leads',
     UPDATE: (id: string | number) => `/leads/${id}`,

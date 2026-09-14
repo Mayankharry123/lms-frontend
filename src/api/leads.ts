@@ -16,6 +16,13 @@ export async function listLeads(
   return { data: (res.data || []) as LeadListItem[], meta: res.meta };
 }
 
+export async function listLeadContacts(): Promise<LeadListItem[]> {
+  const res = await apiClient.get<LeadListItem[] | { data?: LeadListItem[] }>(
+    ENDPOINTS.LEADS.CONTACT_LIST
+  );
+  return Array.isArray(res.data) ? res.data : (res.data?.data || []);
+}
+
 export async function getLeadById(id: string | number): Promise<LeadListItem> {
   const res = await apiClient.get<LeadListItem>(ENDPOINTS.LEADS.DETAIL(id));
   return res.data as LeadListItem;
@@ -55,6 +62,7 @@ export async function listLeadsByStatus(
 
 export default {
   listLeads,
+  listLeadContacts,
   getLeadById,
   createLead,
   updateLead,
