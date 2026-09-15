@@ -542,7 +542,10 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
     };
   }, [initialData, mode]);
 
-  // Load contact persons (from leads) on mount
+/**
+  * Loads users from the planning hierarchy for the Assign To dropdown.
+  * The hierarchical API response is flattened before creating dropdown options.
+  */ 
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -1090,7 +1093,10 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
     return form.campaignDuration && !isNaN(durVal) ? durVal : 0;
   };
 
-  // Campaign Start Date must be after Submission Date
+/**
+ * Returns the minimum selectable campaign start date.
+ * Campaign start must be at least one day after the submission date.
+ */
   const getMinCampaignStartDate = () => {
     if (calendarDate) {
       const nextDay = new Date(calendarDate);

@@ -121,7 +121,10 @@ const BriefPipeline: React.FC = () => {
       setLoading(false);
     }
   };
-
+ /**
+ * Fetches the selected lead when creating a new Brief and pre-fills
+ * the Brief form with lead, contact person, brand, and agency details.
+ */
   useEffect(() => {
     const rawId = params.id;
     const id = rawId ? decodeURIComponent(rawId) : undefined;
@@ -235,7 +238,7 @@ const BriefPipeline: React.FC = () => {
   }, [currentPage, itemsPerPage, searchQuery]);
 
 
-  // Assign To options shared by all brief rows.
+// Stores planning-user options shared across all Brief rows.
   const [assignOptionsByBriefId, setAssignOptionsByBriefId] = useState<Record<string, UserOption[]>>({});
 
   useEffect(() => {
@@ -246,7 +249,10 @@ const BriefPipeline: React.FC = () => {
         setAssignOptionsByBriefId({});
         return;
       }
-
+      /**
+       * Loads planning users from the child-user hierarchy and prepares
+       * the same Assign To options for each Brief row.
+       */
       try {
         const users = await listChildPlaningUsers();
         const options = users.map((u) => ({ id: u.id, name: u.name }));

@@ -44,7 +44,10 @@ function parseOrganisationsFromUser(user: Record<string, any>): string[] {
 
   return single && single !== 'undefined' && single !== 'null' ? [single] : [];
 }
-
+/**
+ * Normalizes department data from different API response formats
+ * into a string array for Edit User department selection.
+ */
 function parseDepartmentsFromUser(user: Record<string, any>): string[] {
   if (Array.isArray(user.departments) && user.departments.length > 0) {
     return user.departments

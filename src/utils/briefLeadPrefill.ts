@@ -1,5 +1,8 @@
 import type { AllLeadtype } from '../types/lead/lead.types';
-
+/**
+ * Defines the supported lead data formats used to pre-fill Brief creation,
+ * including nested brand and agency information.
+ */
 export type LeadBriefPrefillSource = Omit<Partial<AllLeadtype>, 'id' | 'brandId' | 'agencyId'> & {
   id?: string | number;
   name?: string;
@@ -13,7 +16,11 @@ export type LeadBriefPrefillSource = Omit<Partial<AllLeadtype>, 'id' | 'brandId'
   agencyId?: string;
   leadNumericId?: string;
 };
-
+/**
+ * Maps lead data into the CreateBriefForm initial-data structure.
+ * Pre-fills contact person, brand, agency, and lead identifiers
+ * while supporting both ID-based and nested API response formats.
+ */
 /** Maps a lead row to CreateBriefForm initialData (contact person, brand, agency). */
 export function buildBriefInitialDataFromLead(lead: LeadBriefPrefillSource): Record<string, unknown> {
   const leadId = String(lead.leadNumericId ?? lead.id ?? '').replace(/^#/, '');

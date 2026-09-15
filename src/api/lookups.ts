@@ -120,7 +120,10 @@ export async function listChildUsers(
   );
   return (res.data || []) as Array<{ id: number | string; name: string }>;
 }
-
+/**
+ * Added API helper to fetch planning users from the child-user hierarchy.
+ * The hierarchical response is flattened for dropdown/selection use.
+ */
 export async function listChildPlaningUsers(): Promise<
   Array<{ id: number | string; name: string }>
 > {
