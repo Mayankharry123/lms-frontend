@@ -15,6 +15,16 @@ export async function listLeads(
   const res = await apiClient.get<LeadListItem[]>(`${ENDPOINTS.LEADS.LIST}${query}`);
   return { data: (res.data || []) as LeadListItem[], meta: res.meta };
 }
+/**
+ * Added API helper to fetch lead contacts for the Brief contact-person dropdown.
+ * Supports both direct array and wrapped API response formats.
+ */
+export async function listLeadContacts(): Promise<LeadListItem[]> {
+  const res = await apiClient.get<LeadListItem[] | { data?: LeadListItem[] }>(
+    ENDPOINTS.LEADS.CONTACT_LIST
+  );
+  return Array.isArray(res.data) ? res.data : (res.data?.data || []);
+}
 
 export async function getLeadById(id: string | number): Promise<LeadListItem> {
   const res = await apiClient.get<LeadListItem>(ENDPOINTS.LEADS.DETAIL(id));
@@ -55,6 +65,7 @@ export async function listLeadsByStatus(
 
 export default {
   listLeads,
+  listLeadContacts,
   getLeadById,
   createLead,
   updateLead,

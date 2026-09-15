@@ -44,12 +44,24 @@ function parseOrganisationsFromUser(user: Record<string, any>): string[] {
 
   return single && single !== 'undefined' && single !== 'null' ? [single] : [];
 }
-
+/**
+ * Normalizes department data from different API response formats
+ * into a string array for Edit User department selection.
+ */
 function parseDepartmentsFromUser(user: Record<string, any>): string[] {
   if (Array.isArray(user.departments) && user.departments.length > 0) {
     return user.departments
       .map((item: any) =>
-        String(item?.id ?? item?.department_id ?? item?.value ?? item?.name ?? item ?? '')
+        String(
+          item?.id ??
+            item?.department_id ??
+            item?.departments_id ??
+            item?.value ??
+            item?.name ??
+            item?.departments_name ??
+            item ??
+            ''
+        )
       )
       .filter(Boolean);
   }
@@ -61,9 +73,11 @@ function parseDepartmentsFromUser(user: Record<string, any>): string[] {
   const single = String(
     user.department?.id ??
       user.department_id ??
+    user.departments_id ??
       user.department?.value ??
       user.department?.name ??
       user.department_name ??
+    user.departments_name ??
       user.department ??
       ''
   ).trim();
@@ -350,8 +364,8 @@ const EditUser: React.FC = () => {
 
         const opts = items
           .map((it: any) => ({
-            label: String(it.name ?? it.department_name ?? it.label ?? ''),
-            value: String(it.id ?? it.value ?? it.department_id ?? ''),
+            label: String(it.name ?? it.department_name ?? it.departments_name ?? it.label ?? ''),
+            value: String(it.id ?? it.value ?? it.department_id ?? it.departments_id ?? ''),
           }))
           .filter((it) => it.label && it.value);
 

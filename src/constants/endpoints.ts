@@ -17,6 +17,8 @@ export const ENDPOINTS = {
     UPDATE: (id: string | number) => `/users/${id}`,
     DELETE: (id: string | number) => `/users/${id}`,
     CHILD_USERS: '/profile/child-users',
+    // Endpoint for fetching child users filtered by the planning department.
+    CHILD_PLANING_USERS: '/profile/child-planing-users',
     CHILD_USERS_BY_MISS_CAMPAIGN: (id: string | number) =>
       `/profile/child-users-by-miss-campaign/${id}`,
     CHILD_USERS_BY_LEAD: (id: string | number) => `/profile/child-users-by-lead/${id}`,
@@ -46,6 +48,8 @@ export const ENDPOINTS = {
   },
   LEADS: {
     LIST: '/leads',
+    // Endpoint for fetching lead contacts used in Brief creation.
+    CONTACT_LIST: '/leads/list',
     DETAIL: (id: string | number) => `/leads/${id}`,
     CREATE: '/leads',
     UPDATE: (id: string | number) => `/leads/${id}`,
