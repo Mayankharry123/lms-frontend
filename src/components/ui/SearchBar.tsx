@@ -42,7 +42,11 @@ const SearchBar: React.FC<Props> = ({
         onChange={(e) => handleChange(e.target.value)}
         placeholder={placeholder}
         autoComplete="off"
-        className={filterSlot ? 'app-search-input border-0 rounded-none rounded-r-lg' : 'app-search-input'}
+        className={
+          filterSlot
+            ? 'app-search-input !rounded-none !rounded-r-lg !border-0 !shadow-none focus:!border-0 focus:!shadow-none'
+            : 'app-search-input'
+        }
       />
     </div>
   );

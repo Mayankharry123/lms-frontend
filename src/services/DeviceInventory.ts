@@ -1,13 +1,15 @@
 import { handleApiError } from '../utils/apiErrorHandler';
+import { isAbortError, serializeRequestKey } from '../utils/requestControl';
 import sspHttp from './sspHttp';
 import type {
   DeviceData,
   DeviceInventoryResponse,
+  DeviceMapMarker,
   ListDeviceInventoryParams,
 } from '../types/inventory.types';
 import { exportDeviceInventoryExcel } from '../utils/deviceInventoryExcel';
 
-export type { DeviceData };
+export type { DeviceData, DeviceMapMarker };
 
 const INVENTORY_ENDPOINT = '/inventory';
 
@@ -47,6 +49,7 @@ function buildInventoryQueryParams(
     query[`${key}[]`] = values;
   };
 
+  appendScalar('fields', params.fields);
   appendScalar('search', params.search);
   appendScalar('country', params.country);
   appendMulti('state', params.state);
@@ -70,7 +73,7 @@ function buildInventoryQueryParams(
   return query;
 }
 
-export type DeviceInventoryFilterParams = Omit<ListDeviceInventoryParams, 'page' | 'per_page'>;
+export type DeviceInventoryFilterParams = Omit<ListDeviceInventoryParams, 'page' | 'per_page' | 'fields'>;
 
 export type DeviceInventoryExportKind = 'excel' | 'ppt';
 
@@ -143,18 +146,141 @@ function normalizeInventoryResponse(json: unknown): DeviceInventoryResponse {
 }
 
 export async function listDeviceInventory(
-  params: ListDeviceInventoryParams = {}
+  params: ListDeviceInventoryParams = {},
+  options?: { signal?: AbortSignal }
 ): Promise<DeviceInventoryResponse> {
   try {
     const resp = await sspHttp.get(INVENTORY_ENDPOINT, {
       params: buildInventoryQueryParams(params),
+      signal: options?.signal,
     });
 
     return normalizeInventoryResponse(resp.data);
   } catch (error) {
-    handleApiError(error);
+    if (!isAbortError(error)) {
+      handleApiError(error);
+    }
     throw error;
   }
+}
+
+const MAP_PAGE_SIZE = 2500;
+const MAP_MAX_PAGES = 20;
+const MAP_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAP_FIELDS =
+  'device_details_id,device_id,latitude,longitude,status,category_name,main_category_name';
+
+type MapCacheEntry = {
+  markers: DeviceMapMarker[];
+  timestamp: number;
+};
+
+const mapMarkerCache = new Map<string, MapCacheEntry>();
+const pendingMapRequests = new Map<string, Promise<DeviceMapMarker[]>>();
+
+function toMapMarker(row: DeviceData): DeviceMapMarker | null {
+  const latitude = Number(row.latitude);
+  const longitude = Number(row.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
+
+  const id = String(row.device_details_id || row.device_id || '').trim();
+  if (!id) return null;
+
+  return {
+    id,
+    latitude,
+    longitude,
+    status: row.status?.trim() || undefined,
+    category: row.category_name?.trim() || row.main_category_name?.trim() || undefined,
+  };
+}
+
+/** Lightweight map points for the current server-side filters. Details stay on the list/detail APIs. */
+export async function listDeviceInventoryMapMarkers(
+  filters: DeviceInventoryFilterParams = {},
+  options?: { signal?: AbortSignal }
+): Promise<DeviceMapMarker[]> {
+  const cacheKey = serializeRequestKey(filters);
+  const cached = mapMarkerCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < MAP_CACHE_TTL_MS) {
+    return cached.markers;
+  }
+
+  const pending = pendingMapRequests.get(cacheKey);
+  if (pending) {
+    return pending;
+  }
+
+  const request = (async () => {
+    const markers: DeviceMapMarker[] = [];
+    const seen = new Set<string>();
+    let page = 1;
+    let total = Number.POSITIVE_INFINITY;
+
+    while (markers.length < total) {
+      if (options?.signal?.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
+
+      const res = await listDeviceInventory(
+        {
+          ...filters,
+          page,
+          per_page: MAP_PAGE_SIZE,
+          fields: MAP_FIELDS,
+        },
+        { signal: options?.signal }
+      );
+      const rows = Array.isArray(res.data) ? res.data : [];
+      const reportedTotal = Number(res.total_records || 0);
+      total = reportedTotal > 0 ? reportedTotal : markers.length + rows.length;
+
+      rows.forEach((row) => {
+        const marker = toMapMarker(row);
+        if (!marker || seen.has(marker.id)) return;
+        seen.add(marker.id);
+        markers.push(marker);
+      });
+
+      if (rows.length === 0) break;
+      if (rows.length < MAP_PAGE_SIZE) break;
+      page += 1;
+      if (page > MAP_MAX_PAGES) break;
+    }
+
+    mapMarkerCache.set(cacheKey, { markers, timestamp: Date.now() });
+    return markers;
+  })();
+
+  pendingMapRequests.set(cacheKey, request);
+  try {
+    return await request;
+  } finally {
+    pendingMapRequests.delete(cacheKey);
+  }
+}
+
+export async function getDeviceInventoryDetail(
+  id: string,
+  options?: { signal?: AbortSignal }
+): Promise<DeviceData | null> {
+  const trimmed = id.trim();
+  if (!trimmed) return null;
+
+  const res = await listDeviceInventory(
+    { search: trimmed, page: 1, per_page: 20 },
+    { signal: options?.signal }
+  );
+  const rows = Array.isArray(res.data) ? res.data : [];
+  return (
+    rows.find(
+      (row) =>
+        String(row.device_details_id) === trimmed || String(row.device_id) === trimmed
+    ) ||
+    rows[0] ||
+    null
+  );
 }
 
 const EXPORT_PAGE_SIZE = 500;

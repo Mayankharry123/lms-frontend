@@ -1,6 +1,6 @@
 import React from 'react';
 import type { PlannerChartOrganisationRow } from '../../services/DashboardCharts';
-import { formatCount, formatCurrency } from './chartShared';
+import { formatCount, formatCurrency } from '../../utils/dashboardFormat';
 
 type PlannerOrganisationTableProps = {
   rows: PlannerChartOrganisationRow[];

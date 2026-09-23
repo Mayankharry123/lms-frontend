@@ -1,25 +1,7 @@
 import type { DeviceData } from '../../types/inventory.types';
+import { DEFAULT_APPLIED_LOCATION } from '../../constants/inventory/defaults';
 
-export const DEFAULT_APPLIED_LOCATION = {
-  country: 'India',
-  state: '',
-  city: '',
-  zoneArea: '',
-  subZoneArea: '',
-  pincode: '',
-  arterialRoute: '',
-  modeOfMedia: '',
-  publisher: '',
-  mainCategory: '',
-  categorySub: '',
-  category: '',
-  locationType: '',
-  orientation: '',
-  resolution: '',
-  screenLocation: '',
-  stretch: '',
-  property: '',
-};
+export { DEFAULT_APPLIED_LOCATION };
 
 export type DeviceDetailSection = {
   title: string;
@@ -159,6 +141,60 @@ export function formatDeviceFieldLabel(key: string): string {
   return key
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function isDeviceMediaUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === '-') return false;
+  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i.test(trimmed)) return true;
+  if (/^https?:\/\//i.test(trimmed)) {
+    return /cloudfront|amazonaws|s3\.|\/images\/|\/media\/|imagedelivery|unsplash|googleusercontent/i.test(
+      trimmed
+    );
+  }
+  return trimmed.includes('/images/') || trimmed.includes('cloudfront.net');
+}
+
+export function collectDeviceMediaImages(
+  device: DeviceData
+): Array<{ key: string; label: string; url: string }> {
+  const images: Array<{ key: string; label: string; url: string }> = [];
+  const seen = new Set<string>();
+
+  const addUrl = (key: string, raw: string) => {
+    String(raw)
+      .split(/[|,]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .forEach((url, index) => {
+        if (!isDeviceMediaUrl(url)) {
+          const isKnownImageField = DEVICE_IMAGE_FIELDS.includes(key as keyof DeviceData);
+          const isHttp = /^https?:\/\//i.test(url) || url.startsWith('/');
+          if (!isKnownImageField || !isHttp) return;
+        }
+        if (seen.has(url)) return;
+        seen.add(url);
+        images.push({
+          key: `${key}-${index}`,
+          label: formatDeviceFieldLabel(key),
+          url,
+        });
+      });
+  };
+
+  DEVICE_IMAGE_FIELDS.forEach((key) => {
+    const value = getDeviceFieldValue(device, key);
+    if (value !== '-') addUrl(key, value);
+  });
+
+  Object.entries(device).forEach(([key, value]) => {
+    if (DEVICE_IMAGE_FIELDS.includes(key as keyof DeviceData)) return;
+    if (!/(image|photo|media|thumbnail|poster)/i.test(key)) return;
+    if (typeof value !== 'string' || !value.trim()) return;
+    addUrl(key, value);
+  });
+
+  return images;
 }
 
 export function getDeviceFieldValue(item: DeviceData, key: string): string {

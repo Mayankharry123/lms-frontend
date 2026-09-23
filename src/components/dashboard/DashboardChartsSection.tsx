@@ -26,22 +26,12 @@ import type { DashboardChartKey } from '../../utils/dashboardPermissions';
 import PlannerOrganisationTable from './PlannerOrganisationTable';
 
 import {
-
   ChartsSectionHeader,
-
-  formatCount,
-
-  formatCurrency,
-
   MetricChartCard,
-
   PipelineChartCard,
-
   StatusPieChartCard,
-
-  truncateLabel,
-
 } from './chartShared';
+import { formatCount, formatCurrency, truncateLabel } from '../../utils/dashboardFormat';
 
 
 

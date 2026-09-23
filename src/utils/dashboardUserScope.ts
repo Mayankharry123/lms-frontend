@@ -36,7 +36,8 @@ export function isSuperAdminUser(user: AuthUser | null | undefined): boolean {
 }
 
 /** Organisation-wide dashboard access requires explicit organisation assignment. */
-export function canAccessAllOrganisations(_user: AuthUser | null | undefined): boolean {
+export function canAccessAllOrganisations(user: AuthUser | null | undefined): boolean {
+  void user;
   return false;
 }
 

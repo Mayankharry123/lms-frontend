@@ -6,6 +6,7 @@
 import axios, { AxiosHeaders } from 'axios';
 import type { AxiosInstance } from 'axios';
 import { applySspAuthHeaders, resolveSspBaseUrl } from './sspConfig';
+import { isAbortError } from '../utils/requestControl';
 
 const locationApiBaseUrl = resolveSspBaseUrl();
 
@@ -93,6 +94,11 @@ interface CacheEntry {
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 const apiCache = new Map<string, CacheEntry>();
 const pendingRequests = new Map<string, Promise<LocationOption[]>>();
+let locationRequestSignal: AbortSignal | undefined;
+
+export function setLocationApiSignal(signal?: AbortSignal): void {
+  locationRequestSignal = signal;
+}
 
 /**
  * Get from cache if valid, otherwise return null
@@ -226,6 +232,7 @@ async function makeApiRequest(endpoint: string, payload: any = {}): Promise<Loca
         url: endpoint,
         method: 'get',
         params: queryParams,
+        signal: locationRequestSignal,
         validateStatus: () => true,
       });
 
@@ -237,6 +244,7 @@ async function makeApiRequest(endpoint: string, payload: any = {}): Promise<Loca
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
+          signal: locationRequestSignal,
           validateStatus: () => true,
         });
       }
@@ -256,6 +264,9 @@ async function makeApiRequest(endpoint: string, payload: any = {}): Promise<Loca
       setCache(cacheKey, options);
       return options;
     } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
       if (axios.isAxiosError(error) && (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT')) {
         console.warn(`API request timed out for ${endpoint}`);
       } else {

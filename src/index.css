@@ -210,6 +210,24 @@ button,
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+.inventory-pin-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.inventory-map:fullscreen,
+.inventory-map:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+}
+
+.inventory-map:fullscreen > div:first-child,
+.inventory-map:-webkit-full-screen > div:first-child {
+  height: 100%;
+  min-height: 100%;
+}
+
 /* Gradient text effect */
 .gradient-text {
   background: linear-gradient(135deg, var(--primary), #005A61);
@@ -347,7 +365,7 @@ h1 {
 button {
   border-radius: 8px;
   border: 1px solid transparent;
-  padding: 0.6em 1.2em;
+  padding: 0.2em 0.6em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
@@ -896,6 +914,18 @@ html.dark {
   @apply w-full min-h-[200px] max-w-[400px] object-contain;
 }
 
+.inventory-map {
+  z-index: 0;
+}
+
+.inventory-map .leaflet-container {
+  z-index: 0;
+}
+
+.inventory-map .leaflet-top,
+.inventory-map .leaflet-bottom {
+  z-index: 400;
+}
 
 /* .device-inventory-outer-section table tbody td{
   @apply !max-w-[80px] overflow-hidden text-ellipsis whitespace-nowrap;

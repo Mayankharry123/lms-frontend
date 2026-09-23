@@ -10,6 +10,8 @@ export * from './brief/brief.types';
 export * from './pages';
 export * from './inventory.types';
 export * from './inventory/device.types';
+export * from './inventory/location-filter.types';
+export * from './inventory/clone-inventory.types';
 
 // Legacy LMS scaffold types (kept for backward compatibility)
 export interface User {

@@ -1,0 +1,346 @@
+Device Inventory Clone — Chat Summary Report
+=============================================
+
+Yeh report isi chat ke kaam par based hai.
+Original Device Inventory ka behavior change nahi kiya gaya.
+
+Scope
+-----
+Clone page: /inventory/device-clone
+Goal: map + clone-only filters, chips, reset, labels, lint/build, phir files ko sahi architecture pe lagana — functionality same.
+
+
+Issues jo fix hue
+-----------------
+1. Category filter label unclear
+   Fix: Label "Property / Category" (card, list, chips)
+
+2. Reset filters map ke andar aa rahe the
+   Fix: Reset + chips map ke just upar (map canvas free)
+
+3. TS build fail: Side.ts — NavigationItem vs path
+   Fix: Type annotation hata kar same clone sidebar item
+
+4. Lint: routes/index.tsx fast refresh
+   Fix: Extra re-exports hatae; file sirf AppRoutes
+
+5. Lint: unused user in canAccessAllOrganisations
+   Fix: Signature same, false return same
+
+6. Lint: components + constants/hooks mix (fast refresh)
+   Fix: Non-component exports alag files
+
+7. Clone files pages/ + ui/ me mix
+   Fix: Pages / components / constants / types / hooks / utils
+
+
+Kya changes kiye (feature)
+--------------------------
+Clone-only map filters
+- Left overlay filter panel (original FilterPopup nahi chheda)
+- Default country India; state ke baad next location fields
+- Live filter (debounce), Select All after country
+- Applied chips; chip remove se dependents + API + map update
+  - City remove -> country-level states
+  - State remove -> all India
+- Progressive: State -> City -> Zone -> Sub-Zone
+- Panel close X; Clear text nahi, X only
+- India helper text hataaya
+
+Map / detail
+- Pin + centered count, brand orange #f26222
+- Fullscreen map button
+- First load India markers / fit
+- View Details + media images; modal z-index map ke upar
+
+Reset
+- Reset applied chips ke saath, map ke top par (bahar)
+- Default (sirf India) par button disable
+- Click -> DEFAULT_APPLIED_LOCATION (India)
+
+
+Kyun changes kiye
+-----------------
+- Clone alag rakhna tha taaki original inventory na toote
+- Filter UX: India default, live apply, chips, reset — map use ke liye
+- Property / Category product label
+- Reset map overlay par tha to zoom/pins cover ho rahe the -> map ke upar row
+- Build/lint CI / fast refresh ke liye
+- Types me constants, pages/ me 800-line panel, ui/ me inventory catalog — layering galat thi
+
+
+Optimization / quality (behavior same)
+--------------------------------------
+- Inventory API: multi-select par ek debounced call
+- Option load debounce (~350ms), apply (~400ms)
+- Chip remove vs pending apply: externalSyncKey + timer cancel
+- Map invalidateSize / India fit first load
+- Fast refresh: components alag, helpers alag
+- Duplicate chart formatters dashboardFormat.ts me merge
+- Tooltip hook src/hooks/
+
+
+Architecture (move only, logic same)
+------------------------------------
+Pages        src/pages/Inventory/DeviceInventoryClone.tsx
+Feature UI   src/components/inventory/ (map + clone filter)
+Constants    src/constants/inventory/ (clone rules, defaults, filter fields)
+Types        src/types/inventory/ (types only)
+Utils        buildCloneInventoryFilters.ts, dashboardFormat.ts
+Hooks        useDeviceInventoryMap, useTableCellTooltip
+
+
+Touch nahi kiya / jaan-bujh kar nahi kiya
+-----------------------------------------
+- Original Device Inventory filters, list, exports
+- react-hooks/exhaustive-deps warnings — deps badalne se runtime change ho sakta tha
+- Clone debounce / India / chip rules same rakhe architecture move ke baad
+
+
+Verify
+------
+- tsc -b pass
+- Lint errors 0 (warnings pehle se the, behavior ke liye chhode)
+- Clone: filters, chips, Reset above map, Property / Category, India default
+- Original inventory: same as before
+
+=======================================================================================
+
+Code level — components
+-----------------------
+Page
+  DeviceInventoryClone (React.FC)
+    src/pages/Inventory/DeviceInventoryClone.tsx
+
+Feature UI
+  DeviceInventoryCloneFilterPanel (React.FC<CloneFilterPanelProps>)
+  DeviceInventoryCloneAppliedChips (chips + Reset button)
+    src/components/inventory/DeviceInventoryCloneFilterPanel.tsx
+  DeviceInventoryMap (React.FC<DeviceInventoryMapProps>)
+    inner: InvalidateMapSizeOnResize, AutoFitToFilteredMarkers, InventoryMarkerCluster
+    src/components/inventory/DeviceInventoryMap.tsx
+  DeviceDetailModal — shared with original inventory
+  FilterPopup — original inventory only; clone iska use nahi karta
+
+Shared UI used by clone page
+  MasterHeader, Table, Pagination, SearchBar, ExportExcelButton, PPTExport
+
+
+Code level — React state (useState)
+-----------------------------------
+DeviceInventoryClone
+  searchQuery: string
+  filterOpen: boolean
+  appliedLocation: LocationFilterValues   (default DEFAULT_APPLIED_LOCATION, country India)
+  externalFilterSyncKey: number           (chip/reset ke baad panel draft sync)
+  selectedDevice: DeviceData | null
+  detailLoading: boolean
+
+DeviceInventoryCloneFilterPanel
+  draft: LocationFilterValues             (live filter draft)
+  visibleFields: Set<keyof LocationFilterValues>
+  allOptions: FilterOptions               (Record<field, LocationOption[]>)
+  loadingFields: Set<string>
+  cardSearchQueries: Record<string, string>
+  collapsedCards: Set<keyof LocationFilterValues>
+
+DeviceInventoryMap
+  isFullscreen: boolean
+
+useDeviceInventoryList
+  data: DeviceData[]
+  currentPage: number
+  totalItems: number
+  loading: boolean
+  refreshing: boolean
+
+useDeviceInventoryMap
+  markers: DeviceMapMarker[]
+  loading: boolean
+
+
+Code level — refs (useRef)
+--------------------------
+DeviceInventoryClone
+  detailAbortRef: AbortController | null
+
+DeviceInventoryCloneFilterPanel
+  allOptionsRef, draftRef
+  debounceTimersRef          (per-field option load timers)
+  applyTimerRef              (400ms live apply)
+  openLoadIdRef              (stale option-load ignore)
+  appliedValuesRef
+
+DeviceInventoryMap
+  mapRootRef: HTMLDivElement
+  onMarkerSelectRef
+
+useDeviceInventoryList
+  hasLoadedRef, lastFilterKeyRef
+
+
+Code level — hooks
+------------------
+React
+  useState, useEffect, useMemo, useCallback, useRef
+
+Custom
+  useDeviceInventoryList({ pageSize, getFilters })
+    list + pagination + excel export, filter debounce 300ms
+  useDeviceInventoryMap({ getFilters })
+    map markers, filter debounce 300ms
+  useTheme()
+    mapPointColor (--brand-accent / #f26222)
+  useTableCellTooltip()
+    Table cell tooltip (generic UI, clone table bhi use)
+
+Clone page derived
+  inventoryFilters = useMemo(buildCloneInventoryFilters)
+  getInventoryFilters = useCallback -> CloneInventoryQueryFilters
+  mapPointColor, columns, commitExternalFilters, handleRemoveAppliedFilter
+  handleViewDetails, handleCloseDetails, handleMapMarkerSelect
+
+
+Code level — functions / helpers
+--------------------------------
+src/utils/buildCloneInventoryFilters.ts
+  optionalCsv
+  buildCloneInventoryFilters(input) -> CloneInventoryQueryFilters
+  cloneQueryHasLocationFocus(filters) -> boolean   (map autoFit)
+  clearCloneLocationFilter(values, fieldName) -> LocationFilterValues
+    city remove  -> state + location descendants clear
+    state remove -> all India (country keep)
+    other        -> CLONE_FILTER_DESCENDANTS clear
+
+src/utils/requestControl.ts
+  isAbortError, serializeRequestKey   (debounce / stale request)
+
+Filter panel helpers
+  splitCsvTokens, joinCsvTokens, idsCsvToLabelsCsv
+  cloneFilterFieldLabel        (category -> "Property / Category")
+  visibleFieldsFromValues
+  nextFieldsToLoad
+  getNormalizedOptionLabel
+  setFieldLoading
+  selectedValues
+  locationFilters
+  loadFieldOptions / scheduleFieldLoad     (OPTION_DEBOUNCE_MS = 350)
+  emitLabels / scheduleApply               (APPLY_DEBOUNCE_MS = 400)
+  handleFieldChange, handleToggleOption, handleToggleSelectAllOptions
+  handleToggleFieldVisibility, handleReset
+  isDefaultAppliedLocation                 (Reset disable)
+
+Map helpers
+  isInsideIndia, mapStatus, pinIcon, statusIcon
+  fitMapToIndia, toggleFullscreen
+
+Services
+  listDeviceInventory, listDeviceInventoryMapMarkers
+  getDeviceInventoryDetail
+  LocationCategoryDevice fetch*: countries, states, cities, zones, ...
+  Side.ts: clone sidebar item DEVICE_INVENTORY_CLONE_PATH
+
+
+Code level — types
+------------------
+src/types/inventory/location-filter.types.ts
+  LocationFilterValues {
+    country, state, city, zoneArea, subZoneArea, pincode, arterialRoute,
+    modeOfMedia, publisher, mainCategory, category, categorySub,
+    locationType, orientation, resolution, screenLocation, stretch, property
+  }
+
+src/types/inventory/clone-inventory.types.ts
+  CloneInventoryQueryFilters
+    = Omit<ListDeviceInventoryParams, 'page' | 'per_page' | 'fields'>
+  BuildCloneInventoryFiltersInput {
+    searchQuery: string
+    location: LocationFilterValues
+  }
+
+src/constants/inventory/filterFields.ts
+  FieldDefinition {
+    name: keyof LocationFilterValues
+    label: string
+    category: 'Location' | 'Category' | 'Publisher' | 'Device'
+    icon: ComponentType<{ className?: string }>   // lucide icons: MapPin, Layers, Building2, Monitor
+  }
+
+Panel / map local types
+  FilterOptions = Record<string, LocationOption[]>
+  CloneFilterPanelProps {
+    appliedValues, isOpen, onOpenChange, onApply, onReset, externalSyncKey?
+  }
+  DeviceInventoryMapProps {
+    markers, loading?, autoFit?, fitToken?, resetViewWhenIdle?,
+    pointColor?, clampToIndia?, onMarkerSelect, leftOverlay?
+  }
+  MapStatus = 'active' | 'pending' | 'inactive'
+
+Shared inventory types
+  DeviceData, DeviceMapMarker, DeviceInventoryFilterParams, LocationOption
+
+
+Code level — ComponentType
+--------------------------
+React.FC used on:
+  DeviceInventoryClone
+  DeviceInventoryCloneFilterPanel
+  DeviceInventoryMap
+  DeviceInventoryCloneAppliedChips (function component)
+
+FieldDefinition.icon
+  type: ComponentType<{ className?: string }>
+  values: MapPin | Layers | Building2 | Monitor (lucide-react)
+
+Lucide icons in clone UI
+  SlidersHorizontal (open filters)
+  X, Check, ChevronDown, ChevronUp, RotateCcw, Search
+  Maximize2 / Minimize2 (map fullscreen)
+
+
+Code level — constants
+----------------------
+src/constants/inventory/defaults.ts
+  DEFAULT_APPLIED_LOCATION: LocationFilterValues   (country: 'India', baaki '')
+
+src/constants/inventory/clone.ts
+  CLONE_DEFAULT_COUNTRY = 'India'
+  CLONE_NEXT_FILTER            field -> next field
+  CLONE_LOCATION_PROGRESSION   state, city, zoneArea, subZoneArea, pincode, arterialRoute
+  CLONE_FILTER_DESCENDANTS     parent -> children to clear
+
+src/constants/inventory/filterFields.ts
+  ALL_FILTER_FIELDS: FieldDefinition[]
+
+src/constants/routes.ts
+  ROUTES.INVENTORY_DEVICE_CLONE / ROUTE_SEGMENTS.INVENTORY_DEVICE_CLONE
+
+Panel timings
+  ALWAYS_VISIBLE = ['country', 'state']
+  OPTION_DEBOUNCE_MS = 350
+  APPLY_DEBOUNCE_MS = 400
+  FILTER_DEBOUNCE_MS = 300   (list + map hooks)
+  ITEMS_PER_PAGE = 10
+
+
+Code level — data flow (short)
+------------------------------
+User filter
+  draft state -> scheduleApply (400ms) -> onApply -> appliedLocation
+  -> inventoryFilters (buildCloneInventoryFilters)
+  -> getInventoryFilters
+  -> useDeviceInventoryList + useDeviceInventoryMap
+
+Chip X
+  handleRemoveAppliedFilter -> clearCloneLocationFilter
+  -> externalFilterSyncKey++ (panel draft sync, pending timer cancel)
+
+Reset
+  commitExternalFilters(DEFAULT_APPLIED_LOCATION)
+  India default, Reset disabled jab isDefaultAppliedLocation true
+
+
+One line
+--------
+Clone inventory ko map-first filters + reset + labels diye, build/lint saaf kiye, files ko sahi folders me rakha — original inventory aur clone behavior same.

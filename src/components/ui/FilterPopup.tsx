@@ -5,10 +5,6 @@ import {
   RotateCcw,
   Search,
   X,
-  MapPin,
-  Layers,
-  Building2,
-  Monitor,
 } from 'lucide-react';
 import {
   fetchStates,
@@ -30,7 +26,14 @@ import {
   fetchProperties,
   type LocationOption,
   fetchCountries,
+  setLocationApiSignal,
 } from '../../services/LocationCategoryDevice';
+import { isAbortError } from '../../utils/requestControl';
+import type { LocationFilterValues } from '../../types/inventory/location-filter.types';
+import { ALL_FILTER_FIELDS } from '../../constants/inventory/filterFields';
+import { CLONE_NEXT_FILTER } from '../../constants/inventory/clone';
+
+export type { LocationFilterValues };
 
 /** Comma-separated tokens (legacy labels or IDs during hydration). */
 function splitCsvTokens(value: string): string[] {
@@ -57,26 +60,6 @@ function idsCsvToLabelsCsv(
   return joinCsvTokens(labels);
 }
 
-export type LocationFilterValues = {
-  country: string;
-  state: string;
-  city: string;
-  zoneArea: string;
-  subZoneArea: string;
-  pincode: string;
-  arterialRoute: string;
-  modeOfMedia: string;
-  publisher: string;
-  mainCategory: string;
-  category: string;
-  categorySub: string;
-  locationType: string;
-  orientation: string;
-  resolution: string;
-  screenLocation: string;
-  stretch: string;
-  property: string;
-};
 
 /** Fields edited via MultiSelectDropdown — draft holds comma-separated option IDs; labels are sent on Apply. */
 const MULTI_SELECT_FIELDS: (keyof LocationFilterValues)[] = [
@@ -110,68 +93,50 @@ export type FilterSection = {
 export type FilterOptions = Record<string, LocationOption[]>;
 const EMPTY_FILTER_OPTIONS: FilterOptions = {};
 
-export type FieldDefinition = {
-  name: keyof LocationFilterValues;
-  label: string;
-  category: 'Location' | 'Category' | 'Publisher' | 'Device';
-  icon: React.ComponentType<{ className?: string }>;
-};
+const FIELD_PREREQUISITES: Partial<
+  Record<keyof LocationFilterValues, keyof LocationFilterValues>
+> = { state: 'country' };
 
-export const ALL_FILTER_FIELDS: FieldDefinition[] = [
-  // Location
-  { name: 'country', label: 'Country', category: 'Location', icon: MapPin },
-  { name: 'state', label: 'State', category: 'Location', icon: MapPin },
-  { name: 'city', label: 'City', category: 'Location', icon: MapPin },
-  { name: 'zoneArea', label: 'Zone', category: 'Location', icon: MapPin },
-  { name: 'subZoneArea', label: 'Sub Zone', category: 'Location', icon: MapPin },
-  { name: 'pincode', label: 'Pincode', category: 'Location', icon: MapPin },
-  { name: 'arterialRoute', label: 'Arterial Route', category: 'Location', icon: MapPin },
-  // Category & Property
-  { name: 'modeOfMedia', label: 'Mode of Media (Screen Type)', category: 'Category', icon: Layers },
-  { name: 'mainCategory', label: 'Main Category', category: 'Category', icon: Layers },
-  { name: 'category', label: 'Category', category: 'Category', icon: Layers },
-  { name: 'categorySub', label: 'Sub Category', category: 'Category', icon: Layers },
-  { name: 'property', label: 'Property', category: 'Category', icon: Building2 },
-  // Publisher
-  { name: 'publisher', label: 'Publisher', category: 'Publisher', icon: Building2 },
-  // Device
-  { name: 'locationType', label: 'Location Type', category: 'Device', icon: Monitor },
-  { name: 'orientation', label: 'Orientation', category: 'Device', icon: Monitor },
-  { name: 'resolution', label: 'Resolution', category: 'Device', icon: Monitor },
-  { name: 'screenLocation', label: 'Screen Location', category: 'Device', icon: Monitor },
-  { name: 'stretch', label: 'Stretch', category: 'Device', icon: Monitor },
-];
-
-const FIELD_PREREQUISITES: Partial<Record<keyof LocationFilterValues, keyof LocationFilterValues>> = {
-  state: 'country',
-  city: 'state',
-  zoneArea: 'city',
-  subZoneArea: 'zoneArea',
-  pincode: 'state',
-  arterialRoute: 'city',
-  category: 'mainCategory',
-  categorySub: 'category',
-  orientation: 'locationType',
-  resolution: 'orientation',
-  screenLocation: 'resolution',
-  stretch: 'screenLocation',
-};
+(
+  Object.entries(CLONE_NEXT_FILTER) as Array<
+    [keyof LocationFilterValues, keyof LocationFilterValues]
+  >
+).forEach(([parent, child]) => {
+  FIELD_PREREQUISITES[child] = parent;
+});
 
 function fieldHasValue(values: LocationFilterValues, name: keyof LocationFilterValues): boolean {
   return Boolean(String(values[name] ?? '').trim());
+}
+
+function getFieldPrerequisite(
+  values: LocationFilterValues,
+  name: keyof LocationFilterValues
+): keyof LocationFilterValues | undefined {
+  if (name !== 'country' && name !== 'state' && !fieldHasValue(values, 'state')) {
+    return 'state';
+  }
+  return FIELD_PREREQUISITES[name];
 }
 
 function fieldCanBeSelected(
   values: LocationFilterValues,
   name: keyof LocationFilterValues
 ): boolean {
-  const prerequisite = FIELD_PREREQUISITES[name];
+  if (fieldHasValue(values, name)) return true;
+  const prerequisite = getFieldPrerequisite(values, name);
   return !prerequisite || fieldHasValue(values, prerequisite);
+}
+
+function filterFieldLabel(field: { name: string; label: string }): string {
+  const label = field.label.replace(' (Screen Type)', '');
+  return field.name === 'category' ? 'Property / Category' : label;
 }
 
 type FilterPopupProps = {
   isOpen?: boolean;
   onClose?: () => void;
+  showHeader?: boolean;
   appliedValues: LocationFilterValues;
   onApply: (values: LocationFilterValues) => void;
   onReset: () => void;
@@ -184,6 +149,7 @@ type FilterPopupProps = {
 const FilterPopup: React.FC<FilterPopupProps> = ({
   isOpen = true,
   onClose,
+  showHeader = true,
   appliedValues,
   onApply,
   onReset,
@@ -206,6 +172,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   const hydratedCountryKeyRef = useRef<string | null>(null);
   const hydratedStateKeyRef = useRef<string | null>(null);
   const stateCascadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cascadeAbortRef = useRef<AbortController | null>(null);
   allOptionsRef.current = allOptions;
 
   const [cardSearchQueries, setCardSearchQueries] = useState<Record<string, string>>({});
@@ -414,44 +381,38 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   ) => {
     const categoryFilters = { state, city, zone, subZone, pincode, arterialRoute };
     const deviceFilters = { state, city, zone, subZone, pincode, arterialRoute };
-    const [modeOfMedia, publishers, mainCategories, categories, subCategories, locationTypes, orientations, resolutions, screenLocations, stretches, properties] = await Promise.all([
-      fetchModeOfMedia(categoryFilters),
-      fetchPublishers(undefined, categoryFilters),
-      fetchMainCategories(undefined, categoryFilters),
-      fetchCategories(undefined, undefined, categoryFilters),
-      fetchSubCategories(undefined, undefined, undefined, categoryFilters),
-      fetchLocationTypes(undefined, deviceFilters),
-      fetchOrientations(undefined, deviceFilters),
-      fetchResolutions(undefined, deviceFilters),
-      fetchScreenLocations(undefined, deviceFilters),
-      fetchStretches(undefined, deviceFilters),
-      fetchProperties(undefined, deviceFilters),
-    ]);
+    try {
+      const [publishers, locationTypes, orientations, resolutions, screenLocations, stretches, properties] = await Promise.all([
+        fetchPublishers(undefined, categoryFilters),
+        fetchLocationTypes(undefined, deviceFilters),
+        fetchOrientations(undefined, deviceFilters),
+        fetchResolutions(undefined, deviceFilters),
+        fetchScreenLocations(undefined, deviceFilters),
+        fetchStretches(undefined, deviceFilters),
+        fetchProperties(undefined, deviceFilters),
+      ]);
 
-    updateFieldOptions('modeOfMedia', modeOfMedia);
-    updateFieldOptions('publisher', publishers);
-    updateFieldOptions('mainCategory', mainCategories);
-    updateFieldOptions('category', categories);
-    updateFieldOptions('categorySub', subCategories);
-    updateFieldOptions('locationType', locationTypes);
-    updateFieldOptions('orientation', orientations);
-    updateFieldOptions('resolution', resolutions);
-    updateFieldOptions('screenLocation', screenLocations);
-    updateFieldOptions('stretch', stretches);
-    updateFieldOptions('property', properties);
-    categoryOptionsRef.current = categories;
-    categorySubOptionsRef.current = subCategories;
-    modeOptionsRef.current = modeOfMedia;
-    publisherOptionsRef.current = publishers;
-    mainCategoryOptionsRef.current = mainCategories;
-    deviceOptionsRef.current = {
-      locationType: locationTypes,
-      orientation: orientations,
-      resolution: resolutions,
-      screenLocation: screenLocations,
-      stretch: stretches,
-      property: properties,
-    };
+      updateFieldOptions('publisher', publishers);
+      updateFieldOptions('locationType', locationTypes);
+      updateFieldOptions('orientation', orientations);
+      updateFieldOptions('resolution', resolutions);
+      updateFieldOptions('screenLocation', screenLocations);
+      updateFieldOptions('stretch', stretches);
+      updateFieldOptions('property', properties);
+      publisherOptionsRef.current = publishers;
+      deviceOptionsRef.current = {
+        locationType: locationTypes,
+        orientation: orientations,
+        resolution: resolutions,
+        screenLocation: screenLocations,
+        stretch: stretches,
+        property: properties,
+      };
+    } catch (error) {
+      if (!isAbortError(error)) {
+        console.warn('Error refreshing location-dependent options:', error);
+      }
+    }
   }, [updateFieldOptions]);
 
   const filterCategoryOptions = useCallback(
@@ -482,7 +443,13 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
+    setDraft(appliedValues);
+    if (initialOptionsLoadedRef.current) return;
+
     let cancelled = false;
+    const controller = new AbortController();
+    cascadeAbortRef.current = controller;
+    setLocationApiSignal(controller.signal);
 
     const loadInitial = async () => {
       try {
@@ -528,24 +495,14 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
               const selectedCities = splitCsvTokens(appliedValues.city);
               if (selectedCities.length) {
                 setFieldLoading('zoneArea', true);
-                setFieldLoading('arterialRoute', true);
-                [zones, arterialRoutes] = await Promise.all([
-                  fetchZones(undefined, {
-                    country: [selectedCountry],
-                    state: selectedStates,
-                    city: selectedCities,
-                  }),
-                  fetchArterialRoutes(undefined, {
-                    country: [selectedCountry],
-                    state: selectedStates,
-                    city: selectedCities,
-                  }),
-                ]);
+                zones = await fetchZones(undefined, {
+                  country: [selectedCountry],
+                  state: selectedStates,
+                  city: selectedCities,
+                });
                 if (cancelled) return;
                 updateFieldOptions('zoneArea', zones);
-                updateFieldOptions('arterialRoute', arterialRoutes);
                 setFieldLoading('zoneArea', false);
-                setFieldLoading('arterialRoute', false);
 
                 const selectedZones = splitCsvTokens(appliedValues.zoneArea);
                 if (selectedZones.length) {
@@ -559,18 +516,39 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
                   if (cancelled) return;
                   updateFieldOptions('subZoneArea', subZones);
                   setFieldLoading('subZoneArea', false);
+
+                  const selectedSubZones = splitCsvTokens(appliedValues.subZoneArea);
+                  if (selectedSubZones.length) {
+                    setFieldLoading('pincode', true);
+                    pincodes = await fetchPincodes({
+                      country: [selectedCountry],
+                      state: selectedStates,
+                      city: selectedCities,
+                      zone: selectedZones,
+                      subZone: selectedSubZones,
+                    });
+                    if (cancelled) return;
+                    updateFieldOptions('pincode', pincodes);
+                    setFieldLoading('pincode', false);
+
+                    const selectedPincodes = splitCsvTokens(appliedValues.pincode);
+                    if (selectedPincodes.length) {
+                      setFieldLoading('arterialRoute', true);
+                      arterialRoutes = await fetchArterialRoutes(undefined, {
+                        country: [selectedCountry],
+                        state: selectedStates,
+                        city: selectedCities,
+                        zone: selectedZones,
+                        subZone: selectedSubZones,
+                        pincode: selectedPincodes,
+                      });
+                      if (cancelled) return;
+                      updateFieldOptions('arterialRoute', arterialRoutes);
+                      setFieldLoading('arterialRoute', false);
+                    }
+                  }
                 }
               }
-
-              pincodes = await fetchPincodes({
-                country: [selectedCountry],
-                state: selectedStates,
-                city: splitCsvTokens(appliedValues.city),
-                zone: splitCsvTokens(appliedValues.zoneArea),
-                subZone: splitCsvTokens(appliedValues.subZoneArea),
-              });
-              if (cancelled) return;
-              updateFieldOptions('pincode', pincodes);
             }
           }
 
@@ -654,17 +632,20 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
           initialOptionsLoadedRef.current = true;
         }
       } catch (error) {
-        if (!cancelled) {
+        if (!cancelled && !isAbortError(error)) {
           console.warn('Failed to load initial filter options:', error);
         }
       }
     };
 
-    loadInitial();
-    setDraft(appliedValues);
+    void loadInitial();
 
     return () => {
       cancelled = true;
+      if (!initialOptionsLoadedRef.current) {
+        controller.abort();
+        setLocationApiSignal(undefined);
+      }
     };
   }, [
     isOpen,
@@ -703,6 +684,11 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   // Cascading updates when a field changes
   const handleFieldChange = useCallback(
     async (fieldName: keyof LocationFilterValues, value: string) => {
+      cascadeAbortRef.current?.abort();
+      const controller = new AbortController();
+      cascadeAbortRef.current = controller;
+      setLocationApiSignal(controller.signal);
+
       const newDraft = {
         ...draft,
         [fieldName]: value,
@@ -742,11 +728,14 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
           setFieldLoading('state', true);
           try {
             const states = await fetchStates(newCountry);
+            if (controller.signal.aborted) return;
             updateFieldOptions('state', states);
           } catch (err) {
-            console.warn('Error fetching states for country:', newCountry, err);
+            if (!isAbortError(err)) {
+              console.warn('Error fetching states for country:', newCountry, err);
+            }
           } finally {
-            setFieldLoading('state', false);
+            if (!controller.signal.aborted) setFieldLoading('state', false);
           }
         }
         return;
@@ -774,25 +763,19 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
         const selectedStates = getSelectedOptionValues('state', value);
         if (selectedStates.length) {
           setFieldLoading('city', true);
-          setFieldLoading('pincode', true);
           try {
-            const [cities, pincodes] = await Promise.all([
-              fetchCities(selectedStates, {
-                country: draft.country ? [draft.country] : [],
-                state: selectedStates,
-              }),
-              fetchPincodes({
-                country: draft.country ? [draft.country] : [],
-                state: selectedStates,
-              }),
-            ]);
+            const cities = await fetchCities(selectedStates, {
+              country: draft.country ? [draft.country] : [],
+              state: selectedStates,
+            });
+            if (controller.signal.aborted) return;
             updateFieldOptions('city', cities);
-            updateFieldOptions('pincode', pincodes);
           } catch (err) {
-            console.warn('Error fetching cities for state:', err);
+            if (!isAbortError(err)) {
+              console.warn('Error fetching cities for state:', err);
+            }
           } finally {
-            setFieldLoading('city', false);
-            setFieldLoading('pincode', false);
+            if (!controller.signal.aborted) setFieldLoading('city', false);
           }
           await refreshOptionsForLocation(selectedStates, [], [], [], [], []);
         }
@@ -813,34 +796,28 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
 
         updateFieldOptions('zoneArea', []);
         updateFieldOptions('subZoneArea', []);
+        updateFieldOptions('pincode', []);
         updateFieldOptions('arterialRoute', []);
 
         const selectedStates = getSelectedOptionValues('state', draft.state);
         const selectedCities = getSelectedOptionValues('city', value);
         if (selectedCities.length) {
           setFieldLoading('zoneArea', true);
-          setFieldLoading('arterialRoute', true);
-          setFieldLoading('pincode', true);
           const filter = {
             country: draft.country ? [draft.country] : [],
             state: selectedStates,
             city: selectedCities,
           };
           try {
-            const [zones, routes, pincodes] = await Promise.all([
-              fetchZones(undefined, filter),
-              fetchArterialRoutes(undefined, filter),
-              fetchPincodes(filter),
-            ]);
+            const zones = await fetchZones(undefined, filter);
+            if (controller.signal.aborted) return;
             updateFieldOptions('zoneArea', zones);
-            updateFieldOptions('arterialRoute', routes);
-            updateFieldOptions('pincode', pincodes);
           } catch (err) {
-            console.warn('Error fetching zones/routes for city:', err);
+            if (!isAbortError(err)) {
+              console.warn('Error fetching zones for city:', err);
+            }
           } finally {
-            setFieldLoading('zoneArea', false);
-            setFieldLoading('arterialRoute', false);
-            setFieldLoading('pincode', false);
+            if (!controller.signal.aborted) setFieldLoading('zoneArea', false);
           }
           await refreshOptionsForLocation(selectedStates, selectedCities, [], [], [], []);
         }
@@ -853,18 +830,20 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
           zoneArea: value,
           subZoneArea: '',
           pincode: '',
+          arterialRoute: '',
         };
         setDraft(clearedDraft);
         emitAppliedFilters(clearedDraft);
 
         updateFieldOptions('subZoneArea', []);
+        updateFieldOptions('pincode', []);
+        updateFieldOptions('arterialRoute', []);
 
         const selectedStates = getSelectedOptionValues('state', draft.state);
         const selectedCities = getSelectedOptionValues('city', draft.city);
         const selectedZones = getSelectedOptionValues('zoneArea', value);
         if (selectedZones.length) {
           setFieldLoading('subZoneArea', true);
-          setFieldLoading('pincode', true);
           const filter = {
             country: draft.country ? [draft.country] : [],
             state: selectedStates,
@@ -872,17 +851,15 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
             zone: selectedZones,
           };
           try {
-            const [subZones, pincodes] = await Promise.all([
-              fetchSubZones(undefined, filter),
-              fetchPincodes(filter),
-            ]);
+            const subZones = await fetchSubZones(undefined, filter);
+            if (controller.signal.aborted) return;
             updateFieldOptions('subZoneArea', subZones);
-            updateFieldOptions('pincode', pincodes);
           } catch (err) {
-            console.warn('Error fetching subzones for zone:', err);
+            if (!isAbortError(err)) {
+              console.warn('Error fetching subzones for zone:', err);
+            }
           } finally {
-            setFieldLoading('subZoneArea', false);
-            setFieldLoading('pincode', false);
+            if (!controller.signal.aborted) setFieldLoading('subZoneArea', false);
           }
           await refreshOptionsForLocation(selectedStates, selectedCities, selectedZones, [], [], []);
         }
@@ -890,12 +867,16 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       }
 
       if (fieldName === 'subZoneArea') {
-        const newDraftWithSubZone = {
+        const newDraftWithSubZone: LocationFilterValues = {
           ...draft,
           subZoneArea: value,
+          pincode: '',
+          arterialRoute: '',
         };
         setDraft(newDraftWithSubZone);
         emitAppliedFilters(newDraftWithSubZone);
+        updateFieldOptions('pincode', []);
+        updateFieldOptions('arterialRoute', []);
 
         const selectedStates = getSelectedOptionValues('state', draft.state);
         const selectedCities = getSelectedOptionValues('city', draft.city);
@@ -911,13 +892,51 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
               zone: selectedZones,
               subZone: selectedSubZones,
             });
+            if (controller.signal.aborted) return;
             updateFieldOptions('pincode', pincodes);
           } catch (err) {
-            console.warn('Error fetching pincodes for subzone:', err);
+            if (!isAbortError(err)) {
+              console.warn('Error fetching pincodes for subzone:', err);
+            }
           } finally {
-            setFieldLoading('pincode', false);
+            if (!controller.signal.aborted) setFieldLoading('pincode', false);
           }
           await refreshOptionsForLocation(selectedStates, selectedCities, selectedZones, selectedSubZones, [], []);
+        }
+        return;
+      }
+
+      if (fieldName === 'pincode') {
+        const nextPincodeDraft: LocationFilterValues = {
+          ...draft,
+          pincode: value,
+          arterialRoute: '',
+        };
+        setDraft(nextPincodeDraft);
+        emitAppliedFilters(nextPincodeDraft);
+        updateFieldOptions('arterialRoute', []);
+
+        const selectedPincodes = getSelectedOptionValues('pincode', value);
+        if (selectedPincodes.length) {
+          setFieldLoading('arterialRoute', true);
+          try {
+            const routes = await fetchArterialRoutes(undefined, {
+              country: draft.country ? [draft.country] : [],
+              state: getSelectedOptionValues('state', draft.state),
+              city: getSelectedOptionValues('city', draft.city),
+              zone: getSelectedOptionValues('zoneArea', draft.zoneArea),
+              subZone: getSelectedOptionValues('subZoneArea', draft.subZoneArea),
+              pincode: selectedPincodes,
+            });
+            if (controller.signal.aborted) return;
+            updateFieldOptions('arterialRoute', routes);
+          } catch (err) {
+            if (!isAbortError(err)) {
+              console.warn('Error fetching arterial routes for pincode:', err);
+            }
+          } finally {
+            if (!controller.signal.aborted) setFieldLoading('arterialRoute', false);
+          }
         }
         return;
       }
@@ -926,13 +945,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       // CATEGORY & DEVICE CASCADES
       // ==========================================
       if (fieldName === 'modeOfMedia') {
-        const clearedDraft = { ...newDraft, publisher: '', mainCategory: '', category: '', categorySub: '' };
-        setDraft(clearedDraft);
-        emitAppliedFilters(clearedDraft);
+        emitAppliedFilters(newDraft);
         setFieldLoading('publisher', Boolean(value));
-        setFieldLoading('mainCategory', Boolean(value));
-        setFieldLoading('category', Boolean(value));
-        setFieldLoading('categorySub', Boolean(value));
         const modeSelection = getSelectedOptionIds('modeOfMedia', value);
         const categoryFilters = {
           state: getSelectedOptionValues('state', newDraft.state),
@@ -942,22 +956,19 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
           pincode: getSelectedOptionValues('pincode', newDraft.pincode),
           arterialRoute: getSelectedOptionValues('arterialRoute', newDraft.arterialRoute),
         };
-        const [publisherOptions, mainCategoryOptions, categoryOptions, subCategoryOptions] = await Promise.all([
-          value ? fetchPublishers(modeSelection, categoryFilters) : Promise.resolve(publisherOptionsRef.current),
-          fetchMainCategories(undefined, categoryFilters),
-          fetchCategories(undefined, undefined, categoryFilters),
-          fetchSubCategories(undefined, undefined, undefined, categoryFilters),
-        ]);
-        updateFieldOptions('publisher', publisherOptions);
-        updateFieldOptions('mainCategory', mainCategoryOptions);
-        updateFieldOptions('category', categoryOptions);
-        updateFieldOptions('categorySub', subCategoryOptions);
-        updateFieldOptions('stretch', deviceOptionsRef.current.stretch || []);
-        updateFieldOptions('property', deviceOptionsRef.current.property || []);
-        setFieldLoading('publisher', false);
-        setFieldLoading('mainCategory', false);
-        setFieldLoading('category', false);
-        setFieldLoading('categorySub', false);
+        try {
+          const publisherOptions = value
+            ? await fetchPublishers(modeSelection, categoryFilters)
+            : publisherOptionsRef.current;
+          if (controller.signal.aborted) return;
+          updateFieldOptions('publisher', publisherOptions);
+        } catch (err) {
+          if (!isAbortError(err)) {
+            console.warn('Error fetching publishers for mode of media:', err);
+          }
+        } finally {
+          if (!controller.signal.aborted) setFieldLoading('publisher', false);
+        }
         return;
       }
 
@@ -1056,9 +1067,11 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       }
 
       if (categoryCascade) {
+        if (fieldName === 'mainCategory') {
+          emitAppliedFilters(newDraft);
+          return;
+        }
         const categoryDescendants: Partial<Record<string, string[]>> = {
-          modeOfMedia: ['publisher', 'mainCategory', 'category', 'categorySub'],
-          mainCategory: ['category'],
           category: ['categorySub'],
         };
         const fieldsToClear = categoryDescendants[fieldName] || [categoryCascade.child];
@@ -1182,14 +1195,9 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   );
 
   const handleReset = useCallback(() => {
-    const emptyValues = Object.fromEntries(
-      Object.keys(draft).map((fieldName) => [fieldName, ''])
-    ) as LocationFilterValues;
-    setDraft(emptyValues);
     setExtraVisibleFields(new Set());
     onReset();
-    onApply(emptyValues);
-  }, [draft, onReset, onApply]);
+  }, [onReset]);
 
   // Toggle single option from the 70% section
   const handleToggleOption = useCallback(
@@ -1212,6 +1220,41 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       } else {
         nextTokens = [...currentTokens, optionId];
       }
+      handleFieldChange(fieldName, joinCsvTokens(nextTokens));
+    },
+    [draft, getNormalizedOptionLabel, handleFieldChange]
+  );
+
+  const handleToggleSelectAllOptions = useCallback(
+    (fieldName: keyof LocationFilterValues, options: LocationOption[]) => {
+      if (fieldName === 'country' || !options.length) return;
+
+      const currentTokens = splitCsvTokens(draft[fieldName]);
+      const isFullySelected = options.every((option) => {
+        const optionId = String(option.id);
+        const optionLabel = getNormalizedOptionLabel(option);
+        return currentTokens.includes(optionId) || currentTokens.includes(optionLabel);
+      });
+
+      if (isFullySelected) {
+        const removeTokens = new Set(
+          options.flatMap((option) => [String(option.id), getNormalizedOptionLabel(option)])
+        );
+        handleFieldChange(
+          fieldName,
+          joinCsvTokens(currentTokens.filter((token) => !removeTokens.has(token)))
+        );
+        return;
+      }
+
+      const nextTokens = [...currentTokens];
+      options.forEach((option) => {
+        const optionId = String(option.id);
+        const optionLabel = getNormalizedOptionLabel(option);
+        if (!nextTokens.includes(optionId) && !nextTokens.includes(optionLabel)) {
+          nextTokens.push(optionId);
+        }
+      });
       handleFieldChange(fieldName, joinCsvTokens(nextTokens));
     },
     [draft, getNormalizedOptionLabel, handleFieldChange]
@@ -1240,6 +1283,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
         clearTimeout(focusClearTimerRef.current);
         focusClearTimerRef.current = null;
       }
+      cascadeAbortRef.current?.abort();
+      setLocationApiSignal(undefined);
     };
   }, []);
 
@@ -1266,7 +1311,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
           );
           return option ? getNormalizedOptionLabel(option) : token;
         });
-        return [{ name: field.name, label: field.label, values }];
+        return [{ name: field.name, label: filterFieldLabel(field), values }];
       }),
     [allOptions, draft, getNormalizedOptionLabel]
   );
@@ -1274,8 +1319,13 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="w-full max-w-full rounded-xl border border-gray-200 bg-white shadow-xs p-3.5 md:p-4 mb-2">
+    <div
+      className={`w-full max-w-full rounded-xl border border-gray-200 bg-white shadow-xs ${
+        showHeader ? 'mb-2 p-3.5 md:p-4' : 'mb-0 p-3'
+      }`}
+    >
       {/* Top Header Bar for Filter Section */}
+      {showHeader && (
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
         <div className="flex items-center gap-2">
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">
@@ -1313,10 +1363,11 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
           </button>
         </div>
       </div>
+      )}
 
       {appliedFilterSummaries.length > 0 && (
-        <div className="mb-2 flex items-center gap-1.5 overflow-x-auto scrollbar-thin whitespace-nowrap pb-0.5">
-          <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+        <div className="mb-1.5 flex items-center gap-1.5 overflow-x-auto scrollbar-thin whitespace-nowrap pb-0.5">
+          <span className="shrink-0 text-[15px] font-semibold text-gray-600">
             Applied
           </span>
           {appliedFilterSummaries.map((item) => (
@@ -1325,7 +1376,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
               type="button"
               onClick={() => handleOpenFilterField(item.name)}
               title={`Change ${item.label}`}
-              className="inline-flex max-w-[220px] shrink-0 items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-[10px] text-[#007B83] hover:border-[#007B83]"
+              className="inline-flex max-w-[280px] shrink-0 items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[15px] text-[#007B83] hover:border-[#007B83]"
             >
               <span className="font-semibold">{item.label.replace(' (Screen Type)', '')}:</span>
               <span className="truncate font-medium">{item.values.join(', ')}</span>
@@ -1334,7 +1385,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
         </div>
       )}
 
-      <div className="mb-3 flex items-center gap-2 overflow-x-auto scrollbar-thin whitespace-nowrap rounded-lg border border-gray-100 bg-gray-50/70 px-2.5 py-1.5">
+      <div className="mb-2 flex items-center gap-2 overflow-x-auto scrollbar-thin whitespace-nowrap rounded-lg border border-gray-100 bg-gray-50/70 px-2.5 py-1.5">
         <button
           type="button"
           onClick={handleToggleSelectAllFilters}
@@ -1358,10 +1409,11 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
 
         {ALL_FILTER_FIELDS.map((field) => {
           const isVisible = visibleFields.has(field.name);
-          const prerequisite = FIELD_PREREQUISITES[field.name];
+          const isApplied = fieldHasValue(draft, field.name);
+          const prerequisite = getFieldPrerequisite(draft, field.name);
           const canSelect = fieldCanBeSelected(draft, field.name);
           const prerequisiteLabel = prerequisite
-            ? ALL_FILTER_FIELDS.find((item) => item.name === prerequisite)?.label
+            ? ALL_FILTER_FIELDS.find((item) => item.name === prerequisite)
             : undefined;
           return (
             <button
@@ -1371,16 +1423,18 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
               onClick={() => handleToggleFieldVisibility(field.name)}
               title={
                 !canSelect
-                  ? `Select ${prerequisiteLabel} first`
+                  ? `Select ${prerequisiteLabel ? filterFieldLabel(prerequisiteLabel) : 'parent filter'} first`
                   : isVisible
-                    ? `Hide ${field.label}`
-                    : `Show ${field.label}`
+                    ? `Hide ${filterFieldLabel(field)}`
+                    : `Show ${filterFieldLabel(field)}`
               }
               className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
                 !canSelect
                   ? 'cursor-not-allowed border-transparent bg-transparent text-gray-300 opacity-70'
                   : isVisible
                   ? 'border-gray-300 bg-white text-gray-800'
+                  : isApplied
+                  ? 'border-teal-200 bg-teal-50 font-semibold text-[#007B83]'
                   : 'border-transparent bg-transparent text-gray-500 hover:border-gray-200 hover:bg-white'
               }`}
             >
@@ -1395,14 +1449,14 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
               >
                 {isVisible && <Check className="h-3 w-3 stroke-[3]" />}
               </span>
-              <span>{field.label.replace(' (Screen Type)', '')}</span>
+              <span>{filterFieldLabel(field)}</span>
             </button>
           );
         })}
       </div>
 
       {/* Horizontal row of selected filter cards */}
-      <div className="flex flex-row overflow-x-auto gap-3.5 pb-2 pt-1 scrollbar-thin scroll-smooth w-full">
+      <div className="flex w-full flex-row gap-3 overflow-x-auto pb-1.5 pt-0.5 scrollbar-thin scroll-smooth">
         {ALL_FILTER_FIELDS.filter((field) => visibleFields.has(field.name)).map((field) => {
           const opts = allOptions[field.name] || [];
           const isLoading = loadingFields.has(field.name as string);
@@ -1461,6 +1515,15 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
             return [...selected, ...unselected];
           })();
 
+          const canSelectAll = field.name !== 'country' && searchFilteredOptions.length > 0;
+          const allVisibleSelected =
+            canSelectAll &&
+            searchFilteredOptions.every((option) => {
+              const optionId = String(option.id);
+              const optionLabel = getNormalizedOptionLabel(option);
+              return selectedTokens.includes(optionId) || selectedTokens.includes(optionLabel);
+            });
+
           return (
             <div
               key={field.name}
@@ -1480,8 +1543,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
                     <IconComponent className="h-3.5 w-3.5" />
                   </span>
                   <div className="min-w-0">
-                    <h3 className="truncate text-xs font-bold text-gray-900" title={field.label}>
-                      {field.label}
+                    <h3 className="truncate text-xs font-bold text-gray-900" title={filterFieldLabel(field)}>
+                      {filterFieldLabel(field)}
                     </h3>
                   </div>
                 </div>
@@ -1491,19 +1554,26 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
                     <button
                       type="button"
                       onClick={() => handleFieldChange(field.name, '')}
-                      className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline mr-0.5 transition-colors"
+                      aria-label={`Clear ${filterFieldLabel(field)} selection`}
+                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-red-600 transition-colors hover:bg-red-50 hover:text-red-700"
                       title="Clear selection for this field"
                     >
-                      Clear
+                      <X className="h-3.5 w-3.5" strokeWidth={2.25} />
                     </button>
                   )}
                   {selectedTokens.length > 0 && (
-                    <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-[#007B83]">
-                      {selectedTokens.length} picked
+                    <span
+                      className="rounded-full bg-teal-100 px-1.5 py-0.5 text-[9px] font-bold text-[#007B83]"
+                      title={`${selectedTokens.length} selected`}
+                    >
+                      S:{selectedTokens.length}
                     </span>
                   )}
-                  <span className="rounded-full bg-gray-200/80 px-2 py-0.5 text-[10px] font-medium text-gray-700">
-                    {opts.length} avail
+                  <span
+                    className="rounded-full bg-gray-200/80 px-1.5 py-0.5 text-[9px] font-medium text-gray-700"
+                    title={`${opts.length} available`}
+                  >
+                    A:{opts.length}
                   </span>
                 </div>
               </div>
@@ -1521,7 +1591,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
                         [field.name]: e.target.value,
                       }))
                     }
-                    placeholder={`Search ${field.label.toLowerCase()}...`}
+                    placeholder={`Search ${filterFieldLabel(field).toLowerCase()}...`}
                     className="w-full rounded-md border border-gray-200 bg-gray-50/50 pl-8 pr-6 py-1 text-xs text-gray-800 placeholder-gray-400 focus:border-[#007B83] focus:bg-white focus:outline-none"
                   />
                   {cardSearch && (
@@ -1559,10 +1629,10 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
                         ? 'Select a City to view Zones'
                         : field.name === 'subZoneArea' && !draft.zoneArea
                         ? 'Select a Zone to view Sub Zones'
-                        : field.name === 'arterialRoute' && !draft.city
-                        ? 'Select a City to view Arterial Routes'
-                        : field.name === 'category' && !draft.mainCategory
-                        ? 'Select a Main Category'
+                        : field.name === 'pincode' && !draft.subZoneArea
+                        ? 'Select a Sub Zone to view Pincodes'
+                        : field.name === 'arterialRoute' && !draft.pincode
+                        ? 'Select a Pincode to view Arterial Routes'
                         : field.name === 'categorySub' && !draft.category
                         ? 'Select a Category'
                         : 'No options available'}
@@ -1574,6 +1644,39 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
                   </div>
                 ) : (
                   <div className="h-[176px] overflow-y-auto scrollbar-thin flex flex-col gap-1 pr-1">
+                    {canSelectAll && (
+                      <div className="sticky top-0 z-20 shrink-0 bg-white pb-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleToggleSelectAllOptions(field.name, searchFilteredOptions)
+                          }
+                          className={`group flex h-8 w-full shrink-0 cursor-pointer items-center justify-between gap-2.5 rounded-md border bg-white px-2.5 text-left text-xs font-semibold transition-colors ${
+                            allVisibleSelected
+                              ? 'border-teal-200 text-[#007B83]'
+                              : 'border-gray-200 text-gray-800 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                            <span
+                              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                                allVisibleSelected
+                                  ? 'bg-[#007B83] border-[#007B83] text-white'
+                                  : 'border-gray-300 bg-white group-hover:border-gray-400'
+                              }`}
+                            >
+                              {allVisibleSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                            </span>
+                            <span className="truncate text-xs">
+                              {allVisibleSelected ? 'Unselect All' : 'Select All'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-medium text-gray-500">
+                            {searchFilteredOptions.length}
+                          </span>
+                        </button>
+                      </div>
+                    )}
                     {displayedOptions.map((opt) => {
                       const optionId = String(opt.id);
                       const label = getNormalizedOptionLabel(opt);
