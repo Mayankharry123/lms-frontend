@@ -18,6 +18,8 @@ interface MasterHeaderProps {
   signInIcon?: React.ReactNode;
   showCreateButton?: boolean;
   createPermissionSlug?: string;
+  endContent?: React.ReactNode;
+  className?: string;
 }
 
 const MasterHeader: React.FC<MasterHeaderProps> = ({ 
@@ -32,12 +34,14 @@ const MasterHeader: React.FC<MasterHeaderProps> = ({
   signInIcon,
   showCreateButton = true,
   createPermissionSlug,
+  endContent,
+  className = '',
 }) => {
   const { hasPermission } = usePermissions();
   const canCreate = !createPermissionSlug ? false : hasPermission(createPermissionSlug);
   
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div className={`flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between ${className}`}>
       {/* Left Side - Breadcrumb */}
       <div className="flex-1 min-w-0 flex items-center">
         {showBreadcrumb && (
@@ -62,7 +66,8 @@ const MasterHeader: React.FC<MasterHeaderProps> = ({
       </div>
 
       {/* Right Side - Sign In and Create Buttons */}
-      <div className="flex-1 w-full sm:w-auto flex justify-end gap-3">
+      <div className={`w-full min-w-0 flex items-center justify-end gap-3 ${endContent ? 'sm:flex-1 sm:max-w-[60%]' : 'sm:w-auto sm:flex-1'}`}>
+        {endContent}
         {showSignInButton && onSignInClick && (
           signInIcon ? (
             <span

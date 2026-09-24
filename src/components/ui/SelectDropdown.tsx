@@ -54,8 +54,28 @@ const SelectDropdown: React.FC<SelectDropdownProps> = ({
   }, [open]);
 
   // Multi-select: value is array, show tags
-  const selectedValues = isMulti ? (Array.isArray(value) ? value : []) : [String(value)];
+  const selectedValues = isMulti ? (Array.isArray(value) ? value : []) : (value ? [String(value)] : []);
   const selectedLabels = normalized.filter(n => selectedValues.includes(String(n.value)));
+
+  const sortedFiltered = React.useMemo(() => {
+    if (!selectedValues.length) return filtered;
+    const selected: typeof filtered = [];
+    const selectedSet = new Set<string>();
+
+    selectedValues.forEach((val) => {
+      if (!val) return;
+      const match = filtered.find(
+        (o) => String(o.value) === String(val) || o.label === String(val)
+      );
+      if (match && !selectedSet.has(String(match.value))) {
+        selectedSet.add(String(match.value));
+        selected.push(match);
+      }
+    });
+
+    const unselected = filtered.filter((o) => !selectedSet.has(String(o.value)));
+    return [...selected, ...unselected];
+  }, [filtered, selectedValues]);
 
   // Determine if error border should be shown
   const errorBorderClass = inputClassName && inputClassName.includes('border-red-500') ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-[#DDE1E7]';
@@ -130,10 +150,10 @@ const SelectDropdown: React.FC<SelectDropdownProps> = ({
         className={`select-dropdown absolute z-50 left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg overflow-y-auto transition-all duration-150 ${open ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
         style={{ maxHeight: '140px' }} // Show only 2 options (each ~40px)
       >
-        {filtered.length === 0 ? (
+        {sortedFiltered.length === 0 ? (
           <div className="px-4 py-2 text-gray-500">No matches found</div>
         ) : (
-          filtered.map((opt) => {
+          sortedFiltered.map((opt) => {
             const o = normalize(opt);
             const active = selectedValues.includes(String(o.value));
             return (

@@ -110,6 +110,7 @@ export type DeviceInventoryResponse = {
 export type ListDeviceInventoryParams = {
   page?: number;
   per_page?: number;
+  fields?: string;
   search?: string;
   state?: string;
   city?: string;
@@ -129,4 +130,12 @@ export type ListDeviceInventoryParams = {
   screenLocation?: string;
   stretch?: string;
   property?: string;
+};
+
+export type DeviceMapMarker = {
+  id: string;
+  latitude: number;
+  longitude: number;
+  status?: string;
+  category?: string;
 };

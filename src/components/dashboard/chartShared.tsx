@@ -12,23 +12,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-
-export type ChartPoint = {
-  name: string;
-  value: number;
-};
-
-export const formatCount = (value: number) => value.toLocaleString('en-IN');
-
-export const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(value);
-
-export const truncateLabel = (label: string, maxLength = 14) =>
-  label.length > maxLength ? `${label.slice(0, maxLength - 1)}…` : label;
+import { formatCount, type ChartPoint } from '../../utils/dashboardFormat';
 
 function normalizeTooltipValue(value: unknown): number {
   const raw = Array.isArray(value) ? value[0] : value;

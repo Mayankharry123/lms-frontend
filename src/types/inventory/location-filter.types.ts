@@ -1,0 +1,20 @@
+export type LocationFilterValues = {
+  country: string;
+  state: string;
+  city: string;
+  zoneArea: string;
+  subZoneArea: string;
+  pincode: string;
+  arterialRoute: string;
+  modeOfMedia: string;
+  publisher: string;
+  mainCategory: string;
+  category: string;
+  categorySub: string;
+  locationType: string;
+  orientation: string;
+  resolution: string;
+  screenLocation: string;
+  stretch: string;
+  property: string;
+};

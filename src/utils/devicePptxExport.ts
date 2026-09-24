@@ -126,17 +126,21 @@ type DetailRow = { label: string; value: string };
 const buildDetailRows = (device: DeviceData): DetailRow[] => [
   { label: 'City', value: safeText(device.city) },
   { label: 'State', value: safeText(device.state) },
+  { label: 'Zone', value: safeText(device.zone) },
+  { label: 'Sub Zone', value: safeText(device.sub_zone_area) },
+  { label: 'Pincode', value: safeText(device.pincode) },
+  { label: 'Arterial Route', value: safeText(device.arterial_route) },
+  { label: 'Mode of Media (Screen Type)', value: safeText(device.mode_of_media) },
+  { label: 'Publisher', value: safeText(device.media_owner?.name) },
+  { label: 'Main Category', value: safeText(device.main_category_name) },
   { label: 'Location Type', value: safeText(device.location_type) },
   { label: 'Category', value: safeText(device.category_name) },
-  { label: 'Screen Size', value: safeText(device.screen_size) },
+  { label: 'Sub Category', value: safeText(device.sub_category_name) },
+  { label: 'Orientation', value: safeText(device.orientation) },
   { label: 'Resolution', value: safeText(device.resolution) },
-  { label: 'Aspect Ratio', value: safeText(device.aspect_ratio) },
-  { label: 'Latitude', value: safeText(device.latitude) },
-  { label: 'Longitude', value: safeText(device.longitude) },
-  { label: 'Width', value: safeText(device.width) },
-  { label: 'Height', value: safeText(device.height) },
-  { label: 'Daily Impressions', value: safeText(device.daily_impression) },
-  { label: 'Mode of Media', value: safeText(device.mode_of_media) },
+  { label: 'Screen Location', value: safeText(device.screen_location) },
+  { label: 'Stretch', value: safeText(device.stretch) },
+  { label: 'Property', value: safeText(device.property) },
 ];
 
 function splitDetailRows(rows: DetailRow[]): [DetailRow[], DetailRow[]] {
@@ -494,6 +498,7 @@ async function runChunkedPptxExport(
   iterateDevices: DeviceIterator,
   options: DeviceInventoryPptxOptions = {}
 ): Promise<DeviceInventoryPptxResult> {
+  // Stream records into bounded PPT files so large exports do not exhaust browser memory.
   const { onProgress } = options;
   await ensureImageProxyReady();
   const logoDataUrl = await getLogoDataUrl();
@@ -507,6 +512,7 @@ async function runChunkedPptxExport(
 
   const flushPart = async () => {
     if (slidesInPart === 0) return;
+    // Finalize each bounded part before starting a fresh presentation document.
     onProgress?.({ loaded: exportedCount, total: exportTotal, stage: 'file' });
     partBlobs.push(await writePptxBlob(pptx));
     pptx = createPptxDocument();
@@ -606,6 +612,7 @@ export async function generateDeviceInventoryPptxStreaming(
   ) => Promise<number>,
   options: DeviceInventoryPptxOptions & { estimatedTotal?: number } = {}
 ): Promise<DeviceInventoryPptxResult> {
+  // Convert paginated API results into the device iterator used by the chunked renderer.
   const { estimatedTotal = 0, onProgress } = options;
   let knownTotal = estimatedTotal;
 
