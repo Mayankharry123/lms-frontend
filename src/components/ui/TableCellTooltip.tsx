@@ -1,15 +1,5 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React from 'react';
 import { truncateTableCellText, truncateTableCellWords } from './tableCellDisplay';
-
-type Placement = 'top' | 'bottom';
-
-type TooltipState = {
-  content: string;
-  left: number;
-  top: number;
-  placement: Placement;
-};
 
 export const TableTextCell: React.FC<{
   text: string;
