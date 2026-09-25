@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { truncateTableCellText } from './tableCellDisplay';
+import { truncateTableCellText, truncateTableCellWords } from './tableCellDisplay';
 
 type Placement = 'top' | 'bottom';
 
@@ -13,10 +13,15 @@ type TooltipState = {
 
 export const TableTextCell: React.FC<{
   text: string;
+  maxWords?: number;
   onShow: (anchor: HTMLElement, fullText: string) => void;
   onHide: () => void;
-}> = ({ text, onShow, onHide }) => {
-  const { display, full, hasMore } = truncateTableCellText(text);
+}> = ({ text, maxWords, onShow, onHide }) => {
+  const { display, full, hasMore } = maxWords
+    ? truncateTableCellWords(text, maxWords)
+    : truncateTableCellText(text);
+
+  const canTooltip = maxWords ? Boolean(full && full !== '-') : hasMore;
 
   if (!full || full === '-') {
     return (
@@ -28,9 +33,9 @@ export const TableTextCell: React.FC<{
 
   return (
     <div
-      className={`lms-table-cell${hasMore ? ' cursor-help' : ''}`}
+      className={`lms-table-cell${canTooltip ? ' cursor-help' : ''}`}
       onMouseEnter={(e) => {
-        if (hasMore) onShow(e.currentTarget, full);
+        if (canTooltip) onShow(e.currentTarget, full);
       }}
       onMouseLeave={onHide}
     >

@@ -17,10 +17,12 @@ import { fetchLeadById, fetchLeadHistory } from '../../services/ViewLead';
 import { getBrandLists, getAgenciesLists, getLeadTypes } from '../../services/CreateLead';
 
 import { Button } from '../../components/ui';
+import { PhoneCall } from 'lucide-react';
 import { updateLead } from '../../services/AllLeads';
 import SweetAlert from '../../utils/SweetAlert';
 import gmailService from '../../services/gmailService';
 import CommentSection from '../../components/forms/CreateLead/CommentSection';
+import CollapsibleFormCard from '../../components/ui/CollapsibleFormCard';
 import type { EditLeadtype } from '../../types/AllLeadtype'
 
 const EditLead: React.FC = () => {
@@ -465,7 +467,7 @@ const EditLead: React.FC = () => {
         onClose={() => navigate('/lead-management/all-leads')}
       />
 
-      <div className="space-y-6">
+      <div className="space-y-3 sm:space-y-4">
         <LeadManagementSection
           selectedOption={selectedOption}
           onSelectOption={(opt) => {
@@ -480,6 +482,7 @@ const EditLead: React.FC = () => {
           options={options}
           loading={optionsLoading}
           error={optionsError}
+          collapsible
         />
 
         <ContactPersonsCard
@@ -487,6 +490,7 @@ const EditLead: React.FC = () => {
           onChange={(contacts) => {
             setLead(prev => prev ? { ...prev, contacts } : null);
           }}
+          collapsible
         />
 
         <AssignPriorityCard
@@ -498,6 +502,7 @@ const EditLead: React.FC = () => {
           priority={lead.priority}
           callFeedback={lead.callFeedback}
           onChange={handlePriorityChange}
+          collapsible
         />
 
         {/* Comment Card Section */}
@@ -506,18 +511,8 @@ const EditLead: React.FC = () => {
           onChange={(value) => {
             setLead(prev => prev ? { ...prev, comment: value } : null);
           }}
+          collapsible
         />
-
-        <div className="flex justify-end space-x-4 pt-2">
-          <Button
-            onClick={() => navigate('/lead-management/all-leads')}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit}>
-            Update
-          </Button>
-        </div>
 
         {/* Email Activity Section */}
         {/* <div className="bg-gray-50 rounded-2xl shadow-sm border border-gray-200 p-4">
@@ -664,10 +659,28 @@ const EditLead: React.FC = () => {
           </div>
         </div> */}
 
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:space-x-4 pt-1">
+          <Button
+            onClick={() => navigate('/lead-management/all-leads')}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit}>
+            Update
+          </Button>
+        </div>
+
         {/* Call Details Table Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3">
-            <div className="overflow-y-auto max-h-[280px]">
+        <CollapsibleFormCard
+          title="Call Details"
+          collapsible
+          defaultOpen={false}
+          scrollable
+          innerClassName="bg-white p-0"
+          titleWrapperClassName="mb-3"
+          icon={<PhoneCall className="h-5 w-5" strokeWidth={2} />}
+        >
+            <div className="min-w-0">
               {/* Render call history rows from API (fallback to sample rows) */}
               {
                 (() => {
@@ -712,14 +725,14 @@ const EditLead: React.FC = () => {
                   type Row = typeof rows[number];
 
                   const columns: Column<Row>[] = [
-                    { key: 'assignedTo', header: 'Assigned To', render: (r) => r.assignedTo, className: 'text-left whitespace-nowrap' },
-                    { key: 'currentUser', header: 'Current User', render: (r) => r.currentUser, className: 'whitespace-nowrap' },
-                    { key: 'priority', header: 'Priority', render: (r) => r.priority, className: 'whitespace-nowrap' },
-                    { key: 'status', header: 'Status', render: (r) => r.status, className: 'whitespace-nowrap' },
-                    { key: 'callStatus', header: 'Call Status', render: (r) => r.callStatus, className: 'whitespace-nowrap' },
-                    { key: 'meetingDateTime', header: 'Meeting Date & Time', render: (r) => r.meetingDateTime, className: 'whitespace-nowrap' },
-                    { key: 'createdAt', header: 'Created At', render: (r) => r.createdAt, className: 'whitespace-nowrap' },
-                    { key: 'comment', header: 'Comment', render: (r) => r.comment, className: 'max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap' },
+                    { key: 'assignedTo', header: 'Assigned To', render: (r) => r.assignedTo, minWidth: 130 },
+                    { key: 'currentUser', header: 'Current User', render: (r) => r.currentUser, minWidth: 140 },
+                    { key: 'priority', header: 'Priority', render: (r) => r.priority, minWidth: 100 },
+                    { key: 'status', header: 'Status', render: (r) => r.status, minWidth: 140 },
+                    { key: 'callStatus', header: 'Call Status', render: (r) => r.callStatus, minWidth: 140 },
+                    { key: 'meetingDateTime', header: 'Meeting Date & Time', render: (r) => r.meetingDateTime, minWidth: 180 },
+                    { key: 'createdAt', header: 'Created At', render: (r) => r.createdAt, minWidth: 170 },
+                    { key: 'comment', header: 'Comment', render: (r) => r.comment, minWidth: 180, maxWords: 5 },
                   ];
 
                   return (
@@ -728,6 +741,7 @@ const EditLead: React.FC = () => {
                       columns={columns}
                       startIndex={0}
                       loading={historyLoading}
+                      compact
                       desktopOnMobile={true}
                       keyExtractor={(it) => it.id}
                     />
@@ -735,8 +749,7 @@ const EditLead: React.FC = () => {
                 })()
               }
             </div>
-          </div>
-        </div>
+        </CollapsibleFormCard>
       </div>
     </div>
   );

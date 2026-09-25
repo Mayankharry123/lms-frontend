@@ -74,6 +74,30 @@ export interface UserOption {
   name: string;
 }
 
+export type ReminderBeforeUnit = 'minutes' | 'hours' | 'days';
+
+export interface LeadChatPayload {
+  lead_id: number;
+  call_status_id: number;
+  comment: string;
+  reminder: boolean;
+  reminder_at?: string;
+  reminder_before?: number;
+  reminder_before_unit?: ReminderBeforeUnit;
+}
+
+export interface LeadAssignHistoryItem {
+  id?: string;
+  clientKey?: string;
+  current_user_id: number | string;
+  current_user_name: string;
+  lead_comment: string;
+  created_at?: string;
+  timestamp?: string;
+}
+
+export type LeadAssignHistoryResponse = LeadAssignHistoryItem[];
+
 export interface EditLeadFormData {
   id: string;
   selectedOption: 'brand' | 'agency';

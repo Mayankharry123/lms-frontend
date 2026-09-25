@@ -25,6 +25,8 @@ export type Column<T> = {
   allowOverflow?: boolean;
   /** disable 150-char truncation + hover tooltip for plain text (default false) */
   disableTooltip?: boolean;
+  /** show only this many words in the cell; full text appears on hover */
+  maxWords?: number;
 };
 
 interface TableProps<T> {
@@ -93,6 +95,7 @@ const Table = <T,>(props: TableProps<T>) => {
     return (
       <TableTextCell
         text={text}
+        maxWords={col.maxWords}
         onShow={showCellTooltip}
         onHide={hideCellTooltip}
       />

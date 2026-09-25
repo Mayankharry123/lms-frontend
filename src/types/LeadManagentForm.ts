@@ -25,6 +25,7 @@ export interface ContactPersonsCardProps {
   initialContacts?: Contact[];
   onChange?: (contacts: Contact[]) => void;
   errors?: Record<string, Partial<Record<string, string>>>;
+  collapsible?: boolean;
 }
 
 
@@ -61,6 +62,7 @@ export interface Props {
   options?: { value: string; label: string }[];
   loading?: boolean;
   error?: string | null;
+  collapsible?: boolean;
 }
 
 
@@ -73,5 +75,6 @@ export interface AssignPriorityCardProps {
   organisationName?: string;
   organisationError?: string | null;
   mode?: 'create' | 'edit';
+  collapsible?: boolean;
   onChange?: (values: { organisation?: string; assignTo?: string; priority?: string; callFeedback?: string }) => void;
 }

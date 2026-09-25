@@ -32,6 +32,9 @@ import { fetchLeadSubSources } from '../../services/ContactPersonsCard';
 import http from '../../services/http';
 import SweetAlert from '../../utils/SweetAlert';
 import TableHeader from '../../components/ui/TableHeader';
+import { MessageCircle } from 'lucide-react';
+import LeadChatModal from '../../components/lead/LeadChatModal';
+import { buildBriefInitialDataFromLead } from '../../utils/briefLeadPrefill';
 
 const statusColors: Record<string, string> = {
   'Interested': '#22c55e',
@@ -204,6 +207,7 @@ const LeadList: React.FC<LeadListPageProps> = ({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmDeleteLabel, setConfirmDeleteLabel] = useState<string>('');
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [chatLead, setChatLead] = useState<Lead | null>(null);
 
   // Fetch leads from API
   // Wrap fetchLeads in useCallback
@@ -265,6 +269,7 @@ const LeadList: React.FC<LeadListPageProps> = ({
         })(),
         callAttempt: Number(item.call_attempt ?? item.callAttempt ?? 0),
         comment: item.comment || item.notes || '',
+        leadNumericId: String(item.id ?? '').replace(/^#/, ''),
       }));
 
       const uniqueLeads = transformedLeads.filter(
@@ -391,6 +396,26 @@ const LeadList: React.FC<LeadListPageProps> = ({
   const handleView = (id: string) => {
     const cleanId = id.replace('#', '');
     navigate(ROUTES.LEAD.DETAIL(cleanId));
+  };
+
+  const handleCreateMeeting = (lead: Lead) => {
+    const leadId = String(lead.leadNumericId ?? lead.id).replace(/^#/, '');
+    navigate(ROUTES.LEAD.MEETING_SCHEDULE_WITH_LEAD(leadId), {
+      state: { prefillLeadId: leadId },
+    });
+  };
+
+  const handleBriefCreation = (lead: Lead) => {
+    const leadId = String(lead.leadNumericId ?? lead.id).replace(/^#/, '');
+    navigate(ROUTES.BRIEF.CREATE_WITH_LEAD(leadId), {
+      state: { leadBriefPrefill: buildBriefInitialDataFromLead(lead) },
+    });
+  };
+
+  const handleOpenChatPage = (lead: Lead) => {
+    const leadId = String(lead.leadNumericId ?? lead.id).replace(/^#/, '');
+    if (!leadId) return;
+    navigate(ROUTES.LEAD.CHAT(leadId));
   };
 
   const syncLeadNotificationCounts = useCallback(async () => {
@@ -540,6 +565,43 @@ const LeadList: React.FC<LeadListPageProps> = ({
   // Status is rendered as a non-clickable pill (same as AllLeads)
 
   const columns = ([
+    {
+      key: 'chat',
+      header: 'Chat',
+      minWidth: 72,
+      allowOverflow: true,
+      className: 'text-center whitespace-nowrap',
+      headerClassName: 'text-center',
+      render: (it: Lead) => (
+        <div className="flex items-center justify-center">
+          <button
+            type="button"
+            title="Chat"
+            aria-label={`Chat for lead ${it.id}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleOpenChatPage(it);
+            }}
+            className="app-icon-btn inline-flex items-center justify-center rounded-full border-0 text-white shadow-sm"
+            style={{
+              width: '2rem',
+              height: '2rem',
+              minWidth: '2rem',
+              padding: 0,
+              backgroundColor: '#f26222',
+              color: '#ffffff',
+            }}
+          >
+            <MessageCircle
+              className="h-4 w-4"
+              strokeWidth={2.25}
+              color="#ffffff"
+              style={{ width: 16, height: 16, stroke: '#ffffff', fill: 'none' }}
+            />
+          </button>
+        </div>
+      ),
+    },
     { key: 'sr', header: 'Id', minWidth: 72, maxWidth: 96, render: (it: Lead) => `#${it.id}` },
     { key: 'agencyName', header: 'Agency Name', minWidth: 120, maxWidth: 180, render: (it: Lead) => it.agencyName || '-' },
     { key: 'brandName', header: 'Brand Name', minWidth: 120, maxWidth: 180, render: (it: Lead) => it.brandName || '-' },
@@ -710,6 +772,9 @@ const LeadList: React.FC<LeadListPageProps> = ({
             onEdit={(it: Lead) => handleEdit(it.id)}
             onView={(it: Lead) => handleView(it.id)}
             onDelete={(it: Lead) => handleDelete(it.id)}
+            onCreateMeeting={(it: Lead) => handleCreateMeeting(it)}
+            onBriefCreation={(it: Lead) => handleBriefCreation(it)}
+            onChat={(it: Lead) => setChatLead(it)}
             editPermissionSlug={editPermissionMap[permissionKey] || editPermissionMap.All}
             viewPermissionSlug={viewPermissionMap[permissionKey] || viewPermissionMap.All}
             deletePermissionSlug={deletePermissionMap[permissionKey] || deletePermissionMap.All}
@@ -732,6 +797,19 @@ const LeadList: React.FC<LeadListPageProps> = ({
         loading={confirmLoading}
         onCancel={() => setConfirmDeleteId(null)}
         onConfirm={confirmDelete}
+      />
+
+      <LeadChatModal
+        isOpen={Boolean(chatLead)}
+        lead={chatLead}
+        callStatusOptions={callStatusOptions
+          .map((opt) => ({ id: Number(opt.id), name: opt.name }))
+          .filter((opt) => Number.isFinite(opt.id) && opt.name)}
+        onClose={() => setChatLead(null)}
+        onSaved={async () => {
+          setChatLead(null);
+          await fetchLeads();
+        }}
       />
 
     </div>

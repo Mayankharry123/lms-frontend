@@ -121,14 +121,23 @@ export async function listChildUsers(
   return (res.data || []) as Array<{ id: number | string; name: string }>;
 }
 /**
- * Added API helper to fetch planning users from the child-user hierarchy.
- * The hierarchical response is flattened for dropdown/selection use.
+ * Planning users for a brief and contact person.
+ * GET /profile/child-planing-users?brief_id={briefId}&contact_person_id={contactPersonId}
  */
-export async function listChildPlaningUsers(): Promise<
-  Array<{ id: number | string; name: string }>
-> {
+export async function listChildPlaningUsers(
+  briefId?: string | number,
+  contactPersonId?: string | number
+): Promise<Array<{ id: number | string; name: string }>> {
+  const params = new URLSearchParams();
+  if (briefId !== undefined && briefId !== null && String(briefId).trim() !== '') {
+    params.set('brief_id', String(briefId));
+  }
+  if (contactPersonId !== undefined && contactPersonId !== null && String(contactPersonId).trim() !== '') {
+    params.set('contact_person_id', String(contactPersonId));
+  }
+  const query = params.toString();
   const res = await apiClient.get<ChildUserHierarchyNode[]>(
-    ENDPOINTS.USERS.CHILD_PLANING_USERS
+    `${ENDPOINTS.USERS.CHILD_PLANING_USERS}${query ? `?${query}` : ''}`
   );
   return flattenChildUserHierarchy(res.data);
 }

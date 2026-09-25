@@ -502,16 +502,25 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
     }
   }, [mode]);
 
-  // Load Assign To options from the child planning users hierarchy.
+  // Load Assign To options: child-planing-users?brief_id=&contact_person_id=
   useEffect(() => {
     let mounted = true;
+    const contactPersonId = String(form.contactPerson || '').trim();
+
+    if (!contactPersonId) {
+      setUsers([]);
+      setUsersLoading(false);
+      setUsersError(null);
+      return;
+    }
 
     (async () => {
       try {
         setUsersLoading(true);
         setUsersError(null);
 
-        const hierarchyUsers = await listChildPlaningUsers();
+        const briefId = initialData?.id ?? initialData?.uuid;
+        const hierarchyUsers = await listChildPlaningUsers(briefId, contactPersonId);
         const opts = hierarchyUsers.map((u) => ({
           value: String(u.id),
           label: String(u.name),
@@ -540,7 +549,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
     return () => {
       mounted = false;
     };
-  }, [initialData, mode]);
+  }, [form.contactPerson, initialData, mode]);
 
 /**
   * Loads users from the planning hierarchy for the Assign To dropdown.

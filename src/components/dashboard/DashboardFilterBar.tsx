@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { Building2, SlidersHorizontal } from 'lucide-react';
 import MultiSelectDropdown from '../ui/MultiSelectDropdown';
 import DashboardDateRangePicker from './DashboardDateRangePicker';
+import DashboardCardVisibilityDropdown from './DashboardCardVisibilityDropdown';
 import { listOrganisationsForSelect } from '../../api/users';
 import type { DashboardFilterState } from '../../utils/dashboardFilters';
 import {
@@ -10,6 +11,7 @@ import {
   sanitizeDashboardOrganisationIds,
 } from '../../utils/dashboardUserScope';
 import type { RootState } from '../../redux/store';
+import type { DashboardCardPreferences, DashboardView } from '../../utils/dashboardCardVisibility';
 
 type DashboardFilterBarProps = {
   value: DashboardFilterState;
@@ -17,6 +19,10 @@ type DashboardFilterBarProps = {
   onApply: () => void;
   onDateApply: (next: Pick<DashboardFilterState, 'preset' | 'dateFrom' | 'dateTo'>) => void;
   hasPendingChanges?: boolean;
+  activeView: DashboardView;
+  cardPreferences: DashboardCardPreferences;
+  onToggleCard: (view: DashboardView, cardId: string) => void;
+  onResetCards: () => void;
 };
 
 const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
@@ -25,6 +31,10 @@ const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
   onApply,
   onDateApply,
   hasPendingChanges = false,
+  activeView,
+  cardPreferences,
+  onToggleCard,
+  onResetCards,
 }) => {
   const user = useSelector((state: RootState) => state.auth.user);
   const [organisationOptions, setOrganisationOptions] = useState<{ value: string; label: string }[]>([]);
@@ -100,6 +110,7 @@ const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
               value={sanitizeDashboardOrganisationIds(user, value.organisationIds)}
               onChange={handleOrganisationChange}
               disabled={loadingOrganisations || visibleOrganisationOptions.length === 0}
+              horizontalScroll
               className="w-full"
               inputClassName="dashboard-filter-input pl-9"
             />
@@ -111,6 +122,16 @@ const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
           <div className="dashboard-filter-field__control">
             <DashboardDateRangePicker value={value} onApply={onDateApply} />
           </div>
+        </div>
+
+        <div className="dashboard-filter-field dashboard-filter-field--cards">
+          <span className="dashboard-filter-field__label">Cards</span>
+          <DashboardCardVisibilityDropdown
+            activeView={activeView}
+            preferences={cardPreferences}
+            onToggle={onToggleCard}
+            onReset={onResetCards}
+          />
         </div>
 
         <div className="dashboard-filter-field dashboard-filter-field--action">

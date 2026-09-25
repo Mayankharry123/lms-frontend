@@ -238,7 +238,7 @@ const BriefPipeline: React.FC = () => {
   }, [currentPage, itemsPerPage, searchQuery]);
 
 
-// Stores planning-user options shared across all Brief rows.
+// Assign To options loaded per brief via child-planing-users?brief_id=
   const [assignOptionsByBriefId, setAssignOptionsByBriefId] = useState<Record<string, UserOption[]>>({});
 
   useEffect(() => {
@@ -249,18 +249,24 @@ const BriefPipeline: React.FC = () => {
         setAssignOptionsByBriefId({});
         return;
       }
-      /**
-       * Loads planning users from the child-user hierarchy and prepares
-       * the same Assign To options for each Brief row.
-       */
       try {
-        const users = await listChildPlaningUsers();
-        const options = users.map((u) => ({ id: u.id, name: u.name }));
-        const optionsByBriefId = Object.fromEntries(
-          currentData.map((brief) => [brief.id, options])
+        const entries = await Promise.all(
+          currentData.map(async (brief) => {
+            try {
+              const contactPersonId = brief.contact_person_id
+                || (typeof brief.contactPerson === 'object' && brief.contactPerson
+                  ? (brief.contactPerson as { id?: string | number }).id
+                  : brief.contactPerson);
+              const users = await listChildPlaningUsers(brief.id, contactPersonId as string | number | undefined);
+              return [brief.id, users.map((user) => ({ id: user.id, name: user.name }))] as const;
+            } catch (err) {
+              console.error(`Failed to fetch planning users for brief ${brief.id}:`, err);
+              return [brief.id, []] as const;
+            }
+          })
         );
 
-        if (!cancelled) setAssignOptionsByBriefId(optionsByBriefId);
+        if (!cancelled) setAssignOptionsByBriefId(Object.fromEntries(entries));
       } catch (err) {
         console.error('Failed to fetch child planning users:', err);
         if (!cancelled) setAssignOptionsByBriefId({});

@@ -1,16 +1,13 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { ROUTES } from '../../constants/routes';
 import type { PlannerChartOrganisationRow } from '../../services/DashboardCharts';
-import { formatCount, formatCurrency } from './chartShared';
+import { formatAssignmentDays, formatCount, formatCurrency } from './chartShared';
 
 type PlannerOrganisationTableProps = {
   rows: PlannerChartOrganisationRow[];
   loading?: boolean;
 };
-
-function formatDays(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return '—';
-  return `${value.toLocaleString('en-IN', { maximumFractionDigits: 1 })} days`;
-}
 
 const PlannerOrganisationTable: React.FC<PlannerOrganisationTableProps> = ({ rows, loading = false }) => {
   return (
@@ -18,7 +15,7 @@ const PlannerOrganisationTable: React.FC<PlannerOrganisationTableProps> = ({ row
       <div className="dashboard-section-block__header">
         <h3 className="dashboard-section-block__title mb-0">Organisation Planner Summary</h3>
         <p className="dashboard-section-block__subtitle">
-          Plans assigned and average time from plan assignment to submission by organisation.
+          Briefs, budget, and plans assigned by organisation.
         </p>
       </div>
 
@@ -30,7 +27,7 @@ const PlannerOrganisationTable: React.FC<PlannerOrganisationTableProps> = ({ row
               <th>Briefs</th>
               <th>Budget</th>
               <th>Plans Assigned</th>
-              <th>Avg Plan Submission Time</th>
+              <th>Avg. Planning Time</th>
             </tr>
           </thead>
           <tbody>
@@ -49,11 +46,26 @@ const PlannerOrganisationTable: React.FC<PlannerOrganisationTableProps> = ({ row
             ) : (
               rows.map((row) => (
                 <tr key={row.organisationId}>
-                  <td>{row.organisationName}</td>
+                  <td>
+                    {row.organisationId ? (
+                      <Link
+                        className="dashboard-planner-org-table__org-link"
+                        aria-label={`Open organisation planner for ${row.organisationName}`}
+                        to={ROUTES.DASHBOARD_ORGANISATION_PLANNER(
+                          row.organisationId,
+                          row.organisationName,
+                        )}
+                      >
+                        {row.organisationName}
+                      </Link>
+                    ) : (
+                      row.organisationName
+                    )}
+                  </td>
                   <td>{formatCount(row.briefs)}</td>
                   <td>{formatCurrency(row.briefBudget)}</td>
                   <td>{formatCount(row.assignedPlans)}</td>
-                  <td>{formatDays(row.avgAssignmentDays)}</td>
+                  <td>{formatAssignmentDays(row.avgAssignmentDays)}</td>
                 </tr>
               ))
             )}

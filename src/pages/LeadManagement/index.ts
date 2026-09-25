@@ -15,5 +15,6 @@ import MeetingScheduled from './MeetingScheduled';
 import MeetingDone from './MeetingDone';
 import MeetingSchedule from './MeetingSchedule';
 import BriefStatus from './BriefStatus';
+import LeadChat from './LeadChat';
 
-export { AllLeads, CreateLead, EditLead, ViewLead, Pending, Interested, MeetingScheduled, MeetingDone, MeetingSchedule, BriefStatus };
+export { AllLeads, CreateLead, EditLead, ViewLead, Pending, Interested, MeetingScheduled, MeetingDone, MeetingSchedule, BriefStatus, LeadChat };

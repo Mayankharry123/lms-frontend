@@ -31,6 +31,7 @@ import {
   type DashboardFilterState,
 } from '../../utils/dashboardFilters';
 import { formatDashboardCurrency } from '../../utils/dashboardFormat';
+import type { DashboardView } from '../../utils/dashboardCardVisibility';
 
 type DashboardTab = 'new' | 'brief' | 'follow' | 'meeting';
 
@@ -88,9 +89,14 @@ const BRIEF_COLUMNS: Column<any>[] = [
 type SalesDashboardProps = {
   embedded?: boolean;
   filters?: DashboardFilterState;
+  isCardVisible?: (view: DashboardView, cardId: string) => boolean;
 };
 
-const SalesDashboard: React.FC<SalesDashboardProps> = ({ embedded = false, filters: filtersProp }) => {
+const SalesDashboard: React.FC<SalesDashboardProps> = ({
+  embedded = false,
+  filters: filtersProp,
+  isCardVisible = () => true,
+}) => {
   const navigate = useNavigate();
   const [localFilters] = useState(createDefaultDashboardFilters);
   const filters = filtersProp ?? localFilters;
@@ -199,7 +205,7 @@ const SalesDashboard: React.FC<SalesDashboardProps> = ({ embedded = false, filte
   return (
     <div className="dashboard-content">
       <div className="dashboard-stat-grid">
-        <PriorityMetricCard
+        {isCardVisible('sales', 'sales.total-leads') ? <PriorityMetricCard
           title="Total Leads"
           total={leadCount?.total_leads ?? null}
           priorityCount={leadCount?.priority_lead_count ?? null}
@@ -207,9 +213,9 @@ const SalesDashboard: React.FC<SalesDashboardProps> = ({ embedded = false, filte
           selectedId={selectedPriorityLeadId}
           onSelect={(option) => setSelectedPriorityLeadId(option.id)}
           embedded={embedded}
-        />
+        /> : null}
 
-        <PriorityMetricCard
+        {isCardVisible('sales', 'sales.total-briefs') ? <PriorityMetricCard
           title="Total Briefs"
           total={briefCount?.total_briefs ?? null}
           priorityCount={briefCount?.priority_brief_count ?? null}
@@ -217,24 +223,24 @@ const SalesDashboard: React.FC<SalesDashboardProps> = ({ embedded = false, filte
           selectedId={selectedPriorityBriefId}
           onSelect={(option) => setSelectedPriorityBriefId(option.id)}
           embedded={embedded}
-        />
+        /> : null}
 
-        <DashboardMetricCard
+        {isCardVisible('sales', 'sales.business-forecast') ? <DashboardMetricCard
           title="Business Forecast"
           value={forecast ? formatDashboardCurrency(forecast.total_budget) : '--'}
           embedded={embedded}
-        />
+        /> : null}
 
-        <DashboardMetricCard
+        {isCardVisible('sales', 'sales.business-weightage') ? <DashboardMetricCard
           title="Business Weightage"
           value={forecast ? `${forecast.business_weightage}%` : '--'}
           embedded={embedded}
-        />
+        /> : null}
       </div>
 
-      <DashboardChartsSection variant="sales" filters={filters} />
+      <DashboardChartsSection variant="sales" filters={filters} isCardVisible={isCardVisible} />
 
-      <div className={`dashboard-table-panel ${embedded ? 'is-embedded' : ''}`}>
+      {isCardVisible('sales', 'sales.lead-table') ? <div className={`dashboard-table-panel ${embedded ? 'is-embedded' : ''}`}>
         <div className="dashboard-table-panel__header">
           <DashboardTabNav
             tabs={DASHBOARD_TABS}
@@ -256,9 +262,9 @@ const SalesDashboard: React.FC<SalesDashboardProps> = ({ embedded = false, filte
             keyExtractor={(item, index) => String(item.id ?? index)}
           />
         </div>
-      </div>
+      </div> : null}
 
-      <div className="dashboard-section-block">
+      {isCardVisible('sales', 'sales.recent-activities') ? <div className="dashboard-section-block">
         <h3 className="dashboard-section-block__title">Recent Activities</h3>
         <div className="dashboard-activity-grid">
           {(salesData?.activities ?? []).map((activity) => (
@@ -278,9 +284,9 @@ const SalesDashboard: React.FC<SalesDashboardProps> = ({ embedded = false, filte
             </div>
           ))}
         </div>
-      </div>
+      </div> : null}
 
-      <div className="dashboard-section-block">
+      {isCardVisible('sales', 'sales.recent-briefs') ? <div className="dashboard-section-block">
         <h3 className="dashboard-section-block__title">Recent Brief</h3>
         <div className="dashboard-activity-grid">
           {(salesData?.recentBriefs ?? []).map((brief) => (
@@ -317,7 +323,7 @@ const SalesDashboard: React.FC<SalesDashboardProps> = ({ embedded = false, filte
             </div>
           ))}
         </div>
-      </div>
+      </div> : null}
     </div>
   );
 };

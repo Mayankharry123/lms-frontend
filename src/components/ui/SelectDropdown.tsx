@@ -14,6 +14,7 @@ type SelectDropdownProps = {
   disabled?: boolean;
   isMulti?: boolean;
   autoCloseOnSelect?: boolean;
+  placement?: 'bottom' | 'top';
 };
 
 const normalize = (opt: Option): { value: string; label: string } => {
@@ -33,6 +34,7 @@ const SelectDropdown: React.FC<SelectDropdownProps> = ({
   disabled = false,
   isMulti = false,
   autoCloseOnSelect = true,
+  placement = 'bottom',
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -127,7 +129,9 @@ const SelectDropdown: React.FC<SelectDropdownProps> = ({
       <div
         role="listbox"
         aria-hidden={!open}
-        className={`select-dropdown absolute z-50 left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg overflow-y-auto transition-all duration-150 ${open ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+        className={`select-dropdown absolute z-[80] left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-y-auto transition-all duration-150 ${
+          placement === 'top' ? 'bottom-full top-auto mb-2' : 'top-full bottom-auto mt-2'
+        } ${open ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
         style={{ maxHeight: '140px' }} // Show only 2 options (each ~40px)
       >
         {filtered.length === 0 ? (

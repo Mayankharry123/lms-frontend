@@ -20,6 +20,12 @@ export type ChartPoint = {
 
 export const formatCount = (value: number) => value.toLocaleString('en-IN');
 
+export const formatAssignmentDays = (value: number | null | undefined) => {
+  const days = Number(value);
+  const safeDays = Number.isFinite(days) ? days : 0;
+  return safeDays === 1 ? '1 day' : `${safeDays} days`;
+};
+
 export const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-IN', {
     style: 'currency',

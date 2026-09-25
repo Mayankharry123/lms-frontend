@@ -13,7 +13,9 @@ import {
 } from 'react-icons/ri';
 import DashboardChartsSection from '../../components/dashboard/DashboardChartsSection';
 import DashboardMetricCard from '../../components/dashboard/DashboardMetricCard';
+import { formatAssignmentDays } from '../../components/dashboard/chartShared';
 import { useApiQuery } from '../../hooks/useApiQuery';
+import { getPlannerChartMetrics } from '../../services/DashboardCharts';
 import { getPlannerDashboardCard, getLatestFiveBriefs } from '../../services/PlannerDashboard';
 import type { PlannerDashboardBrief } from '../../services/PlannerDashboard';
 import {
@@ -21,6 +23,7 @@ import {
   serializeDashboardFilters,
   type DashboardFilterState,
 } from '../../utils/dashboardFilters';
+import type { DashboardView } from '../../utils/dashboardCardVisibility';
 
 const STATUS_BADGE: Record<string, string> = {
   approve: 'dashboard-badge dashboard-badge--success',
@@ -32,9 +35,14 @@ const STATUS_BADGE: Record<string, string> = {
 type PlannerDashboardProps = {
   embedded?: boolean;
   filters?: DashboardFilterState;
+  isCardVisible?: (view: DashboardView, cardId: string) => boolean;
 };
 
-const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ embedded = false, filters: filtersProp }) => {
+const PlannerDashboard: React.FC<PlannerDashboardProps> = ({
+  embedded = false,
+  filters: filtersProp,
+  isCardVisible = () => true,
+}) => {
   const navigate = useNavigate();
   const [localFilters] = useState(createDefaultDashboardFilters);
   const filters = filtersProp ?? localFilters;
@@ -42,6 +50,11 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ embedded = false, f
 
   const { data: cardData, loading: cardLoading, error: cardError } = useApiQuery(
     () => getPlannerDashboardCard(filters),
+    [filterKey],
+  );
+
+  const { data: plannerCharts, loading: plannerChartsLoading } = useApiQuery(
+    () => getPlannerChartMetrics(filters),
     [filterKey],
   );
 
@@ -106,44 +119,40 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ embedded = false, f
         <div className="dashboard-error-state">{cardError}</div>
       ) : (
         <div className="dashboard-stat-grid">
-          <DashboardMetricCard
+          {isCardVisible('planner', 'planner.active-briefs') ? <DashboardMetricCard
             title="Active Briefs"
             value={cardData?.active_briefs ?? 0}
             icon={<RiFileList3Line />}
             embedded={embedded}
             loading={cardLoading}
-          />
-          <DashboardMetricCard
+          /> : null}
+          {isCardVisible('planner', 'planner.plans-assigned') ? <DashboardMetricCard
             title="Plans Assigned"
             value={cardData?.assigned_plans ?? 0}
             icon={<RiClipboardLine />}
             embedded={embedded}
             loading={cardLoading}
-          />
-          <DashboardMetricCard
+          /> : null}
+          {isCardVisible('planner', 'planner.avg-plan-submission-time') ? <DashboardMetricCard
             title="Avg Plan Submission Time"
-            value={
-              cardData?.average_assignment_days != null
-                ? `${cardData.average_assignment_days} days`
-                : '--'
-            }
+            value={formatAssignmentDays(plannerCharts?.totals.avgAssignmentDays)}
             icon={<RiTimerLine />}
             embedded={embedded}
-            loading={cardLoading}
-          />
-          <DashboardMetricCard
+            loading={plannerChartsLoading}
+          /> : null}
+          {isCardVisible('planner', 'planner.overdue-briefs') ? <DashboardMetricCard
             title="Overdue Briefs"
             value={cardData?.overdue_briefs ?? 0}
             icon={<RiErrorWarningLine />}
             embedded={embedded}
             loading={cardLoading}
-          />
+          /> : null}
         </div>
       )}
 
-      <DashboardChartsSection variant="planner" filters={filters} />
+      <DashboardChartsSection variant="planner" filters={filters} isCardVisible={isCardVisible} />
 
-      <div className="dashboard-section-block">
+      {isCardVisible('planner', 'planner.assigned-briefs') ? <div className="dashboard-section-block">
         <div className="flex items-center justify-between mb-3">
           <h3 className="dashboard-section-block__title mb-0">My Assigned Briefs</h3>
           <button type="button" className="a-tag-button" onClick={() => navigate('/brief/log')}>
@@ -162,7 +171,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ embedded = false, f
             assignedBriefs.map(renderBriefCard)
           )}
         </div>
-      </div>
+      </div> : null}
     </div>
   );
 };
