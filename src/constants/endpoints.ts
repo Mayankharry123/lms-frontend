@@ -17,6 +17,12 @@ export const ENDPOINTS = {
     UPDATE: (id: string | number) => `/users/${id}`,
     DELETE: (id: string | number) => `/users/${id}`,
     CHILD_USERS: '/profile/child-users',
+    // Endpoint for fetching child users filtered by the planning department.
+    CHILD_PLANING_USERS: '/profile/child-planing-users',
+    CHILD_PLANING_USERS_BY_ORGANISATION: (organisationId: string | number) =>
+      `/profile/child-planing-users?Organisation_Id=${encodeURIComponent(String(organisationId))}`,
+    ASSIGNMENT_SUBMISSION_DURATIONS: (userId: string | number) =>
+      `/users/${encodeURIComponent(String(userId))}/assignment-submission-durations`,
     CHILD_USERS_BY_MISS_CAMPAIGN: (id: string | number) =>
       `/profile/child-users-by-miss-campaign/${id}`,
     CHILD_USERS_BY_LEAD: (id: string | number) => `/profile/child-users-by-lead/${id}`,
@@ -46,6 +52,8 @@ export const ENDPOINTS = {
   },
   LEADS: {
     LIST: '/leads',
+    // Endpoint for fetching lead contacts used in Brief creation.
+    CONTACT_LIST: '/leads/list',
     DETAIL: (id: string | number) => `/leads/${id}`,
     CREATE: '/leads',
     UPDATE: (id: string | number) => `/leads/${id}`,
@@ -53,6 +61,8 @@ export const ENDPOINTS = {
     PENDING: '/leads/pending',
     ASSIGN: (id: string | number) => `/leads/${id}/assign`,
     CALL_STATUS: (id: string | number) => `/leads/${id}/call-status`,
+    CHAT: (id: string | number) => `/leads/${encodeURIComponent(String(id))}/activity`,
+    ASSIGN_HISTORY: (id: string | number) => `/leads/${encodeURIComponent(String(id))}/assign-history`,
     LATEST_MEETING: '/leads/latest/meeting-scheduled-two',
     LATEST_FOLLOW_UP: '/leads/latest/follow-up-two',
     LATEST_TWO: '/leads/latest/two-leads',
@@ -122,6 +132,8 @@ export const ENDPOINTS = {
     CREATE: '/brands',
     UPDATE: (id: string | number) => `/brands/${encodeURIComponent(String(id))}`,
     DELETE: (id: string | number) => `/brands/${encodeURIComponent(String(id))}`,
+    IMPORT: '/brands/import',
+    IMPORT_TEMPLATE: '/brands/import-template',
     TYPES: {
       LIST: '/brand-types',
       DETAIL: (id: string | number) => `/brand-types/${id}`,
@@ -165,6 +177,7 @@ export const ENDPOINTS = {
   },
   ORGANISATIONS: {
     LIST: '/organisations/list',
+    ZONES: '/profile/organisation-zone',
   },
   MEDIA_TYPES: {
     LIST: '/media-types',

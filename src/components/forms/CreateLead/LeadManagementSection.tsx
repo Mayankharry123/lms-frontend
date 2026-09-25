@@ -1,7 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import SelectField from '../../ui/SelectField';
 import ModalPopup from '../../ui/ModalPopup';
+import CollapsibleFormCard from '../../ui/CollapsibleFormCard';
 import { Button } from '../../ui';
+import { BriefcaseBusiness } from 'lucide-react';
 import type { Props } from '../../../types/LeadManagentForm';
 import { quickCreateApi } from '../../../services/QuickCreate';
 import SweetAlert from '../../../utils/SweetAlert';
@@ -14,6 +16,7 @@ const LeadManagementSection: React.FC<Props> = ({
   options = [],
   loading = false,
   error = null,
+  collapsible = false,
 }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createName, setCreateName] = useState('');
@@ -82,12 +85,13 @@ const LeadManagementSection: React.FC<Props> = ({
   };
 
   return (
-    <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-200">
-      <div className="p-6 bg-gray-50 rounded-2xl ">
-        <div className="flex items-center mb-6">
-          <h3 className="text-base font-semibold text-gray-800">Lead Management</h3>
-        </div>
-
+    <>
+      <CollapsibleFormCard
+        title="Lead Management"
+        collapsible={collapsible}
+        defaultOpen={!collapsible}
+        icon={<BriefcaseBusiness className="h-5 w-5" strokeWidth={2} />}
+      >
         <div className="flex items-center flex-wrap gap-6 mb-6">
           <label className="relative flex items-center cursor-pointer group">
             <div className="group-hover:bg-[rgba(66,133,244,0.05)] absolute -inset-2 rounded-md transition-colors duration-200" />
@@ -156,7 +160,7 @@ const LeadManagementSection: React.FC<Props> = ({
             )}
           </div>
         )}
-      </div>
+      </CollapsibleFormCard>
 
       <ModalPopup
         show={showCreateModal}
@@ -198,7 +202,7 @@ const LeadManagementSection: React.FC<Props> = ({
           </div>
         </div>
       </ModalPopup>
-    </div>
+    </>
   );
 };
 

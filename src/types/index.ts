@@ -104,7 +104,7 @@ export interface ButtonProps {
 }
 
 export interface InputProps {
-  type?: 'text' | 'email' | 'password' | 'number';
+  type?: 'text' | 'email' | 'password' | 'number' | 'datetime-local';
   placeholder?: string;
   value?: string;
   onChange?: unknown;

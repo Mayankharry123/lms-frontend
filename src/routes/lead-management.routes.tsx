@@ -11,6 +11,7 @@ import {
   BriefStatus,
 } from '../pages/LeadManagement';
 import MeetingSchedule from '../pages/LeadManagement/MeetingSchedule';
+import LeadChat from '../pages/LeadManagement/LeadChat';
 import { ROUTE_SEGMENTS } from '../constants/routes';
 import { permissionElement } from './PermissionElement';
 
@@ -25,6 +26,7 @@ export const leadManagementRoutes = (
       <Route path="meeting-scheduled" element={permissionElement(<MeetingScheduled />)} />
       <Route path="meetings" element={permissionElement(<MeetingDone />)} />
       <Route path="create" element={permissionElement(<CreateLead />)} />
+      <Route path="chat/:id" element={permissionElement(<LeadChat />)} />
       <Route path="edit/:id" element={permissionElement(<EditLead />)} />
       <Route path=":id" element={permissionElement(<ViewLead />)} />
     </Route>

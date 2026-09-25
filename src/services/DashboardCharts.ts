@@ -150,6 +150,46 @@ export type SalesChartMetrics = {
     meetingScheduled: number;
     briefs: number;
   };
+  userLeadPerformance: SalesUserLeadPerformance[];
+  zonePerformance: SalesZoneLeadPerformance[];
+};
+
+export type SalesZoneLeadPerformance = {
+  zoneId: string;
+  zoneName: string;
+  assignedLeads: number;
+};
+
+export type SalesUserLead = {
+  leadId: string;
+  contactPerson: string;
+  callStatus: string;
+  leadStatus: string;
+  priority: string;
+};
+
+export type SalesUserLeadPerformance = {
+  userId: string;
+  userName: string;
+  email: string;
+  leads: SalesUserLead[];
+  leadCount?: number;
+  children?: SalesUserLeadPerformance[];
+};
+
+export type DashboardPriority = {
+  id: string;
+  name: string;
+};
+
+export type DashboardStatus = {
+  id: string;
+  name: string;
+};
+
+export type DashboardCallStatus = {
+  id: string;
+  name: string;
 };
 
 export type PlannerChartOrganisationRow = {
@@ -197,6 +237,54 @@ function normalizeSalesMetrics(data: unknown): SalesChartMetrics {
 
   const totalsSource = (payload.totals ?? {}) as Record<string, unknown>;
   const pipelineSource = (payload.pipeline ?? {}) as Record<string, unknown>;
+  const rawZones = Array.isArray(payload.by_zone)
+    ? payload.by_zone
+    : Array.isArray(payload.zone_performance)
+      ? payload.zone_performance
+      : Array.isArray(payload.zonePerformance)
+        ? payload.zonePerformance
+        : [];
+  const zonePerformance = rawZones.reduce<SalesZoneLeadPerformance[]>((zones, rawZone, zoneIndex) => {
+    if (!rawZone || typeof rawZone !== 'object') return zones;
+    const zone = rawZone as Record<string, unknown>;
+    const zoneName = pickString(zone, ['zone_name', 'zoneName', 'name', 'label']);
+    if (!zoneName) return zones;
+    zones.push({
+      zoneId: pickString(zone, ['zone_id', 'zoneId', 'id']) || String(zoneIndex + 1),
+      zoneName,
+      assignedLeads: toNumber(zone.assigned_leads ?? zone.assignedLeads ?? zone.lead_count ?? zone.total_leads ?? zone.count),
+    });
+    return zones;
+  }, []);
+  const rawUsers = Array.isArray(payload.user_lead_performance)
+    ? payload.user_lead_performance
+    : Array.isArray(payload.userLeadPerformance)
+      ? payload.userLeadPerformance
+      : [];
+  const userLeadPerformance = rawUsers.reduce<SalesUserLeadPerformance[]>((users, rawUser, userIndex) => {
+    if (!rawUser || typeof rawUser !== 'object') return users;
+    const user = rawUser as Record<string, unknown>;
+    const rawLeads = Array.isArray(user.leads) ? user.leads : [];
+    const leads = rawLeads.reduce<SalesUserLead[]>((items, rawLead, leadIndex) => {
+      if (!rawLead || typeof rawLead !== 'object') return items;
+      const lead = rawLead as Record<string, unknown>;
+      items.push({
+        leadId: pickString(lead, ['lead_id', 'leadId', 'id']) || String(leadIndex + 1),
+          contactPerson: pickString(lead, ['contact_person_name', 'contact_person', 'contactPerson', 'contact_name', 'name']) || 'Unknown contact',
+        callStatus: pickString(lead, ['call_status', 'callStatus']) || 'Not set',
+        leadStatus: pickString(lead, ['lead_status', 'leadStatus', 'status']) || 'Not set',
+        priority: pickString(lead, ['priority']) || 'Not set',
+      });
+      return items;
+    }, []);
+    users.push({
+      userId: pickString(user, ['user_id', 'userId', 'id']) || String(userIndex + 1),
+      userName: pickString(user, ['user_name', 'userName', 'name']) || 'Unnamed user',
+      email: pickString(user, ['email', 'user_email', 'userEmail']),
+      leads,
+    });
+    return users;
+  }, []);
 
   return {
     rows,
@@ -211,7 +299,162 @@ function normalizeSalesMetrics(data: unknown): SalesChartMetrics {
       meetingScheduled: toNumber(pipelineSource.meeting_scheduled ?? pipelineSource.meetingScheduled),
       briefs: toNumber(pipelineSource.briefs),
     },
+    userLeadPerformance,
+    zonePerformance,
   };
+}
+
+function normalizeUserLeadPerformance(data: unknown): SalesUserLeadPerformance[] {
+  const payload = (data ?? {}) as Record<string, unknown>;
+  const rawUsers = Array.isArray(data)
+    ? data
+    : Array.isArray(payload.data)
+      ? payload.data
+      : Array.isArray(payload.users)
+        ? payload.users
+        : Array.isArray(payload.child_users)
+          ? payload.child_users
+          : [];
+
+  const normalizeUser = (rawUser: unknown, userIndex: number): SalesUserLeadPerformance | null => {
+    if (!rawUser || typeof rawUser !== 'object') return null;
+    const user = rawUser as Record<string, unknown>;
+    const rawLeads = Array.isArray(user.leads)
+      ? user.leads
+      : Array.isArray(user.assigned_leads)
+        ? user.assigned_leads
+        : Array.isArray(user.lead_performance)
+          ? user.lead_performance
+          : [];
+
+    const leads = rawLeads.reduce<SalesUserLead[]>((items, rawLead, leadIndex) => {
+      if (!rawLead || typeof rawLead !== 'object') return items;
+      const lead = rawLead as Record<string, unknown>;
+      items.push({
+        leadId: pickString(lead, ['lead_id', 'leadId', 'id']) || String(leadIndex + 1),
+        contactPerson: pickString(lead, ['contact_person_name', 'contact_person', 'contactPerson', 'contact_name', 'name']) || 'Unknown contact',
+        callStatus: pickString(lead, ['call_status', 'callStatus']) || 'Not set',
+        leadStatus: pickString(lead, ['lead_status', 'leadStatus', 'status']) || 'Not set',
+        priority: pickString(lead, ['priority']) || 'Not set',
+      });
+      return items;
+    }, []);
+    const rawLeadCount =
+      user.lead_count ??
+      user.leads_count ??
+      user.total_leads ??
+      user.assigned_leads_count ??
+      user.leadCount ??
+      user.leadsCount ??
+      user.totalLeads ??
+      user.count;
+
+    const rawChildren = Array.isArray(user.children) ? user.children : [];
+    const children = rawChildren
+      .map((child, childIndex) => normalizeUser(child, childIndex))
+      .filter((child): child is SalesUserLeadPerformance => child !== null);
+
+    return {
+      userId: pickString(user, ['user_id', 'userId', 'id']) || String(userIndex + 1),
+      userName: pickString(user, ['user_name', 'userName', 'name', 'full_name']) || 'Unnamed user',
+      email: pickString(user, ['email', 'user_email', 'userEmail']),
+      leads,
+      ...(rawLeadCount !== undefined && rawLeadCount !== null
+        ? { leadCount: toNumber(rawLeadCount) }
+        : {}),
+      ...(children.length > 0 ? { children } : {}),
+    };
+  };
+
+  return rawUsers
+    .map((rawUser, userIndex) => normalizeUser(rawUser, userIndex))
+    .filter((user): user is SalesUserLeadPerformance => user !== null);
+}
+
+function normalizeLeadPerformance(data: unknown): SalesUserLead[] {
+  const payload = (data ?? {}) as Record<string, unknown>;
+  const rawLeads = Array.isArray(data)
+    ? data
+    : Array.isArray(payload.data)
+      ? payload.data
+      : Array.isArray(payload.leads)
+        ? payload.leads
+        : Array.isArray(payload.results)
+          ? payload.results
+          : [];
+
+  return rawLeads.reduce<SalesUserLead[]>((leads, rawLead, leadIndex) => {
+    if (!rawLead || typeof rawLead !== 'object') return leads;
+    const lead = rawLead as Record<string, unknown>;
+    leads.push({
+      leadId: pickString(lead, ['lead_id', 'leadId', 'id']) || String(leadIndex + 1),
+      contactPerson: pickString(lead, ['contact_person_name', 'contact_person', 'contactPerson', 'contact_name', 'name']) || 'Unknown contact',
+      callStatus: pickString(lead, ['call_status', 'callStatus']) || 'Not set',
+      leadStatus: pickString(lead, ['lead_status', 'leadStatus', 'status']) || 'Not set',
+      priority: pickString(lead, ['priority']) || 'Not set',
+    });
+    return leads;
+  }, []);
+}
+
+function normalizePriorities(data: unknown): DashboardPriority[] {
+  const payload = (data ?? {}) as Record<string, unknown>;
+  const rawPriorities = Array.isArray(data)
+    ? data
+    : Array.isArray(payload.data)
+      ? payload.data
+      : Array.isArray(payload.priorities)
+        ? payload.priorities
+        : [];
+
+  return rawPriorities.reduce<DashboardPriority[]>((priorities, rawPriority) => {
+    if (!rawPriority || typeof rawPriority !== 'object') return priorities;
+    const priority = rawPriority as Record<string, unknown>;
+    const id = pickString(priority, ['id', 'value']);
+    const name = pickString(priority, ['name', 'label', 'title']);
+    if (id && name) priorities.push({ id, name });
+    return priorities;
+  }, []);
+}
+
+function normalizeStatuses(data: unknown): DashboardStatus[] {
+  const payload = (data ?? {}) as Record<string, unknown>;
+  const rawStatuses = Array.isArray(data)
+    ? data
+    : Array.isArray(payload.data)
+      ? payload.data
+      : Array.isArray(payload.statuses)
+        ? payload.statuses
+        : [];
+
+  return rawStatuses.reduce<DashboardStatus[]>((statuses, rawStatus) => {
+    if (!rawStatus || typeof rawStatus !== 'object') return statuses;
+    const status = rawStatus as Record<string, unknown>;
+    const id = pickString(status, ['id', 'value']);
+    const name = pickString(status, ['name', 'label', 'title']);
+    if (id && name) statuses.push({ id, name });
+    return statuses;
+  }, []);
+}
+
+function normalizeCallStatuses(data: unknown): DashboardCallStatus[] {
+  const payload = (data ?? {}) as Record<string, unknown>;
+  const rawCallStatuses = Array.isArray(data)
+    ? data
+    : Array.isArray(payload.data)
+      ? payload.data
+      : Array.isArray(payload.call_statuses)
+        ? payload.call_statuses
+        : [];
+
+  return rawCallStatuses.reduce<DashboardCallStatus[]>((statuses, rawCallStatus) => {
+    if (!rawCallStatus || typeof rawCallStatus !== 'object') return statuses;
+    const callStatus = rawCallStatus as Record<string, unknown>;
+    const id = pickString(callStatus, ['id', 'value']);
+    const name = pickString(callStatus, ['name', 'label', 'title']);
+    if (id && name) statuses.push({ id, name });
+    return statuses;
+  }, []);
 }
 
 function normalizePlannerRow(raw: unknown, index: number): PlannerChartOrganisationRow | null {
@@ -225,7 +468,11 @@ function normalizePlannerRow(raw: unknown, index: number): PlannerChartOrganisat
     briefs: base.briefs,
     briefBudget: base.briefBudget,
     assignedPlans: toNumber(record.assigned_plans ?? record.assignedPlans),
-    avgAssignmentDays: toNumber(record.avg_assignment_days ?? record.avgAssignmentDays),
+    avgAssignmentDays: toNumber(
+      record.avg_plan_submission_days
+      ?? record.avg_assignment_days
+      ?? record.avgAssignmentDays
+    ),
   };
 }
 
@@ -245,7 +492,11 @@ function normalizePlannerMetrics(data: unknown): PlannerChartMetrics {
       briefs: toNumber(totalsSource.briefs),
       briefBudget: toNumber(totalsSource.brief_budget ?? totalsSource.briefBudget),
       assignedPlans: toNumber(totalsSource.assigned_plans ?? totalsSource.assignedPlans),
-      avgAssignmentDays: toNumber(totalsSource.avg_assignment_days ?? totalsSource.avgAssignmentDays),
+      avgAssignmentDays: toNumber(
+        totalsSource.avg_plan_submission_days
+        ?? totalsSource.avg_assignment_days
+        ?? totalsSource.avgAssignmentDays
+      ),
     },
     briefStatus: {
       activeBriefs: toNumber(statusSource.active_briefs ?? statusSource.activeBriefs),
@@ -266,6 +517,103 @@ export async function getSalesChartMetrics(
       throw new Error(res?.message || 'Failed to fetch sales chart metrics');
     }
     return normalizeSalesMetrics(res.data);
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+}
+
+export async function getChildUsersByOrganisation(
+  organisationIds: string[] = [],
+  filters?: { callStatus?: string; leadStatus?: string; priority?: string; zoneIds?: string[] },
+): Promise<SalesUserLeadPerformance[]> {
+  try {
+    const params = new URLSearchParams();
+    organisationIds.forEach((id) => {
+      if (id) params.append('organisation_id[]', id);
+    });
+    filters?.zoneIds?.forEach((id) => {
+      if (id) params.append('zone_id[]', id);
+    });
+    if (filters?.callStatus) params.append('call_status', filters.callStatus);
+    if (filters?.leadStatus) params.append('lead_status', filters.leadStatus);
+    if (filters?.priority) params.append('priority', filters.priority);
+    const query = params.toString();
+    const res = await apiClient.get<unknown>(
+      `/profile/child-users-by-organisation${query ? `?${query}` : ''}`,
+    );
+    if (!res || !res.success) {
+      throw new Error(res?.message || 'Failed to fetch child users by organisation');
+    }
+    return normalizeUserLeadPerformance(res.data);
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+}
+
+export type LeadPerformanceFilters = {
+  callStatus?: string;
+  leadStatus?: string;
+  priority?: string;
+};
+
+export async function getLeadPerformance(
+  userId: string,
+  filters?: LeadPerformanceFilters,
+): Promise<SalesUserLead[]> {
+  try {
+    const params = new URLSearchParams();
+    if (filters?.callStatus) params.append('call_status', filters.callStatus);
+    if (filters?.leadStatus) params.append('lead_status', filters.leadStatus);
+    if (filters?.priority) params.append('priority', filters.priority);
+    const query = params.toString();
+    const res = await apiClient.get<unknown>(
+      `/leads/user-performance/${encodeURIComponent(userId)}${query ? `?${query}` : ''}`,
+    );
+    if (!res || !res.success) {
+      throw new Error(res?.message || 'Failed to fetch lead performance');
+    }
+    return normalizeLeadPerformance(res.data);
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+}
+
+export async function getPriorities(): Promise<DashboardPriority[]> {
+  try {
+    const res = await apiClient.get<unknown>('/priorities');
+    if (!res || !res.success) {
+      throw new Error(res?.message || 'Failed to fetch priorities');
+    }
+    return normalizePriorities(res.data);
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+}
+
+export async function getStatuses(): Promise<DashboardStatus[]> {
+  try {
+    const res = await apiClient.get<unknown>('/statuses');
+    if (!res || !res.success) {
+      throw new Error(res?.message || 'Failed to fetch statuses');
+    }
+    return normalizeStatuses(res.data);
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+}
+
+export async function getCallStatuses(): Promise<DashboardCallStatus[]> {
+  try {
+    const res = await apiClient.get<unknown>('/call-statuses');
+    if (!res || !res.success) {
+      throw new Error(res?.message || 'Failed to fetch call statuses');
+    }
+    return normalizeCallStatuses(res.data);
   } catch (error) {
     handleApiError(error);
     throw error;

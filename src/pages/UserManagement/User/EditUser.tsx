@@ -9,7 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ROUTES } from '../../../constants';
-import { MasterFormHeader, MultiSelectDropdown, SelectField } from '../../../components/ui';
+import { MasterFormHeader, MultiSelectDropdown } from '../../../components/ui';
 import SweetAlert from '../../../utils/SweetAlert';
 import { apiClient } from '../../../utils/apiClient';
 import { getUserForEdit, updateUserDetails } from '../../../services/EditUser';
@@ -44,12 +44,24 @@ function parseOrganisationsFromUser(user: Record<string, any>): string[] {
 
   return single && single !== 'undefined' && single !== 'null' ? [single] : [];
 }
-
+/**
+ * Normalizes department data from different API response formats
+ * into a string array for Edit User department selection.
+ */
 function parseDepartmentsFromUser(user: Record<string, any>): string[] {
   if (Array.isArray(user.departments) && user.departments.length > 0) {
     return user.departments
       .map((item: any) =>
-        String(item?.id ?? item?.department_id ?? item?.value ?? item?.name ?? item ?? '')
+        String(
+          item?.id ??
+            item?.department_id ??
+            item?.departments_id ??
+            item?.value ??
+            item?.name ??
+            item?.departments_name ??
+            item ??
+            ''
+        )
       )
       .filter(Boolean);
   }
@@ -61,13 +73,32 @@ function parseDepartmentsFromUser(user: Record<string, any>): string[] {
   const single = String(
     user.department?.id ??
       user.department_id ??
+    user.departments_id ??
       user.department?.value ??
       user.department?.name ??
       user.department_name ??
+    user.departments_name ??
       user.department ??
       ''
   ).trim();
 
+  return single && single !== 'undefined' && single !== 'null' ? [single] : [];
+}
+
+function parseZonesFromUser(user: Record<string, any>): string[] {
+  if (Array.isArray(user.zones) && user.zones.length > 0) {
+    return user.zones
+      .map((item: any) => String(item?.id ?? item?.zone_id ?? item?.value ?? item?.name ?? item ?? ''))
+      .filter(Boolean);
+  }
+
+  if (Array.isArray(user.zone_ids) && user.zone_ids.length > 0) {
+    return user.zone_ids.map((id: any) => String(id)).filter(Boolean);
+  }
+
+  const single = String(
+    user.zone?.id ?? user.zone_id ?? user.zone?.value ?? user.zone?.name ?? user.zone_name ?? user.zone ?? ''
+  ).trim();
   return single && single !== 'undefined' && single !== 'null' ? [single] : [];
 }
 
@@ -83,7 +114,7 @@ const EditUser: React.FC = () => {
     password_confirmation: '',
     roles: [] as string[],
     managers: [] as string[],
-    zone: '',
+    zones: [] as string[],
     organisations: [] as string[],
     departments: [] as string[],
   });
@@ -151,7 +182,7 @@ const EditUser: React.FC = () => {
               ? user.roles.map(r => String(r.id))
               : (user.role_id ? [String(user.role_id)] : []),
             managers,
-            zone: String((user as any).zone?.id ?? (user as any).zone_id ?? (user as any).zone?.value ?? (user as any).zone?.name ?? (user as any).zone?.zone ?? (user as any).zone_name ?? (user as any).zone ?? ''),
+            zones: parseZonesFromUser(user as Record<string, any>),
             organisations: parseOrganisationsFromUser(user as Record<string, any>),
             departments: parseDepartmentsFromUser(user as Record<string, any>),
           });
@@ -220,17 +251,18 @@ const EditUser: React.FC = () => {
     };
   }, []);
 
-  // If backend returns zone as label/name instead of id, remap to option value once options load.
+  // If backend returns zone labels instead of IDs, remap them after options load.
   useEffect(() => {
-    if (!form.zone || zoneOptions.length === 0) return;
-    const current = String(form.zone);
-    const hasExactValue = zoneOptions.some((opt) => opt.value === current);
-    if (hasExactValue) return;
-    const byLabel = zoneOptions.find((opt) => opt.label.toLowerCase() === current.toLowerCase());
-    if (byLabel) {
-      setForm((prev) => ({ ...prev, zone: byLabel.value }));
+    if (form.zones.length === 0 || zoneOptions.length === 0) return;
+    const normalized = form.zones.map((value) => {
+      const option = zoneOptions.find((opt) => opt.value === value);
+      if (option) return option.value;
+      return zoneOptions.find((opt) => opt.label.toLowerCase() === value.toLowerCase())?.value ?? value;
+    });
+    if (normalized.some((value, index) => value !== form.zones[index])) {
+      setForm((prev) => ({ ...prev, zones: normalized }));
     }
-  }, [zoneOptions, form.zone]);
+  }, [zoneOptions, form.zones]);
 
   // If backend returns organisation as label/name instead of id, remap to option values once options load.
   useEffect(() => {
@@ -350,8 +382,8 @@ const EditUser: React.FC = () => {
 
         const opts = items
           .map((it: any) => ({
-            label: String(it.name ?? it.department_name ?? it.label ?? ''),
-            value: String(it.id ?? it.value ?? it.department_id ?? ''),
+            label: String(it.name ?? it.department_name ?? it.departments_name ?? it.label ?? ''),
+            value: String(it.id ?? it.value ?? it.department_id ?? it.departments_id ?? ''),
           }))
           .filter((it) => it.label && it.value);
 
@@ -471,13 +503,13 @@ const EditUser: React.FC = () => {
     try {
       setSaving(true);
       const base = { ...form } as Record<string, any>;
-      const selectedZone = zoneOptions.find((opt) => opt.value === String(base.zone));
+      const selectedZones = zoneOptions.filter((opt) => (base.zones as string[]).includes(opt.value));
       const selectedOrganisations = originationOptions.filter((opt) =>
         (base.organisations as string[]).includes(opt.value)
       );
-      const zoneId = base.zone ? String(base.zone) : null;
+      const zoneIds = (base.zones as string[]).map((zoneId: string) => Number(zoneId));
       const organisationIds = (base.organisations as string[]).map((id: string) => Number(id));
-      const zoneName = selectedZone?.label || null;
+      const zoneName = selectedZones.map((opt) => opt.label).join(', ') || null;
       const organisationName = selectedOrganisations.map((opt) => opt.label).join(', ') || null;
       const primaryOrganisationId =
         base.organisations && base.organisations.length > 0 ? String(base.organisations[0]) : null;
@@ -486,8 +518,10 @@ const EditUser: React.FC = () => {
         name: String(base.name || ''),
         email: base.email || '',
         phone: base.phone || null,
-        zone: zoneId,
-        zone_id: zoneId,
+        zones: zoneIds,
+        zone_ids: zoneIds,
+        zone: zoneIds[0] ? String(zoneIds[0]) : null,
+        zone_id: zoneIds[0] ? String(zoneIds[0]) : null,
         origination: primaryOrganisationId,
         organisation_id: primaryOrganisationId,
         organisation_ids: organisationIds,
@@ -839,17 +873,15 @@ const EditUser: React.FC = () => {
 
             <div className="col-span-2 sm:col-span-1">
               <label className="block text-sm text-gray-600 mb-1">Zone</label>
-              <SelectField
-                name="zone"
-                value={form.zone}
-                onChange={(v) => {
-                  const val = typeof v === 'string' ? v : v[0] ?? '';
-                  setForm((prev) => ({ ...prev, zone: val }));
-                }}
+              <MultiSelectDropdown
+                name="zones"
+                value={form.zones}
+                onChange={(v) => setForm((prev) => ({ ...prev, zones: v }))}
                 options={zoneOptions}
-                placeholder={zoneLoading ? 'Loading zones...' : 'Select zone'}
+                placeholder={zoneLoading ? 'Loading zones...' : 'Select zone(s)'}
                 inputClassName="border-gray-200 focus:ring-black"
                 disabled={zoneLoading}
+                maxVisibleOptions={2}
               />
             </div>
 

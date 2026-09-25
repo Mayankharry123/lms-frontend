@@ -7,6 +7,8 @@ export interface EditUserPayload {
   phone?: string | null;
   zone?: string | null;
   zone_id?: string | null;
+  zones?: number[];
+  zone_ids?: number[];
   zone_name?: string | null;
   origination?: string | null;
   organisation_id?: string | null;
@@ -156,6 +158,12 @@ export async function updateUserDetails(
     if (payload.phone) formData.append('phone', payload.phone);
     if (payload.zone !== undefined && payload.zone !== null) formData.append('zone', String(payload.zone));
     if (payload.zone_id !== undefined && payload.zone_id !== null) formData.append('zone_id', String(payload.zone_id));
+    if (payload.zones && Array.isArray(payload.zones)) {
+      payload.zones.forEach((zoneId) => formData.append('zones[]', String(zoneId)));
+    }
+    if (payload.zone_ids && Array.isArray(payload.zone_ids)) {
+      payload.zone_ids.forEach((zoneId) => formData.append('zone_ids[]', String(zoneId)));
+    }
     if (payload.zone_name !== undefined && payload.zone_name !== null) formData.append('zone_name', String(payload.zone_name));
     if (payload.origination !== undefined && payload.origination !== null) formData.append('origination', String(payload.origination));
     if (payload.organisation_id !== undefined && payload.organisation_id !== null) formData.append('organisation_id', String(payload.organisation_id));

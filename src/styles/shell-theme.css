@@ -439,6 +439,35 @@
   }
 }
 
+/* Lead chat fills the area under the app header. Only the message thread scrolls. */
+html:has(.lead-chat-page),
+body:has(.lead-chat-page) {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-shell:has(.lead-chat-page) {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell:has(.lead-chat-page) > div.flex-1 {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell:has(.lead-chat-page) .app-main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .app-mobile-overlay {
   position: fixed;
   inset: 0;

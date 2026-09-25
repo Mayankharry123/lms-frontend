@@ -284,17 +284,24 @@ export async function getBrief(id: string): Promise<BriefItem> {
   return {
     id: String(idVal),
     briefId: String(briefIdVal ?? ''),
+    brief_id: String(briefIdVal ?? ''),
     briefName: String(briefNameVal ?? ''),
+    brand_id: String(raw['brand_id'] ?? (typeof raw['brand'] === 'object' ? (raw['brand'] as any)?.id : '') ?? ''),
     brandName: String(brandNameVal ?? ''),  // Store name for display
     productName: String(productNameVal ?? ''),
+    contact_person_id: String(contactPersonIdVal ?? ''),
     contactPerson: typeof contactPersonVal === 'object' ? contactPersonVal : String(contactPersonIdVal ?? ''),  // Store ID for dropdown
     modeOfCampaign: String(modeVal ?? ''),
     mediaType: String(mediaTypeVal ?? ''),
     priority: priorityVal,  // Store ID or object
+    priority_id: String(priorityIdVal ?? ''),
     budget: String(budgetVal ?? ''),
+    agency_id: String(agencyIdVal ?? ''),
     createdBy: createdByVal,  // Store ID or object for agency
+    assign_user_id: String(assignUserIdVal ?? ''),
     assignTo: assignToVal,  // Store ID or object
     status: String(statusVal ?? ''),
+    brief_status_id: String(briefStatusIdVal ?? ''),
     brief_status: briefStatusVal as BriefStatus,
     briefDetail: String(detailVal ?? ''),
     comment: String(commentVal ?? ''),

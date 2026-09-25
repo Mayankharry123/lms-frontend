@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import CreateBriefForm from './CreateBriefForm';
-import { listChildUsers, listChildPlannersByBrief } from '../../api/lookups';
+import { listChildPlaningUsers } from '../../api/lookups';
 import { usePermissions } from '../../hooks/SidebarMenuHooks';
 import MasterView from '../../components/ui/MasterView';
 import Pagination from '../../components/ui/Pagination';
@@ -30,7 +30,8 @@ import { setUnreadCount, setNotifications } from '../../redux/slices/notificatio
 import { getUnreadNotificationCount, listNotifications } from '../../services/notifications';
 import FilePreviewModal from '../../components/ui/FilePreviewModal';
 import { Eye } from 'lucide-react';
-import type { BriefCreateLocationState } from '../../utils/briefLeadPrefill';
+import { buildBriefInitialDataFromLead, type BriefCreateLocationState } from '../../utils/briefLeadPrefill';
+import { getLeadById } from '../../api/leads';
 import type { UserOption } from '../../types/lead/lead.types';
 
 type Brief = ServiceBriefItem;
@@ -73,7 +74,9 @@ const BriefPipeline: React.FC = () => {
   const navigate = useNavigate();
   const params = useParams();
   const location = useLocation();
-  const leadBriefPrefill = (location.state as BriefCreateLocationState | null)?.leadBriefPrefill;
+  const [leadBriefPrefill, setLeadBriefPrefill] = useState<Record<string, unknown> | undefined>(
+    (location.state as BriefCreateLocationState | null)?.leadBriefPrefill
+  );
 
   const handleEdit = (id: string) => navigate(ROUTES.BRIEF.EDIT(encodeURIComponent(id)));
   const handleView = (id: string) => navigate(ROUTES.BRIEF.DETAIL(encodeURIComponent(id)));
@@ -118,7 +121,10 @@ const BriefPipeline: React.FC = () => {
       setLoading(false);
     }
   };
-
+ /**
+ * Fetches the selected lead when creating a new Brief and pre-fills
+ * the Brief form with lead, contact person, brand, and agency details.
+ */
   useEffect(() => {
     const rawId = params.id;
     const id = rawId ? decodeURIComponent(rawId) : undefined;
@@ -130,8 +136,6 @@ const BriefPipeline: React.FC = () => {
     }
 
     if (location.pathname.endsWith('/edit') && id) {
-      // Try to find in-memory first, otherwise fetch single brief from API
-      const found = briefs.find(b => b.id === id) || null;
       const patchSubmissionFields = (item: any) => {
         // If item.submission_date exists, parse and add submissionDate/submissionTime
         if (item && item.submission_date) {
@@ -152,12 +156,6 @@ const BriefPipeline: React.FC = () => {
         }
         return item;
       };
-      if (found) {
-        setEditItem(patchSubmissionFields(found));
-        setViewItem(null);
-        return;
-      }
-
       const mounted = true;
       (async () => {
         try {
@@ -189,6 +187,31 @@ const BriefPipeline: React.FC = () => {
     setEditItem(null);
   }, [location.pathname, params.id, briefs]);
 
+  useEffect(() => {
+    if (!location.pathname.endsWith('/create')) return;
+
+    const leadId = new URLSearchParams(location.search).get('leadId')?.replace(/^#/, '');
+    if (!leadId) return;
+
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const lead = await getLeadById(leadId);
+        if (!mounted || !lead) return;
+        setLeadBriefPrefill(buildBriefInitialDataFromLead(lead));
+      } catch (err) {
+        console.error('Failed to fetch lead for brief creation', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [location.pathname, location.search]);
+
   // Fetch briefs from API when page or search changes
   useEffect(() => {
     let mounted = true;
@@ -215,7 +238,7 @@ const BriefPipeline: React.FC = () => {
   }, [currentPage, itemsPerPage, searchQuery]);
 
 
-  // Assign To options per brief row (fetched from child-planners-by-brief API)
+// Assign To options loaded per brief via child-planing-users?brief_id=
   const [assignOptionsByBriefId, setAssignOptionsByBriefId] = useState<Record<string, UserOption[]>>({});
 
   useEffect(() => {
@@ -226,27 +249,28 @@ const BriefPipeline: React.FC = () => {
         setAssignOptionsByBriefId({});
         return;
       }
-
-      const results = await Promise.all(
-        currentData.map(async (brief) => {
-          try {
-            const users = await listChildPlannersByBrief(brief.id);
-            return [brief.id, users.map((u) => ({ id: u.id, name: u.name }))] as const;
-          } catch (err) {
-            console.error(`Failed to fetch assign to users for brief ${brief.id}:`, err);
+      try {
+        const entries = await Promise.all(
+          currentData.map(async (brief) => {
             try {
-              const users = await listChildUsers(1000);
-              return [brief.id, users.map((u) => ({ id: u.id, name: u.name }))] as const;
-            } catch (fallbackErr) {
-              console.error(`Failed fallback assign to users for brief ${brief.id}:`, fallbackErr);
+              const contactPersonId = brief.contact_person_id
+                || (typeof brief.contactPerson === 'object' && brief.contactPerson
+                  ? (brief.contactPerson as { id?: string | number }).id
+                  : brief.contactPerson);
+              const users = await listChildPlaningUsers(brief.id, contactPersonId as string | number | undefined);
+              return [brief.id, users.map((user) => ({ id: user.id, name: user.name }))] as const;
+            } catch (err) {
+              console.error(`Failed to fetch planning users for brief ${brief.id}:`, err);
               return [brief.id, []] as const;
             }
-          }
-        })
-      );
+          })
+        );
 
-      if (cancelled) return;
-      setAssignOptionsByBriefId(Object.fromEntries(results));
+        if (!cancelled) setAssignOptionsByBriefId(Object.fromEntries(entries));
+      } catch (err) {
+        console.error('Failed to fetch child planning users:', err);
+        if (!cancelled) setAssignOptionsByBriefId({});
+      }
     };
 
     fetchAssignOptionsForPage();

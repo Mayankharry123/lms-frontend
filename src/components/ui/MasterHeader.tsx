@@ -18,6 +18,7 @@ interface MasterHeaderProps {
   signInIcon?: React.ReactNode;
   showCreateButton?: boolean;
   createPermissionSlug?: string;
+  extraActions?: React.ReactNode;
   endContent?: React.ReactNode;
   className?: string;
 }
@@ -34,6 +35,7 @@ const MasterHeader: React.FC<MasterHeaderProps> = ({
   signInIcon,
   showCreateButton = true,
   createPermissionSlug,
+  extraActions,
   endContent,
   className = '',
 }) => {
@@ -65,8 +67,9 @@ const MasterHeader: React.FC<MasterHeaderProps> = ({
         )}
       </div>
 
-      {/* Right Side - Sign In and Create Buttons */}
-      <div className={`w-full min-w-0 flex items-center justify-end gap-3 ${endContent ? 'sm:flex-1 sm:max-w-[60%]' : 'sm:w-auto sm:flex-1'}`}>
+      {/* Right Side - Extra actions, Sign In, and Create Buttons */}
+      <div className={`w-full min-w-0 flex flex-wrap items-center justify-end gap-3 ${endContent ? 'sm:flex-1 sm:max-w-[60%]' : 'sm:w-auto sm:flex-1'}`}>
+        {extraActions}
         {endContent}
         {showSignInButton && onSignInClick && (
           signInIcon ? (

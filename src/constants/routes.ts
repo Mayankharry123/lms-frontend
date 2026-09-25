@@ -5,7 +5,9 @@
 export const ROUTE_SEGMENTS = {
   DASHBOARD: 'dashboard',
   DASHBOARD_SALES: 'dashboard/sales',
+  DASHBOARD_ZONE_DETAIL: 'dashboard/sales/zones/:zoneId',
   DASHBOARD_PLANNER: 'dashboard/planner',
+  DASHBOARD_ORGANISATION_PLANNER: 'dashboard/organisation-planner',
   COURSES: 'courses',
   NOTIFICATIONS: 'notifications',
   PROFILE: 'profile',
@@ -25,6 +27,7 @@ export const ROUTE_SEGMENTS = {
   LEAD_MANAGEMENT_MEETINGS: 'lead-management/meetings',
   LEAD_MANAGEMENT_CREATE: 'lead-management/create',
   LEAD_MANAGEMENT_EDIT: 'lead-management/edit/:id',
+  LEAD_MANAGEMENT_CHAT: 'lead-management/chat/:id',
   LEAD_MANAGEMENT_DETAIL: 'lead-management/:id',
   PRE_LEAD_VIEW: 'pre-lead/view',
   PRE_LEAD_CREATE: 'pre-lead/create',
@@ -94,7 +97,14 @@ export const ROUTES = {
   REGISTER: '/register',
   DASHBOARD: abs(ROUTE_SEGMENTS.DASHBOARD),
   DASHBOARD_SALES: abs(ROUTE_SEGMENTS.DASHBOARD_SALES),
+  DASHBOARD_ZONE_DETAIL: (zoneId: string) => `/dashboard/sales/zones/${encodeURIComponent(zoneId)}`,
   DASHBOARD_PLANNER: abs(ROUTE_SEGMENTS.DASHBOARD_PLANNER),
+  DASHBOARD_ORGANISATION_PLANNER: (organisationId: string, organisationName?: string) => {
+    const params = new URLSearchParams();
+    params.set('organisation_id', organisationId);
+    if (organisationName) params.set('organisation_name', organisationName);
+    return `/dashboard/organisation-planner?${params.toString()}`;
+  },
   COURSES: abs(ROUTE_SEGMENTS.COURSES),
   PROFILE: abs(ROUTE_SEGMENTS.PROFILE),
   SETTINGS: '/settings',
@@ -117,6 +127,7 @@ export const ROUTES = {
     MEETINGS: abs(ROUTE_SEGMENTS.LEAD_MANAGEMENT_MEETINGS),
     CREATE: abs(ROUTE_SEGMENTS.LEAD_MANAGEMENT_CREATE),
     EDIT: (id: string) => `/lead-management/edit/${id}`,
+    CHAT: (id: string) => `/lead-management/chat/${encodeURIComponent(id)}`,
     DETAIL: (id: string) => `/lead-management/${id}`,
     MEETING_SCHEDULE: abs(ROUTE_SEGMENTS.MEETING_SCHEDULE),
     MEETING_SCHEDULE_WITH_LEAD: (leadId: string) =>
