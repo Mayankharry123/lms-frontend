@@ -6,8 +6,10 @@ import {
   type DeviceData,
   type DeviceInventoryFilterParams,
 } from '../services/DeviceInventory';
+import { isAbortError, serializeRequestKey } from '../utils/requestControl';
 
 const DEFAULT_PAGE_SIZE = 10;
+const FILTER_DEBOUNCE_MS = 300;
 
 type UseDeviceInventoryListOptions = {
   pageSize?: number;
@@ -23,8 +25,8 @@ export function useDeviceInventoryList({
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const requestIdRef = useRef(0);
   const hasLoadedRef = useRef(false);
+  const lastFilterKeyRef = useRef('');
 
   const totalPages = useMemo(() => {
     const pages = Math.ceil(totalItems / pageSize);
@@ -38,10 +40,16 @@ export function useDeviceInventoryList({
   }, [currentPage, totalPages]);
 
   useEffect(() => {
-    const requestId = ++requestIdRef.current;
-    const isInitialLoad = !hasLoadedRef.current;
+    const filters = getFilters();
+    const filterKey = serializeRequestKey(filters);
+    const filtersChanged = lastFilterKeyRef.current !== filterKey;
+    lastFilterKeyRef.current = filterKey;
+
+    const controller = new AbortController();
+    const delay = hasLoadedRef.current && filtersChanged ? FILTER_DEBOUNCE_MS : 0;
 
     const load = async () => {
+      const isInitialLoad = !hasLoadedRef.current;
       try {
         if (isInitialLoad) {
           setLoading(true);
@@ -49,30 +57,41 @@ export function useDeviceInventoryList({
           setRefreshing(true);
         }
 
-        const res = await listDeviceInventory({
-          page: currentPage,
-          per_page: pageSize,
-          ...getFilters(),
-        });
+        const res = await listDeviceInventory(
+          {
+            page: currentPage,
+            per_page: pageSize,
+            ...filters,
+          },
+          { signal: controller.signal }
+        );
 
-        if (requestId !== requestIdRef.current) return;
+        if (controller.signal.aborted) return;
 
         setData(Array.isArray(res.data) ? res.data : []);
         setTotalItems(Number(res.total_records || 0));
         hasLoadedRef.current = true;
-      } catch {
-        if (requestId !== requestIdRef.current) return;
+      } catch (error) {
+        if (isAbortError(error) || controller.signal.aborted) return;
         setData([]);
         setTotalItems(0);
         hasLoadedRef.current = true;
       } finally {
-        if (requestId !== requestIdRef.current) return;
-        setLoading(false);
-        setRefreshing(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     };
 
-    void load();
+    const timer = window.setTimeout(() => {
+      void load();
+    }, delay);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [currentPage, getFilters, pageSize]);
 
   const resetToFirstPage = useCallback(() => {

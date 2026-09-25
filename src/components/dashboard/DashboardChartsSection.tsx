@@ -30,22 +30,12 @@ import PlannerOrganisationTable from './PlannerOrganisationTable';
 import ZoneLeadPerformanceCards from './ZoneLeadPerformanceCards';
 
 import {
-
   ChartsSectionHeader,
-
-  formatCount,
-
-  formatCurrency,
-
   MetricChartCard,
-
   PipelineChartCard,
-
   StatusPieChartCard,
-
-  truncateLabel,
-
 } from './chartShared';
+import { formatCount, formatCurrency, truncateLabel } from '../../utils/dashboardFormat';
 
 
 

@@ -2,35 +2,47 @@ import React from 'react';
 import ModalPopup from '../../components/ui/ModalPopup';
 import type { DeviceData } from '../../types/inventory.types';
 import {
+  collectDeviceMediaImages,
   DEVICE_DETAIL_SECTIONS,
-  DEVICE_IMAGE_FIELDS,
   formatDeviceFieldLabel,
   getDeviceFieldValue,
 } from './deviceInventoryConfig.ts';
 
 type DeviceDetailModalProps = {
   device: DeviceData | null;
+  loading?: boolean;
   onClose: () => void;
 };
 
-const isImageUrl = (value: string) =>
-  /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(value) ||
-  value.includes('cloudfront.net') ||
-  value.includes('/images/');
+const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({
+  device,
+  loading = false,
+  onClose,
+}) => {
+  if (!device && !loading) return null;
 
-const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({ device, onClose }) => {
-  if (!device) return null;
-
-  const title = device.device_name?.trim() || `Device #${device.device_id || device.device_details_id}`;
+  const title = loading
+    ? 'Loading screen details'
+    : device?.device_name?.trim() ||
+      device?.screen_id?.trim() ||
+      `Screen #${device?.device_id || device?.device_details_id}`;
+  const mediaImages = device ? collectDeviceMediaImages(device) : [];
 
   return (
     <ModalPopup
-      show={Boolean(device)}
+      show={Boolean(device) || loading}
       onClose={onClose}
       title={title}
       panelClassName="max-w-4xl"
       bodyClassName="max-h-[75vh] overflow-y-auto"
+      overlayClassName="z-[4000]"
+      frameClassName="z-[4001]"
     >
+      {loading || !device ? (
+        <div className="flex items-center justify-center py-16 text-sm text-gray-500">
+          Loading screen details…
+        </div>
+      ) : (
       <div className="space-y-6">
         <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
           <span className="font-medium text-gray-900">Device ID:</span> {device.device_id || '-'}
@@ -40,40 +52,36 @@ const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({ device, onClose }
           <span className="font-medium text-gray-900">City:</span> {device.city || '-'}
         </div>
 
-        {DEVICE_IMAGE_FIELDS.some((key) => getDeviceFieldValue(device, key) !== '-') && (
-          <section>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Images
-            </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {DEVICE_IMAGE_FIELDS.map((key) => {
-                const value = getDeviceFieldValue(device, key);
-                if (value === '-') return null;
-                return (
-                  <div
-                    key={key}
-                    className="overflow-hidden rounded-lg border border-gray-200 bg-white"
-                  >
-                    <div className="border-b border-gray-100 px-3 py-2 text-xs font-medium text-gray-600">
-                      {formatDeviceFieldLabel(key)}
-                    </div>
-                    {isImageUrl(value) ? (
-                      <a href={value} target="_blank" rel="noopener noreferrer">
-                        <img
-                          src={value}
-                          alt={formatDeviceFieldLabel(key)}
-                          className="h-36 w-full object-cover"
-                        />
-                      </a>
-                    ) : (
-                      <p className="px-3 py-4 text-sm text-gray-700 break-all">{value}</p>
-                    )}
+        <section>
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            Related Media Images
+          </h3>
+          {mediaImages.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+              No media images available for this screen.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {mediaImages.map((image) => (
+                <div
+                  key={image.key}
+                  className="overflow-hidden rounded-lg border border-gray-200 bg-white"
+                >
+                  <div className="border-b border-gray-100 px-3 py-2 text-xs font-medium text-gray-600">
+                    {image.label}
                   </div>
-                );
-              })}
+                  <a href={image.url} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={image.url}
+                      alt={image.label}
+                      className="h-44 w-full object-cover"
+                    />
+                  </a>
+                </div>
+              ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
         {DEVICE_DETAIL_SECTIONS.map((section) => {
           const rows = section.fields
@@ -108,6 +116,7 @@ const DeviceDetailModal: React.FC<DeviceDetailModalProps> = ({ device, onClose }
           );
         })}
       </div>
+      )}
     </ModalPopup>
   );
 };

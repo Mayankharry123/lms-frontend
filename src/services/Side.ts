@@ -2,6 +2,11 @@
  * Recursively extract all permitted paths from the raw sidebar API response.
  * Use this for permission checks, not for sidebar UI.
  */
+import { ROUTES } from '../constants/routes';
+
+const DEVICE_INVENTORY_PATH = ROUTES.INVENTORY_DEVICE;
+const DEVICE_INVENTORY_CLONE_PATH = ROUTES.INVENTORY_DEVICE_CLONE;
+
 export function extractAllPaths(apiItems: ApiSidebarItem[]): string[] {
   const paths: string[] = [];
   
@@ -24,6 +29,10 @@ export function extractAllPaths(apiItems: ApiSidebarItem[]): string[] {
   }
   recurse(apiItems);
   
+  if (paths.includes(DEVICE_INVENTORY_PATH)) {
+    paths.push(DEVICE_INVENTORY_CLONE_PATH);
+  }
+
   // Remove duplicates
   return [...new Set(paths)];
 }
@@ -166,6 +175,20 @@ export function mapMenu(apiItems: ApiSidebarItem[]): NavigationItem[] {
               icon_file: child.icon_file || undefined,
             }))
         : undefined;
+
+    if (children?.some((child) => child.path === DEVICE_INVENTORY_PATH)) {
+      const alreadyPresent = children.some((child) => child.path === DEVICE_INVENTORY_CLONE_PATH);
+      if (!alreadyPresent) {
+        const deviceIndex = children.findIndex((child) => child.path === DEVICE_INVENTORY_PATH);
+        const cloneItem = {
+          name: 'Device Inventory Clone',
+          path: DEVICE_INVENTORY_CLONE_PATH,
+          icon: null,
+          icon_file: children[deviceIndex]?.icon_file,
+        };
+        children.splice(deviceIndex + 1, 0, cloneItem);
+      }
+    }
 
     return {
       name: item.display_name || item.name || '',

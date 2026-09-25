@@ -9,6 +9,17 @@ export const formatDashboardCurrency = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+export const formatCount = formatDashboardNumber;
+export const formatCurrency = formatDashboardCurrency;
+
+export type ChartPoint = {
+  name: string;
+  value: number;
+};
+
+export const truncateLabel = (label: string, maxLength = 14) =>
+  label.length > maxLength ? `${label.slice(0, maxLength - 1)}…` : label;
+
 export const formatDashboardDate = (value?: string | null) => {
   if (!value) return '';
   const text = String(value).trim().replace(/\s+(AM|PM)$/i, ' $1');

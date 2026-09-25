@@ -5,10 +5,6 @@ import { AuthSessionHandler } from './guards';
 import { publicRoutes } from './public.routes';
 import { protectedRoutes } from './protected.routes';
 
-export { ROUTE_SEGMENTS, ROUTES } from '../constants/routes';
-export { permissionElement } from './PermissionElement';
-export { ProtectedRoute, PublicRoute, AuthSessionHandler, AuthLoadingScreen } from './guards';
-
 export const AppRoutes: React.FC = () => (
   <Router>
     <AuthSessionHandler />

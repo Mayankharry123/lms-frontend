@@ -45,6 +45,25 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
   // Defensive: ensure value is always an array
   const safeValue = Array.isArray(value) ? value : [];
 
+  const sortedFiltered = React.useMemo(() => {
+    if (!safeValue.length) return filtered;
+    const selected: typeof filtered = [];
+    const selectedSet = new Set<string>();
+
+    safeValue.forEach((val) => {
+      const match = filtered.find(
+        (o) => String(o.value) === String(val) || o.label === String(val)
+      );
+      if (match && !selectedSet.has(String(match.value))) {
+        selectedSet.add(String(match.value));
+        selected.push(match);
+      }
+    });
+
+    const unselected = filtered.filter((o) => !selectedSet.has(String(o.value)));
+    return [...selected, ...unselected];
+  }, [filtered, safeValue]);
+
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -142,10 +161,10 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
         style={{ maxHeight: `${maxHeight}px`, overflowY: 'auto' }}
       >
         <div className="msd-scroll msd-dropdown hide-scrollbar">
-          {filtered.length === 0 ? (
+          {sortedFiltered.length === 0 ? (
             <div className="px-4 py-2 text-gray-500">No matches found</div>
           ) : (
-            filtered.map((opt) => {
+            sortedFiltered.map((opt) => {
               const o = normalize(opt);
               const active = safeValue.includes(String(o.value));
               return (

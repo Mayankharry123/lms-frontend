@@ -6,12 +6,28 @@
 import axios, { AxiosHeaders } from 'axios';
 import type { AxiosInstance } from 'axios';
 import { applySspAuthHeaders, resolveSspBaseUrl } from './sspConfig';
+import { isAbortError } from '../utils/requestControl';
 
 const locationApiBaseUrl = resolveSspBaseUrl();
 
 const sspApiClient: AxiosInstance = axios.create({
   baseURL: locationApiBaseUrl,
   timeout: 30000,
+  paramsSerializer: {
+    // Axios does not consistently serialize array keys with the API's bracket notation.
+    serialize: (params) => {
+      const query = new URLSearchParams();
+      Object.entries(params || {}).forEach(([key, value]) => {
+        const values = Array.isArray(value) ? value : [value];
+        values.forEach((item) => {
+          if (item !== undefined && item !== null && item !== '') {
+            query.append(key, String(item));
+          }
+        });
+      });
+      return query.toString().replace(/%5B/gi, '[').replace(/%5D/gi, ']');
+    },
+  },
   headers: AxiosHeaders.from({
     'Content-Type': 'application/json',
     ...applySspAuthHeaders(),
@@ -31,7 +47,11 @@ sspApiClient.interceptors.request.use((config) => {
 sspApiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('SSP API Error:', error.message);
+    if (error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT') {
+      console.warn('SSP API request timed out:', error.config?.url || 'unknown endpoint');
+    } else {
+      console.error('SSP API Error:', error.message);
+    }
     throw error;
   }
 );
@@ -41,6 +61,7 @@ export interface LocationOption {
   id: string | number;
   name: string;
   label?: string;
+  value?: string | number;
 }
 
 export interface CascadingFilterOptions {
@@ -73,6 +94,11 @@ interface CacheEntry {
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 const apiCache = new Map<string, CacheEntry>();
 const pendingRequests = new Map<string, Promise<LocationOption[]>>();
+let locationRequestSignal: AbortSignal | undefined;
+
+export function setLocationApiSignal(signal?: AbortSignal): void {
+  locationRequestSignal = signal;
+}
 
 /**
  * Get from cache if valid, otherwise return null
@@ -97,6 +123,7 @@ function setCache(key: string, data: LocationOption[]): void {
  * Transform API response data to standard format
  */
 function transformToOptions(data: any): LocationOption[] {
+  // Normalize the API's supported response shapes for all dropdown components.
   if (!data) return [];
 
   // ✅ handle wrapped API response
@@ -123,6 +150,7 @@ function transformToOptions(data: any): LocationOption[] {
         id: item.id ?? item.value ?? objectIdValue ?? index,
         name: item.name || item.label || item.value || String(item),
         label: item.label || item.name || item.value,
+          value: item.value,
       };
     });
   }
@@ -144,6 +172,7 @@ function transformToOptions(data: any): LocationOption[] {
  * Uses local HTTP client routed through Vite proxy
  */
 async function makeApiRequest(endpoint: string, payload: any = {}): Promise<LocationOption[]> {
+  // Cache and deduplicate identical cascade requests to avoid repeated option loads.
   const cacheKey = `${endpoint}:${JSON.stringify(payload)}`;
 
   // Check cache first
@@ -203,6 +232,7 @@ async function makeApiRequest(endpoint: string, payload: any = {}): Promise<Loca
         url: endpoint,
         method: 'get',
         params: queryParams,
+        signal: locationRequestSignal,
         validateStatus: () => true,
       });
 
@@ -214,6 +244,7 @@ async function makeApiRequest(endpoint: string, payload: any = {}): Promise<Loca
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
+          signal: locationRequestSignal,
           validateStatus: () => true,
         });
       }
@@ -233,7 +264,14 @@ async function makeApiRequest(endpoint: string, payload: any = {}): Promise<Loca
       setCache(cacheKey, options);
       return options;
     } catch (error) {
-      console.error(`API request failed for ${endpoint}:`, error);
+      if (isAbortError(error)) {
+        throw error;
+      }
+      if (axios.isAxiosError(error) && (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT')) {
+        console.warn(`API request timed out for ${endpoint}`);
+      } else {
+        console.error(`API request failed for ${endpoint}:`, error);
+      }
       // Return empty array on error so UI doesn't break
       return [];
     } finally {
@@ -259,15 +297,15 @@ export async function fetchCountries(): Promise<LocationOption[]> {
   }
 }
 
-export async function fetchStates(countryId?: string | number): Promise<LocationOption[]> {
+export async function fetchStates(countryId?: string | number | Array<string | number>): Promise<LocationOption[]> {
   try {
-    const hasCountry = countryId !== undefined && countryId !== null && String(countryId).trim() !== '';
+    const countries = Array.isArray(countryId) ? countryId : countryId !== undefined && countryId !== null ? [countryId] : [];
+    const validCountries = countries
+      .filter((c) => c !== undefined && c !== null && String(c).trim() !== '')
+      .map((c) => String(c).trim());
+
     return await makeApiRequest('/location/states', {
-      // Backend contract requires `country` (string like "India").
-      country: hasCountry ? String(countryId) : null,
-      // Keep older keys for compatibility with mixed backend deployments.
-      country_id: hasCountry ? countryId : null,
-      ...(hasCountry ? { 'country[]': [String(countryId)] } : {}),
+      ...(validCountries.length ? { 'country[]': validCountries } : {}),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch states:', error);
@@ -275,13 +313,38 @@ export async function fetchStates(countryId?: string | number): Promise<Location
   }
 }
 
-export async function fetchCities(stateId?: string | number): Promise<LocationOption[]> {
+type LocationHierarchyFilters = {
+  country?: Array<string | number>;
+  state?: Array<string | number>;
+  city?: Array<string | number>;
+  zone?: Array<string | number>;
+  subZone?: Array<string | number>;
+  pincode?: Array<string | number>;
+  arterialRoute?: Array<string | number>;
+};
+
+const withLocationFilters = (filters: LocationHierarchyFilters): Record<string, Array<string | number>> => {
+  // Keep location filters in the same bracketed multi-value format across endpoints.
+  const payload: Record<string, Array<string | number>> = {};
+  Object.entries(filters).forEach(([key, values]) => {
+    if (values?.length) payload[`${key === 'subZone' ? 'sub_zone_area' : key}[]`] = values.map(String);
+  });
+  return payload;
+};
+
+export async function fetchCities(
+  stateIds?: string | number | Array<string | number>,
+  filters: LocationHierarchyFilters = {}
+): Promise<LocationOption[]> {
   try {
-    const hasState = stateId !== undefined && stateId !== null && String(stateId).trim() !== '';
+    const selectedStates = Array.isArray(stateIds) ? stateIds : [stateIds];
+    const stateValues = selectedStates
+      .filter((state) => state !== undefined && state !== null && String(state).trim() !== '')
+      .map((state) => String(state));
+
     return await makeApiRequest('/location/cities', {
-      state: hasState ? String(stateId) : null,
-      state_id: hasState ? stateId : null,
-      ...(hasState ? { 'state[]': [String(stateId)] } : {}),
+      ...withLocationFilters(filters),
+      ...(stateValues.length ? { 'state[]': stateValues } : {}),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch cities:', error);
@@ -289,12 +352,14 @@ export async function fetchCities(stateId?: string | number): Promise<LocationOp
   }
 }
 
-export async function fetchZones(cityId?: string | number): Promise<LocationOption[]> {
+export async function fetchZones(
+  cityId?: string | number,
+  filters: LocationHierarchyFilters = {}
+): Promise<LocationOption[]> {
   try {
     const hasCity = cityId !== undefined && cityId !== null && String(cityId).trim() !== '';
     const payload = {
-      city: hasCity ? String(cityId) : null,
-      city_id: hasCity ? cityId : null,
+      ...withLocationFilters(filters),
       ...(hasCity ? { 'city[]': [String(cityId)] } : {}),
     };
 
@@ -312,12 +377,14 @@ export async function fetchZones(cityId?: string | number): Promise<LocationOpti
   }
 }
 
-export async function fetchSubZones(zoneId?: string | number): Promise<LocationOption[]> {
+export async function fetchSubZones(
+  zoneId?: string | number,
+  filters: LocationHierarchyFilters = {}
+): Promise<LocationOption[]> {
   try {
     const hasZone = zoneId !== undefined && zoneId !== null && String(zoneId).trim() !== '';
     return await makeApiRequest('/location/sub-zones', {
-      zone: hasZone ? String(zoneId) : null,
-      zone_id: hasZone ? zoneId : null,
+      ...withLocationFilters(filters),
       ...(hasZone ? { 'zone[]': [String(zoneId)] } : {}),
     });
   } catch (error) {
@@ -326,13 +393,24 @@ export async function fetchSubZones(zoneId?: string | number): Promise<LocationO
   }
 }
 
-export async function fetchPincodes(subZoneId?: string | number): Promise<LocationOption[]> {
+export type PincodeFilterParams = {
+  city?: Array<string | number>;
+  state?: Array<string | number>;
+  country?: Array<string | number>;
+  publisher?: Array<string | number>;
+  zone?: Array<string | number>;
+  subZone?: Array<string | number>;
+  arterialRoute?: Array<string | number>;
+};
+
+export async function fetchPincodes(
+  filters: PincodeFilterParams = {}
+): Promise<LocationOption[]> {
   try {
-    const hasSubZone = subZoneId !== undefined && subZoneId !== null && String(subZoneId).trim() !== '';
     return await makeApiRequest('/location/pincodes', {
-      sub_zone: hasSubZone ? String(subZoneId) : null,
-      subzone_id: hasSubZone ? subZoneId : null,
-      ...(hasSubZone ? { 'sub_zone[]': [String(subZoneId)] } : {}),
+      ...withLocationFilters(filters),
+      ...(filters.subZone ? { 'sub_zone_area[]': filters.subZone } : {}),
+      ...(filters.zone ? { 'zone[]': filters.zone } : {}),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch pincodes:', error);
@@ -340,12 +418,14 @@ export async function fetchPincodes(subZoneId?: string | number): Promise<Locati
   }
 }
 
-export async function fetchArterialRoutes(cityId?: string | number): Promise<LocationOption[]> {
+export async function fetchArterialRoutes(
+  cityId?: string | number,
+  filters: LocationHierarchyFilters = {}
+): Promise<LocationOption[]> {
   try {
     const hasCity = cityId !== undefined && cityId !== null && String(cityId).trim() !== '';
     return await makeApiRequest('/location/arterial-routes', {
-      city: hasCity ? String(cityId) : null,
-      city_id: hasCity ? cityId : null,
+      ...withLocationFilters(filters),
       ...(hasCity ? { 'city[]': [String(cityId)] } : {}),
     });
   } catch (error) {
@@ -356,21 +436,61 @@ export async function fetchArterialRoutes(cityId?: string | number): Promise<Loc
 
 // ============ CATEGORY APIs ============
 
-export async function fetchModeOfMedia(): Promise<LocationOption[]> {
+type CategoryFilters = {
+  state?: CategorySelection;
+  city?: CategorySelection;
+  zone?: CategorySelection;
+  subZone?: CategorySelection;
+  pincode?: CategorySelection;
+  arterialRoute?: CategorySelection;
+  mainCategory?: CategorySelection;
+  category?: CategorySelection;
+  subCategory?: CategorySelection;
+};
+
+export async function fetchModeOfMedia(filters: CategoryFilters = {}): Promise<LocationOption[]> {
   try {
-    return await makeApiRequest('/category/mode-of-media', {});
+    return await makeApiRequest('/category/mode-of-media', {
+      ...categorySelectionPayload('state', filters.state),
+      ...categorySelectionPayload('city', filters.city),
+      ...categorySelectionPayload('zone', filters.zone),
+      ...categorySelectionPayload('sub_zone_area', filters.subZone),
+      ...categorySelectionPayload('pincode', filters.pincode),
+      ...categorySelectionPayload('arterial_route', filters.arterialRoute),
+    });
   } catch (error) {
     console.warn('Warning: Could not fetch mode of media:', error);
     return [];
   }
 }
 
-export async function fetchPublishers(modeOfMedia?: string | number): Promise<LocationOption[]> {
+type CategorySelection = string | number | Array<string | number>;
+
+const categorySelectionPayload = (key: string, selection?: CategorySelection): Record<string, string[]> => {
+  // Convert one or many selected values into the query shape expected by category APIs.
+  if (selection === undefined || selection === null) return {};
+  const values = (Array.isArray(selection) ? selection : [selection])
+    .filter((value) => String(value).trim() !== '')
+    .map(String);
+  return values.length ? { [`${key}[]`]: values } : {};
+};
+
+export async function fetchPublishers(
+  modeOfMedia?: CategorySelection,
+  filters: CategoryFilters = {}
+): Promise<LocationOption[]> {
   try {
-    const hasMode = modeOfMedia !== undefined && modeOfMedia !== null && String(modeOfMedia).trim() !== '';
     return await makeApiRequest('/category/publishers', {
-      mode_of_media: hasMode ? String(modeOfMedia) : null,
-      ...(hasMode ? { 'mode_of_media[]': [String(modeOfMedia)] } : {}),
+      ...categorySelectionPayload('mode_of_media', modeOfMedia),
+      ...categorySelectionPayload('state', filters.state),
+      ...categorySelectionPayload('city', filters.city),
+      ...categorySelectionPayload('zone', filters.zone),
+      ...categorySelectionPayload('sub_zone_area', filters.subZone),
+      ...categorySelectionPayload('pincode', filters.pincode),
+      ...categorySelectionPayload('arterial_route', filters.arterialRoute),
+      ...categorySelectionPayload('main_category', filters.mainCategory),
+      ...categorySelectionPayload('category', filters.category),
+      ...categorySelectionPayload('sub_category', filters.subCategory),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch publishers:', error);
@@ -378,13 +498,19 @@ export async function fetchPublishers(modeOfMedia?: string | number): Promise<Lo
   }
 }
 
-export async function fetchMainCategories(publisher?: string | number): Promise<LocationOption[]> {
+export async function fetchMainCategories(
+  publisher?: CategorySelection,
+  filters: CategoryFilters = {}
+): Promise<LocationOption[]> {
   try {
-    const hasPublisher = publisher !== undefined && publisher !== null && String(publisher).trim() !== '';
     return await makeApiRequest('/category/main', {
-      publisher_id: hasPublisher ? publisher : null,
-      publisher: hasPublisher ? String(publisher) : null,
-      ...(hasPublisher ? { 'publisher[]': [String(publisher)] } : {}),
+      ...categorySelectionPayload('publisher', publisher),
+      ...categorySelectionPayload('state', filters.state),
+      ...categorySelectionPayload('city', filters.city),
+      ...categorySelectionPayload('zone', filters.zone),
+      ...categorySelectionPayload('sub_zone_area', filters.subZone),
+      ...categorySelectionPayload('pincode', filters.pincode),
+      ...categorySelectionPayload('arterial_route', filters.arterialRoute),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch main categories:', error);
@@ -392,14 +518,21 @@ export async function fetchMainCategories(publisher?: string | number): Promise<
   }
 }
 
-export async function fetchCategories(mainCategory?: string | number): Promise<LocationOption[]> {
+export async function fetchCategories(
+  mainCategory?: CategorySelection,
+  publisher?: CategorySelection,
+  filters: CategoryFilters = {}
+): Promise<LocationOption[]> {
   try {
-    const hasMainCategory =
-      mainCategory !== undefined && mainCategory !== null && String(mainCategory).trim() !== '';
     return await makeApiRequest('/category/list', {
-      main_category: hasMainCategory ? String(mainCategory) : null,
-      main_category_id: hasMainCategory ? mainCategory : null,
-      ...(hasMainCategory ? { 'main_category[]': [String(mainCategory)] } : {}),
+      ...categorySelectionPayload('main_category', mainCategory),
+      ...categorySelectionPayload('publisher', publisher),
+      ...categorySelectionPayload('state', filters.state),
+      ...categorySelectionPayload('city', filters.city),
+      ...categorySelectionPayload('zone', filters.zone),
+      ...categorySelectionPayload('sub_zone_area', filters.subZone),
+      ...categorySelectionPayload('pincode', filters.pincode),
+      ...categorySelectionPayload('arterial_route', filters.arterialRoute),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch categories:', error);
@@ -407,13 +540,23 @@ export async function fetchCategories(mainCategory?: string | number): Promise<L
   }
 }
 
-export async function fetchSubCategories(categoryId?: string | number): Promise<LocationOption[]> {
+export async function fetchSubCategories(
+  categoryId?: CategorySelection,
+  mainCategory?: CategorySelection,
+  publisher?: CategorySelection,
+  filters: CategoryFilters = {}
+): Promise<LocationOption[]> {
   try {
-    const hasCategory = categoryId !== undefined && categoryId !== null && String(categoryId).trim() !== '';
     return await makeApiRequest('/category/sub', {
-      category: hasCategory ? String(categoryId) : null,
-      category_id: hasCategory ? categoryId : null,
-      ...(hasCategory ? { 'category[]': [String(categoryId)] } : {}),
+      ...categorySelectionPayload('category', categoryId),
+      ...categorySelectionPayload('main_category', mainCategory),
+      ...categorySelectionPayload('publisher', publisher),
+      ...categorySelectionPayload('state', filters.state),
+      ...categorySelectionPayload('city', filters.city),
+      ...categorySelectionPayload('zone', filters.zone),
+      ...categorySelectionPayload('sub_zone_area', filters.subZone),
+      ...categorySelectionPayload('pincode', filters.pincode),
+      ...categorySelectionPayload('arterial_route', filters.arterialRoute),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch sub-categories:', error);
@@ -423,22 +566,75 @@ export async function fetchSubCategories(categoryId?: string | number): Promise<
 
 // ============ DEVICE APIs ============
 
-export async function fetchLocationTypes(): Promise<LocationOption[]> {
+export async function fetchLocationTypes(
+  publisher?: DeviceSelection,
+  filters: DeviceParentFilters = {}
+): Promise<LocationOption[]> {
   try {
-    return await makeApiRequest('/device/location-types', {});
+    return await makeApiRequest('/device/location-types', {
+      ...deviceSelectionPayload('state', filters.state),
+      ...deviceSelectionPayload('city', filters.city),
+      ...deviceSelectionPayload('zone', filters.zone),
+      ...deviceSelectionPayload('sub_zone_area', filters.subZone),
+      ...deviceSelectionPayload('pincode', filters.pincode),
+      ...deviceSelectionPayload('arterial_route', filters.arterialRoute),
+      ...deviceSelectionPayload('publisher', publisher),
+      ...deviceSelectionPayload('main_category_name', filters.mainCategory),
+      ...deviceSelectionPayload('category_name', filters.category),
+      ...deviceSelectionPayload('sub_category_name', filters.subCategory),
+      ...deviceSelectionPayload('property', filters.property),
+    });
   } catch (error) {
     console.warn('Warning: Could not fetch location types:', error);
     return [];
   }
 }
 
-export async function fetchOrientations(locationType?: string | number): Promise<LocationOption[]> {
+type DeviceSelection = string | number | Array<string | number>;
+type DeviceParentFilters = {
+  state?: DeviceSelection;
+  city?: DeviceSelection;
+  zone?: DeviceSelection;
+  subZone?: DeviceSelection;
+  pincode?: DeviceSelection;
+  arterialRoute?: DeviceSelection;
+  publisher?: DeviceSelection;
+  locationType?: DeviceSelection;
+  orientation?: DeviceSelection;
+  resolution?: DeviceSelection;
+  property?: DeviceSelection;
+  mainCategory?: DeviceSelection;
+  category?: DeviceSelection;
+  subCategory?: DeviceSelection;
+};
+
+const deviceSelectionPayload = (key: string, selection?: DeviceSelection): Record<string, string[]> => {
+  // Share multi-value serialization across device option endpoints and cascading filters.
+  if (selection === undefined || selection === null) return {};
+  const values = (Array.isArray(selection) ? selection : [selection])
+    .filter((value) => String(value).trim() !== '')
+    .map(String);
+  return values.length ? { [`${key}[]`]: values } : {};
+};
+
+export async function fetchOrientations(
+  locationType?: DeviceSelection,
+  filters: DeviceParentFilters = {}
+): Promise<LocationOption[]> {
   try {
-    const hasLocationType =
-      locationType !== undefined && locationType !== null && String(locationType).trim() !== '';
     return await makeApiRequest('/device/orientations', {
-      location_type: hasLocationType ? String(locationType) : null,
-      ...(hasLocationType ? { 'location_type[]': [String(locationType)] } : {}),
+      ...deviceSelectionPayload('location_type', locationType),
+      ...deviceSelectionPayload('state', filters.state),
+      ...deviceSelectionPayload('city', filters.city),
+      ...deviceSelectionPayload('zone', filters.zone),
+      ...deviceSelectionPayload('sub_zone_area', filters.subZone),
+      ...deviceSelectionPayload('pincode', filters.pincode),
+      ...deviceSelectionPayload('arterial_route', filters.arterialRoute),
+      ...deviceSelectionPayload('publisher', filters.publisher),
+      ...deviceSelectionPayload('main_category_name', filters.mainCategory),
+      ...deviceSelectionPayload('category_name', filters.category),
+      ...deviceSelectionPayload('sub_category_name', filters.subCategory),
+      ...deviceSelectionPayload('property', filters.property),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch orientations:', error);
@@ -446,13 +642,25 @@ export async function fetchOrientations(locationType?: string | number): Promise
   }
 }
 
-export async function fetchResolutions(orientation?: string | number): Promise<LocationOption[]> {
+export async function fetchResolutions(
+  orientation?: DeviceSelection,
+  filters: DeviceParentFilters = {}
+): Promise<LocationOption[]> {
   try {
-    const hasOrientation =
-      orientation !== undefined && orientation !== null && String(orientation).trim() !== '';
     return await makeApiRequest('/device/resolutions', {
-      orientation: hasOrientation ? String(orientation) : null,
-      ...(hasOrientation ? { 'orientation[]': [String(orientation)] } : {}),
+      ...deviceSelectionPayload('orientation', orientation),
+      ...deviceSelectionPayload('state', filters.state),
+      ...deviceSelectionPayload('city', filters.city),
+      ...deviceSelectionPayload('zone', filters.zone),
+      ...deviceSelectionPayload('sub_zone_area', filters.subZone),
+      ...deviceSelectionPayload('pincode', filters.pincode),
+      ...deviceSelectionPayload('arterial_route', filters.arterialRoute),
+      ...deviceSelectionPayload('publisher', filters.publisher),
+      ...deviceSelectionPayload('location_type', filters.locationType),
+      ...deviceSelectionPayload('main_category_name', filters.mainCategory),
+      ...deviceSelectionPayload('category_name', filters.category),
+      ...deviceSelectionPayload('sub_category_name', filters.subCategory),
+      ...deviceSelectionPayload('property', filters.property),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch resolutions:', error);
@@ -460,12 +668,26 @@ export async function fetchResolutions(orientation?: string | number): Promise<L
   }
 }
 
-export async function fetchScreenLocations(resolution?: string | number): Promise<LocationOption[]> {
+export async function fetchScreenLocations(
+  resolution?: DeviceSelection,
+  filters: DeviceParentFilters = {}
+): Promise<LocationOption[]> {
   try {
-    const hasResolution = resolution !== undefined && resolution !== null && String(resolution).trim() !== '';
     return await makeApiRequest('/device/screen-locations', {
-      resolution: hasResolution ? String(resolution) : null,
-      ...(hasResolution ? { 'resolution[]': [String(resolution)] } : {}),
+      ...deviceSelectionPayload('resolution', resolution),
+      ...deviceSelectionPayload('state', filters.state),
+      ...deviceSelectionPayload('city', filters.city),
+      ...deviceSelectionPayload('zone', filters.zone),
+      ...deviceSelectionPayload('sub_zone_area', filters.subZone),
+      ...deviceSelectionPayload('pincode', filters.pincode),
+      ...deviceSelectionPayload('arterial_route', filters.arterialRoute),
+      ...deviceSelectionPayload('publisher', filters.publisher),
+      ...deviceSelectionPayload('location_type', filters.locationType),
+      ...deviceSelectionPayload('orientation', filters.orientation),
+      ...deviceSelectionPayload('main_category_name', filters.mainCategory),
+      ...deviceSelectionPayload('category_name', filters.category),
+      ...deviceSelectionPayload('sub_category_name', filters.subCategory),
+      ...deviceSelectionPayload('property', filters.property),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch screen locations:', error);
@@ -473,13 +695,27 @@ export async function fetchScreenLocations(resolution?: string | number): Promis
   }
 }
 
-export async function fetchStretches(screenLocation?: string | number): Promise<LocationOption[]> {
+export async function fetchStretches(
+  screenLocation?: DeviceSelection,
+  filters: DeviceParentFilters = {}
+): Promise<LocationOption[]> {
   try {
-    const hasScreenLocation =
-      screenLocation !== undefined && screenLocation !== null && String(screenLocation).trim() !== '';
     return await makeApiRequest('/device/stretches', {
-      screen_location: hasScreenLocation ? String(screenLocation) : null,
-      ...(hasScreenLocation ? { 'screen_location[]': [String(screenLocation)] } : {}),
+      ...deviceSelectionPayload('screen_location', screenLocation),
+      ...deviceSelectionPayload('state', filters.state),
+      ...deviceSelectionPayload('city', filters.city),
+      ...deviceSelectionPayload('zone', filters.zone),
+      ...deviceSelectionPayload('sub_zone_area', filters.subZone),
+      ...deviceSelectionPayload('pincode', filters.pincode),
+      ...deviceSelectionPayload('arterial_route', filters.arterialRoute),
+      ...deviceSelectionPayload('publisher', filters.publisher),
+      ...deviceSelectionPayload('location_type', filters.locationType),
+      ...deviceSelectionPayload('orientation', filters.orientation),
+      ...deviceSelectionPayload('resolution', filters.resolution),
+      ...deviceSelectionPayload('main_category_name', filters.mainCategory),
+      ...deviceSelectionPayload('category_name', filters.category),
+      ...deviceSelectionPayload('sub_category_name', filters.subCategory),
+      ...deviceSelectionPayload('property', filters.property),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch stretches:', error);
@@ -487,12 +723,36 @@ export async function fetchStretches(screenLocation?: string | number): Promise<
   }
 }
 
-export async function fetchProperties(stretch?: string | number): Promise<LocationOption[]> {
+type PropertyFilters = DeviceParentFilters & {
+  publisher?: DeviceSelection;
+  locationType?: DeviceSelection;
+  orientation?: DeviceSelection;
+  resolution?: DeviceSelection;
+  screenLocation?: DeviceSelection;
+};
+
+export async function fetchProperties(
+  stretch?: DeviceSelection,
+  filters: PropertyFilters = {}
+): Promise<LocationOption[]> {
   try {
-    const hasStretch = stretch !== undefined && stretch !== null && String(stretch).trim() !== '';
     return await makeApiRequest('/device/properties', {
-      stretch: hasStretch ? String(stretch) : null,
-      ...(hasStretch ? { 'stretch[]': [String(stretch)] } : {}),
+      ...deviceSelectionPayload('stretch', stretch),
+      ...deviceSelectionPayload('state', filters.state),
+      ...deviceSelectionPayload('city', filters.city),
+      ...deviceSelectionPayload('zone', filters.zone),
+      ...deviceSelectionPayload('sub_zone_area', filters.subZone),
+      ...deviceSelectionPayload('pincode', filters.pincode),
+      ...deviceSelectionPayload('arterial_route', filters.arterialRoute),
+      ...deviceSelectionPayload('publisher', filters.publisher),
+      ...deviceSelectionPayload('location_type', filters.locationType),
+      ...deviceSelectionPayload('orientation', filters.orientation),
+      ...deviceSelectionPayload('resolution', filters.resolution),
+      ...deviceSelectionPayload('screen_location', filters.screenLocation),
+      ...deviceSelectionPayload('main_category_name', filters.mainCategory),
+      ...deviceSelectionPayload('category_name', filters.category),
+      ...deviceSelectionPayload('sub_category_name', filters.subCategory),
+      ...deviceSelectionPayload('property', filters.property),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch properties:', error);

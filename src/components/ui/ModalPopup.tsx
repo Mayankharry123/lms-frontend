@@ -14,10 +14,23 @@ export type ModalPopupProps = {
   panelClassName?: string;
   /** Appended to body under header (e.g. `max-h-[80vh] overflow-y-auto`). */
   bodyClassName?: string;
+  /** Appended to backdrop (default `z-[100]`). */
+  overlayClassName?: string;
+  /** Appended to the full-screen dialog frame (default `z-[101]`). */
+  frameClassName?: string;
 };
 
 /** Simple centered dialog: backdrop + Escape close, header with optional title and ×. */
-const ModalPopup: React.FC<ModalPopupProps> = ({ show, onClose, title, children, panelClassName = '', bodyClassName = '' }) => {
+const ModalPopup: React.FC<ModalPopupProps> = ({
+  show,
+  onClose,
+  title,
+  children,
+  panelClassName = '',
+  bodyClassName = '',
+  overlayClassName = '',
+  frameClassName = '',
+}) => {
   const titleId = useId();
 
   useEffect(() => {
@@ -38,12 +51,12 @@ const ModalPopup: React.FC<ModalPopupProps> = ({ show, onClose, title, children,
   return (
     <>
       <div
-        className="fixed inset-0 z-[100] bg-black/40"
+        className={`fixed inset-0 z-[100] bg-black/40 ${overlayClassName}`.trim()}
         aria-hidden
         onClick={onClose}
       />  
       <div
-        className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none"
+        className={`fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none ${frameClassName}`.trim()}
         role="presentation"
       >
         <div

@@ -39,7 +39,7 @@ const MasterHeader: React.FC<MasterHeaderProps> = ({
   const canCreate = !createPermissionSlug ? false : hasPermission(createPermissionSlug);
   
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div className={`flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between ${className}`}>
       {/* Left Side - Breadcrumb */}
       <div className="flex-1 min-w-0 flex items-center">
         {showBreadcrumb && (

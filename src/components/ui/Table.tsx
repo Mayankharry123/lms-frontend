@@ -2,7 +2,8 @@ import React from 'react';
 import ActionMenu from './ActionMenu';
 import { Loader2 } from 'lucide-react';
 import { toTitleCase } from '../../utils';
-import { TableTextCell, useTableCellTooltip } from './TableCellTooltip';
+import { TableTextCell } from './TableCellTooltip';
+import { useTableCellTooltip } from '../../hooks/useTableCellTooltip';
 
 export type Column<T> = {
   /** unique key for the column */
