@@ -9,6 +9,7 @@
  */
 
 export * from './client';
+export * from './briefChat';
 export * from './leads';
 export * from './users';
 export * from './rbac';

@@ -20,7 +20,7 @@ import type { BriefLogItem } from '../../services/BriefLog';
 import { getPlannerStatuses } from '../../services/BriefLog';
 import SweetAlert from '../../utils/SweetAlert';
 import FilePreviewModal from '../../components/ui/FilePreviewModal';
-import { Eye } from 'lucide-react';
+import { Eye, MessageCircle } from 'lucide-react';
 
 // Data is fetched from API via `listBriefLogs` service
 
@@ -127,6 +127,43 @@ const BriefLog: React.FC = () => {
   const currentLogs = filteredLogs;
 
   const columns: Column<BriefLogItem>[] = [
+    {
+      key: 'chat',
+      header: 'CHAT',
+      minWidth: 72,
+      allowOverflow: true,
+      className: 'text-center whitespace-nowrap',
+      headerClassName: 'text-center',
+      render: (item) => (
+        <div className="flex items-center justify-center">
+          <button
+            type="button"
+            title="Chat"
+            aria-label={`Chat for brief ${item.brief_id ?? item.id}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              navigate(ROUTES.BRIEF.CHAT(String(item.brief_id ?? item.id)));
+            }}
+            className="app-icon-btn inline-flex items-center justify-center rounded-full border-0 text-white shadow-sm"
+            style={{
+              width: '2rem',
+              height: '2rem',
+              minWidth: '2rem',
+              padding: 0,
+              backgroundColor: '#f26222',
+              color: '#ffffff',
+            }}
+          >
+            <MessageCircle
+              className="h-4 w-4"
+              strokeWidth={2.25}
+              color="#ffffff"
+              style={{ width: 16, height: 16, stroke: '#ffffff', fill: 'none' }}
+            />
+          </button>
+        </div>
+      ),
+    },
     {
       key: 'brief_id',
       header: 'Brief Id',

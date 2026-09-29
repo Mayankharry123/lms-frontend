@@ -11,7 +11,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { listBrands } from '../../services/BrandMaster';
 import { listAgencies } from '../../services/AgencyMaster';
-import { listChildPlaningUsers } from '../../api/lookups';
+import { listChildUsers } from '../../api/lookups';
 import { listLeadContacts } from '../../services/AllLeads';
 import { fetchBriefStatuses } from '../../services/BriefStatus';
 import { getPriorities } from '../../services/Priority';
@@ -22,6 +22,8 @@ import { apiClient } from '../../utils/apiClient';
 import FilePreviewModal from '../../components/ui/FilePreviewModal';
 import { Eye } from 'lucide-react';
 import type { MasterFormWithSaveProps } from '../../types/pages/forms.types';
+
+const MAX_ATTACHMENT_SIZE_BYTES = 7 * 1024 * 1024;
 
 const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, initialData, mode = 'create' }) => {
   useEffect(() => {
@@ -502,26 +504,17 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
     }
   }, [mode]);
 
-  // Load Assign To options: child-planing-users?brief_id=&contact_person_id=
+  // Load Assign To options without the brief-specific planning-users endpoint.
   useEffect(() => {
     let mounted = true;
-    const contactPersonId = String(form.contactPerson || '').trim();
-
-    if (!contactPersonId) {
-      setUsers([]);
-      setUsersLoading(false);
-      setUsersError(null);
-      return;
-    }
 
     (async () => {
       try {
         setUsersLoading(true);
         setUsersError(null);
 
-        const briefId = initialData?.id ?? initialData?.uuid;
-        const hierarchyUsers = await listChildPlaningUsers(briefId, contactPersonId);
-        const opts = hierarchyUsers.map((u) => ({
+        const childUsers = await listChildUsers();
+        const opts = childUsers.map((u) => ({
           value: String(u.id),
           label: String(u.name),
         }));
@@ -549,7 +542,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
     return () => {
       mounted = false;
     };
-  }, [form.contactPerson, initialData, mode]);
+  }, [initialData, mode]);
 
 /**
   * Loads users from the planning hierarchy for the Assign To dropdown.
@@ -943,6 +936,8 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
       const ext = form.attachmentFile.name.split('.').pop()?.toLowerCase() || '';
       if (!['pdf', 'jpg', 'jpeg', 'png', 'docx', 'doc'].includes(ext)) {
         next.attachmentFile = 'Only PDF, JPG, PNG, and DOCX files are allowed.';
+      } else if (form.attachmentFile.size > MAX_ATTACHMENT_SIZE_BYTES) {
+        next.attachmentFile = 'File must be 7 MB or smaller.';
       }
     }
 
@@ -1040,8 +1035,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
       }
 
       if (form.attachmentFile) {
-        // Backend typically expects `attachment` (and some endpoints accept `attachment_file`).
-        // Send both keys to keep compatibility across environments.
+        // Both names are supported, and the service serializes the same File only once.
         payload.attachment = form.attachmentFile;
         payload.attachment_file = form.attachmentFile;
       }
@@ -1315,6 +1309,15 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                             setErrors(prev => ({
                               ...prev,
                               attachmentFile: 'Only PDF, JPG, PNG, and DOCX files are allowed.'
+                            }));
+                            setForm(prev => ({ ...prev, attachmentFile: null }));
+                            e.target.value = '';
+                            return;
+                          }
+                          if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
+                            setErrors(prev => ({
+                              ...prev,
+                              attachmentFile: 'File must be 7 MB or smaller.'
                             }));
                             setForm(prev => ({ ...prev, attachmentFile: null }));
                             e.target.value = '';

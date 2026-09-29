@@ -195,6 +195,16 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
           label: 'Create',
           isActive: true,
         });
+      } else if (parts[1] === 'chat' && parts[2]) {
+        const id = decodeURIComponent(parts[2]);
+        crumbs.push({
+          label: 'Brief Pipeline',
+          path: '/brief/Brief_Pipeline',
+        });
+        crumbs.push({
+          label: `Brief Chat #${id}`,
+          isActive: true,
+        });
       } else if (pathname.includes('/edit')) {
         const id = parts[1];
         crumbs.push({

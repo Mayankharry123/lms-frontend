@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { listLeadAssignHistory, sendLeadChatActivity } from '../api/leads';
+import { listBriefChatHistory, sendBriefChatActivity } from '../api/briefChat';
 import type { LeadAssignHistoryItem, ReminderBeforeUnit } from '../types/lead/lead.types';
 
 export type LeadChatSendPayload = {
   comment: string;
-  call_status_id: number;
+  call_status_id?: number;
   reminder: boolean;
   reminder_at?: string;
   reminder_before?: number;
@@ -12,6 +13,24 @@ export type LeadChatSendPayload = {
 };
 
 type HistoryMeta = Record<string, unknown> | undefined;
+
+type ChatHistoryApi = {
+  listHistory: typeof listLeadAssignHistory;
+  sendActivity: typeof sendLeadChatActivity;
+  invalidMessage: string;
+};
+
+const LEAD_CHAT_API: ChatHistoryApi = {
+  listHistory: listLeadAssignHistory,
+  sendActivity: sendLeadChatActivity,
+  invalidMessage: 'Invalid lead selected.',
+};
+
+export const BRIEF_CHAT_API: ChatHistoryApi = {
+  listHistory: listBriefChatHistory,
+  sendActivity: sendBriefChatActivity,
+  invalidMessage: 'Invalid brief selected.',
+};
 
 function readHistoryPage(meta: HistoryMeta): { currentPage: number; lastPage: number } {
   const pagination =
@@ -40,7 +59,7 @@ function withClientKeys(rows: LeadAssignHistoryItem[], page: number): LeadAssign
   }));
 }
 
-export function useLeadAssignHistory(leadId?: string) {
+export function useLeadAssignHistory(leadId?: string, chatApi: ChatHistoryApi = LEAD_CHAT_API) {
   const [messages, setMessages] = useState<LeadAssignHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -64,7 +83,7 @@ export function useLeadAssignHistory(leadId?: string) {
   const fetchHistory = useCallback(async (options?: { silent?: boolean }) => {
     if (!leadId) {
       setMessages([]);
-      setError('Invalid lead selected.');
+      setError(chatApi.invalidMessage);
       setLoading(false);
       setHasMore(false);
       hasMoreRef.current = false;
@@ -78,7 +97,7 @@ export function useLeadAssignHistory(leadId?: string) {
     }
     setError(null);
     try {
-      const result = await listLeadAssignHistory(leadId, { page: 1 });
+      const result = await chatApi.listHistory(leadId, { page: 1 });
       if (requestGen !== requestGenRef.current) return;
       setMessages(withClientKeys(result.data, 1));
       syncPagination(result.meta, 1);
@@ -93,7 +112,7 @@ export function useLeadAssignHistory(leadId?: string) {
         setLoading(false);
       }
     }
-  }, [leadId, syncPagination]);
+  }, [chatApi, leadId, syncPagination]);
 
   useEffect(() => {
     void fetchHistory();
@@ -109,7 +128,7 @@ export function useLeadAssignHistory(leadId?: string) {
     setOlderError(null);
 
     try {
-      const result = await listLeadAssignHistory(leadId, { page: nextPage });
+      const result = await chatApi.listHistory(leadId, { page: nextPage });
       if (requestGen !== requestGenRef.current) return false;
 
       if (result.data.length === 0) {
@@ -136,7 +155,7 @@ export function useLeadAssignHistory(leadId?: string) {
       loadingOlderRef.current = false;
       setLoadingOlder(false);
     }
-  }, [leadId, syncPagination]);
+  }, [chatApi, leadId, syncPagination]);
 
   const sendMessage = useCallback(
     async (payload: LeadChatSendPayload, sender?: { id?: string | number; name?: string }) => {
@@ -145,7 +164,7 @@ export function useLeadAssignHistory(leadId?: string) {
 
       setSending(true);
       try {
-        await sendLeadChatActivity(leadId, payload);
+        await chatApi.sendActivity(leadId, payload);
         const optimistic: LeadAssignHistoryItem = {
           clientKey: `local-${Date.now()}`,
           current_user_id: sender?.id ?? '',
@@ -159,7 +178,7 @@ export function useLeadAssignHistory(leadId?: string) {
         setSending(false);
       }
     },
-    [fetchHistory, leadId, sending]
+    [chatApi, fetchHistory, leadId, sending]
   );
 
   return {

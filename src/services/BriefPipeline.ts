@@ -318,6 +318,7 @@ export async function getBrief(id: string): Promise<BriefItem> {
 
 const payloadToFormData = (payload: Record<string, any>) => {
   const fd = new FormData();
+  const appendedFiles = new Set<File>();
   Object.entries(payload || {}).forEach(([k, v]) => {
     if (k === 'assign_user_id' && v === null) {
       fd.append(k, '');
@@ -326,11 +327,9 @@ const payloadToFormData = (payload: Record<string, any>) => {
     if (v === undefined || v === null) return;
     if (k === '_raw') return;
     if (v instanceof File) {
+      if (appendedFiles.has(v)) return;
+      appendedFiles.add(v);
       fd.append(k, v);
-      // Compatibility alias: some backends use `attachment` instead of `attachment_file`
-      if (k === 'attachment_file' && !fd.has('attachment')) {
-        fd.append('attachment', v);
-      }
       return;
     }
     // handle arrays (e.g. mobile_number etc)

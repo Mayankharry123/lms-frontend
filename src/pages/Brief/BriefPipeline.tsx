@@ -29,7 +29,7 @@ import type { AppDispatch } from '../../redux/store';
 import { setUnreadCount, setNotifications } from '../../redux/slices/notificationSlice';
 import { getUnreadNotificationCount, listNotifications } from '../../services/notifications';
 import FilePreviewModal from '../../components/ui/FilePreviewModal';
-import { Eye } from 'lucide-react';
+import { Eye, MessageCircle } from 'lucide-react';
 import { buildBriefInitialDataFromLead, type BriefCreateLocationState } from '../../utils/briefLeadPrefill';
 import { getLeadById } from '../../api/leads';
 import type { UserOption } from '../../types/lead/lead.types';
@@ -70,6 +70,10 @@ const BriefPipeline: React.FC = () => {
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = briefs;
+
+  const handleOpenChat = (brief: Brief) => {
+    navigate(ROUTES.BRIEF.CHAT(brief.id));
+  };
 
   const navigate = useNavigate();
   const params = useParams();
@@ -557,6 +561,43 @@ const BriefPipeline: React.FC = () => {
                 desktopOnMobile={true}
                 keyExtractor={(it: Brief, idx: number) => `${it.id}-${idx}`}
                 columns={([
+                {
+                  key: 'chat',
+                  header: 'CHAT',
+                  minWidth: 72,
+                  allowOverflow: true,
+                  className: 'text-center whitespace-nowrap',
+                  headerClassName: 'text-center',
+                  render: (it: Brief) => (
+                    <div className="flex items-center justify-center">
+                      <button
+                        type="button"
+                        title="Chat"
+                        aria-label={`Chat for brief ${it.id}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleOpenChat(it);
+                        }}
+                        className="app-icon-btn inline-flex items-center justify-center rounded-full border-0 text-white shadow-sm"
+                        style={{
+                          width: '2rem',
+                          height: '2rem',
+                          minWidth: '2rem',
+                          padding: 0,
+                          backgroundColor: '#f26222',
+                          color: '#ffffff',
+                        }}
+                      >
+                        <MessageCircle
+                          className="h-4 w-4"
+                          strokeWidth={2.25}
+                          color="#ffffff"
+                          style={{ width: 16, height: 16, stroke: '#ffffff', fill: 'none' }}
+                        />
+                      </button>
+                    </div>
+                  ),
+                },
                 { key: 'sr', header: 'Id', render: (it: Brief) => `#${it.id}`, className: 'whitespace-nowrap overflow-hidden truncate' },
                 { key: 'briefName', header: 'Brief Name', render: (it: Brief) => it.briefName, className: 'whitespace-nowrap overflow-hidden truncate' },
                 { key: 'brandName', header: 'Brand Name', render: (it: Brief) => it.brandName, className: 'whitespace-nowrap overflow-hidden truncate' },
@@ -747,6 +788,7 @@ const BriefPipeline: React.FC = () => {
             bodyClassName="attachment-file-img"
             closeButtonClassName="btn-secondary"
           />
+
         </>
       )}
     </div>

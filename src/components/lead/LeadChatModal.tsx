@@ -4,11 +4,17 @@ import Input from '../ui/Input';
 import SelectField from '../ui/SelectField';
 import { createLeadChat } from '../../api/leads';
 import SweetAlert from '../../utils/SweetAlert';
-import type { AllLeadtype, CallStatusOption, ReminderBeforeUnit } from '../../types/lead/lead.types';
+import type { CallStatusOption, ReminderBeforeUnit } from '../../types/lead/lead.types';
+
+export type LeadChatSubject = {
+  id: string;
+  leadNumericId?: string;
+  callStatus?: string;
+};
 
 type LeadChatModalProps = {
   isOpen: boolean;
-  lead: AllLeadtype | null;
+  lead: LeadChatSubject | null;
   callStatusOptions: CallStatusOption[];
   onClose: () => void;
   onSaved: () => void | Promise<void>;
@@ -27,7 +33,7 @@ const REMINDER_UNIT_OPTIONS = [
   { value: 'days', label: 'Days' },
 ];
 
-function numericLeadId(lead: AllLeadtype): number {
+function numericLeadId(lead: LeadChatSubject): number {
   return Number(String(lead.leadNumericId ?? lead.id).replace(/^#/, ''));
 }
 

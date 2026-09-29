@@ -136,6 +136,7 @@ export const ROUTES = {
   BRIEF: {
     ROOT: abs(ROUTE_SEGMENTS.BRIEF),
     PIPELINE: `/brief/${ROUTE_SEGMENTS.BRIEF_PIPELINE}`,
+    CHAT: (id: string) => `/brief/chat/${encodeURIComponent(id)}`,
     CREATE: abs(ROUTE_SEGMENTS.BRIEF_CREATE),
     CREATE_WITH_LEAD: (leadId: string) =>
       `${abs(ROUTE_SEGMENTS.BRIEF_CREATE)}?leadId=${encodeURIComponent(leadId)}`,

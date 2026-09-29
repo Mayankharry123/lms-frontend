@@ -100,6 +100,8 @@ export const ENDPOINTS = {
     CREATE: '/briefs',
     UPDATE: (id: string | number) => `/briefs/${id}`,
     DELETE: (id: string | number) => `/briefs/${id}`,
+    CHAT: (id: string | number) => `/briefs/${encodeURIComponent(String(id))}/activity`,
+    ASSIGN_HISTORY: (id: string | number) => `/briefs/${encodeURIComponent(String(id))}/assign-histories-chat`,
     LOGS: '/briefs/brief-logs',
     BUSINESS_FORECAST: '/briefs/business-forecast',
     LATEST_TWO: '/briefs/latest/two-briefs',

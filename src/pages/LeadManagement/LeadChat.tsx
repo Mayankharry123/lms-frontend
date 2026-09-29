@@ -12,7 +12,7 @@ import SelectField from '../../components/ui/SelectField';
 import Input from '../../components/ui/Input';
 import { ROUTES } from '../../constants';
 import type { RootState } from '../../redux/store';
-import { useLeadAssignHistory } from '../../hooks/useLeadAssignHistory';
+import { BRIEF_CHAT_API, useLeadAssignHistory } from '../../hooks/useLeadAssignHistory';
 import type { LeadAssignHistoryItem, ReminderBeforeUnit } from '../../types/lead/lead.types';
 import { getCallStatuses } from '../../services/CallStatus';
 import { fetchLeadById } from '../../services/ViewLead';
@@ -139,11 +139,12 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isCurrentUser }) => 
   );
 };
 
-const LeadChat: React.FC = () => {
+const LeadChat: React.FC<{ chatType?: 'lead' | 'brief' }> = ({ chatType = 'lead' }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const leadId = String(id || '').replace(/^#/, '');
+  const isBriefChat = chatType === 'brief';
   const {
     messages,
     loading,
@@ -155,7 +156,7 @@ const LeadChat: React.FC = () => {
     refetch,
     loadOlder,
     sendMessage,
-  } = useLeadAssignHistory(leadId || undefined);
+  } = useLeadAssignHistory(leadId || undefined, isBriefChat ? BRIEF_CHAT_API : undefined);
   const [draft, setDraft] = useState('');
   const [callStatusId, setCallStatusId] = useState('');
   const [callStatusOptions, setCallStatusOptions] = useState<{ value: string; label: string }[]>([]);
@@ -253,21 +254,24 @@ const LeadChat: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
-    getCallStatuses()
-      .then((data: unknown) => {
+    const loadStatuses = async () => {
+      if (isBriefChat) return;
+      try {
+        const data: unknown = await getCallStatuses();
         if (!mounted) return;
         setCallStatusOptions(toCallStatusOptions(data));
-      })
-      .catch(() => {
+      } catch {
         if (mounted) setCallStatusOptions([]);
-      });
+      }
+    };
+    void loadStatuses();
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isBriefChat]);
 
   useEffect(() => {
-    if (!leadId) return;
+    if (!leadId || isBriefChat) return;
     let mounted = true;
     fetchLeadById(leadId)
       .then((lead) => {
@@ -288,7 +292,7 @@ const LeadChat: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [leadId, callStatusOptions]);
+  }, [isBriefChat, leadId, callStatusOptions]);
 
   const orderedMessages = useMemo(() => {
     return messages
@@ -364,12 +368,12 @@ const LeadChat: React.FC = () => {
     return () => observer.disconnect();
   }, [pinThreadToBottom]);
 
-  const canSend = Boolean(draft.trim() && callStatusId && leadId && !sending);
+  const canSend = Boolean(draft.trim() && (isBriefChat || callStatusId) && leadId && !sending);
 
   const submitDraft = async () => {
     if (!draft.trim() || sending || !leadId) return;
 
-    if (!callStatusId) {
+    if (!isBriefChat && !callStatusId) {
       setComposerError('Please select a call status.');
       return;
     }
@@ -390,11 +394,12 @@ const LeadChat: React.FC = () => {
     stickToBottomRef.current = true;
     pendingOwnSendRef.current = true;
     try {
+      const statusPayload = isBriefChat ? {} : { call_status_id: Number(callStatusId) };
       await sendMessage(
         reminder
           ? {
               comment: draft.trim(),
-              call_status_id: Number(callStatusId),
+              ...statusPayload,
               reminder: true,
               reminder_at: formatReminderAt(reminderAt),
               reminder_before: Number(reminderBefore),
@@ -402,7 +407,7 @@ const LeadChat: React.FC = () => {
             }
           : {
               comment: draft.trim(),
-              call_status_id: Number(callStatusId),
+              ...statusPayload,
               reminder: false,
             },
         { id: currentUser?.id, name: currentUser?.name }
@@ -427,7 +432,9 @@ const LeadChat: React.FC = () => {
   return (
     <div className="lead-chat-page flex min-h-0 w-full flex-1 flex-col overflow-hidden">
       <div className="shrink-0">
-        <MasterCreateHeader onClose={() => navigate(ROUTES.LEAD.ALL)} />
+        <MasterCreateHeader
+          onClose={() => navigate(isBriefChat ? ROUTES.BRIEF.PIPELINE : ROUTES.LEAD.ALL)}
+        />
       </div>
 
       <section className="mt-2 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -436,8 +443,12 @@ const LeadChat: React.FC = () => {
             <MessageCircle className="h-4 w-4" strokeWidth={2} />
           </span>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base! font-semibold leading-5 text-gray-800">Lead Chat</h1>
-            <p className="truncate text-xs leading-4 text-gray-500">Assign history conversation</p>
+            <h1 className="truncate text-base! font-semibold leading-5 text-gray-800">
+              {isBriefChat ? `Brief Chat #${leadId}` : 'Lead Chat'}
+            </h1>
+            <p className="truncate text-xs leading-4 text-gray-500">
+              {isBriefChat ? 'Brief conversation' : 'Assign history conversation'}
+            </p>
           </div>
         </header>
 
@@ -545,26 +556,28 @@ const LeadChat: React.FC = () => {
           className="relative z-20 overflow-visible border-t border-gray-200 bg-white p-4 sm:p-5"
         >
           <div className="flex items-end gap-2">
-            <div className="relative z-30 w-[9.5rem] shrink-0 overflow-visible sm:w-56">
-              <label htmlFor="chat_call_status" className="app-label">
-                Call Status
-                <span className="ml-1 text-red-500">*</span>
-              </label>
-              <SelectField
-                name="call_status_id"
-                value={callStatusId}
-                placeholder="Select call status"
-                options={callStatusOptions}
-                searchable
-                autoCloseOnSelect
-                placement="top"
-                disabled={sending}
-                onChange={(value) => {
-                  setCallStatusId(typeof value === 'string' ? value : value[0] ?? '');
-                  if (composerError) setComposerError('');
-                }}
-              />
-            </div>
+            {!isBriefChat && (
+              <div className="relative z-30 w-[9.5rem] shrink-0 overflow-visible sm:w-56">
+                <label htmlFor="chat_call_status" className="app-label">
+                  Call Status
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
+                <SelectField
+                  name="call_status_id"
+                  value={callStatusId}
+                  placeholder="Select call status"
+                  options={callStatusOptions}
+                  searchable
+                  autoCloseOnSelect
+                  placement="top"
+                  disabled={sending}
+                  onChange={(value) => {
+                    setCallStatusId(typeof value === 'string' ? value : value[0] ?? '');
+                    if (composerError) setComposerError('');
+                  }}
+                />
+              </div>
+            )}
             <label htmlFor="lead-chat-message" className="sr-only">
               Type a message
             </label>
