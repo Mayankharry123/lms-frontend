@@ -117,13 +117,6 @@ const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
           </div>
         </div>
 
-        <div className="dashboard-filter-field dashboard-filter-field--date">
-          <span className="dashboard-filter-field__label">Date Range</span>
-          <div className="dashboard-filter-field__control">
-            <DashboardDateRangePicker value={value} onApply={onDateApply} />
-          </div>
-        </div>
-
         <div className="dashboard-filter-field dashboard-filter-field--cards">
           <span className="dashboard-filter-field__label">Cards</span>
           <DashboardCardVisibilityDropdown
@@ -132,6 +125,13 @@ const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
             onToggle={onToggleCard}
             onReset={onResetCards}
           />
+        </div>
+
+        <div className="dashboard-filter-field dashboard-filter-field--date">
+          <span className="dashboard-filter-field__label">Date Range</span>
+          <div className="dashboard-filter-field__control">
+            <DashboardDateRangePicker value={value} onApply={onDateApply} />
+          </div>
         </div>
 
         <div className="dashboard-filter-field dashboard-filter-field--action">
