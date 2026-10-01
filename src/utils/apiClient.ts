@@ -53,6 +53,33 @@ class EnhancedApiClient {
     return `${this.baseURL}${endpoint}`;
   }
 
+  /**
+   * Binary downloads from a cross-origin API often omit CORS headers
+   * (Laravel file/Excel responses). In Vite dev, route those through `/api`
+   * so the request stays same-origin and the existing proxy rewrites
+   * `/api/*` to the API base path (e.g. `/api/v1/*`).
+   */
+  private resolveBlobUrl(endpoint: string): string {
+    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+    if (
+      import.meta.env.DEV &&
+      typeof window !== 'undefined' &&
+      /^https?:\/\//i.test(this.baseURL)
+    ) {
+      try {
+        const apiOrigin = new URL(this.baseURL).origin;
+        if (apiOrigin !== window.location.origin) {
+          return `/api${path}`;
+        }
+      } catch {
+        // Fall through to the absolute API URL.
+      }
+    }
+
+    return this.buildUrl(endpoint);
+  }
+
   private async parseErrorResponse(response: Response): Promise<string> {
     const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
     if (contentType.includes('json')) {
@@ -81,10 +108,10 @@ class EnhancedApiClient {
       ...fetchConfig
     } = config;
 
-    const url = this.buildUrl(endpoint);
+    const url = this.resolveBlobUrl(endpoint);
     const headers: Record<string, string> = {
       Accept:
-        'text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, application/octet-stream, */*',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, application/octet-stream, */*',
       ...(extraHeaders as Record<string, string> | undefined),
     };
 

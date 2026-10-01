@@ -12,7 +12,29 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatCount, type ChartPoint } from '../../utils/dashboardFormat';
+
+export type ChartPoint = {
+  name: string;
+  value: number;
+};
+
+export const formatCount = (value: number) => value.toLocaleString('en-IN');
+
+export const formatAssignmentDays = (value: number | null | undefined) => {
+  const days = Number(value);
+  const safeDays = Number.isFinite(days) ? days : 0;
+  return safeDays === 1 ? '1 day' : `${safeDays} days`;
+};
+
+export const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(value);
+
+export const truncateLabel = (label: string, maxLength = 14) =>
+  label.length > maxLength ? `${label.slice(0, maxLength - 1)}…` : label;
 
 function normalizeTooltipValue(value: unknown): number {
   const raw = Array.isArray(value) ? value[0] : value;

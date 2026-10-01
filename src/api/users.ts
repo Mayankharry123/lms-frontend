@@ -18,6 +18,12 @@ export type { AppUser, UserListResponse };
 /** @deprecated Use AppUser */
 export type User = AppUser;
 
+export interface OrganisationZone {
+  zone_id: number | string;
+  zone_name: string;
+  assigned_leads_count: number;
+}
+
 function parseOrganisations(it: Record<string, unknown>): UserOrganisation[] {
   if (Array.isArray(it.organisations) && it.organisations.length > 0) {
     return it.organisations
@@ -258,6 +264,21 @@ export async function listOrganisationsForSelect(): Promise<SelectOption[]> {
     idKeys: ['id', 'organisation_id', 'value'],
     labelKeys: ['name', 'organisation_name', 'label'],
   });
+}
+
+export async function listOrganisationZones(
+  organisationIds: Array<number | string>
+): Promise<OrganisationZone[]> {
+  const params = new URLSearchParams();
+  organisationIds.forEach((organisationId) => {
+    params.append('organisation_id[]', String(organisationId));
+  });
+
+  const query = params.toString();
+  const res = await apiClient.get<OrganisationZone[]>(
+    `${ENDPOINTS.ORGANISATIONS.ZONES}${query ? `?${query}` : ''}`
+  );
+  return assertSuccess(res);
 }
 
 export async function listManagersForSelect(perPage = 100): Promise<SelectOption[]> {

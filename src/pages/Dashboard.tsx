@@ -32,10 +32,10 @@ import {
   sanitizeDashboardOrganisationIds,
 } from '../utils/dashboardUserScope';
 import { useDashboardPermissions } from '../utils/dashboardPermissions';
+import { useDashboardCardVisibility } from '../hooks/useDashboardCardVisibility';
+import type { DashboardView } from '../utils/dashboardCardVisibility';
 import type { RootState } from '../redux/store';
 import '../components/dashboard/dashboard.css';
-
-type DashboardView = 'overview' | 'sales' | 'planner';
 
 const ALL_DASHBOARD_TABS: { id: DashboardView; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -48,6 +48,7 @@ const Dashboard: React.FC = () => {
   const isAuthInitialized = useSelector((state: RootState) => state.auth.isInitialized);
   const dashboardPermissions = useDashboardPermissions();
   const filtersInitialized = useRef(false);
+  const { preferences: cardPreferences, isCardVisible, toggleCard, resetCards } = useDashboardCardVisibility();
 
   const [activeView, setActiveView] = useState<DashboardView>('overview');
   const [assignmentsPage, setAssignmentsPage] = useState(1);
@@ -207,32 +208,32 @@ const Dashboard: React.FC = () => {
       <div className="dashboard-content">
         {dashboardPermissions.canViewOverviewStats() ? (
           <div className="dashboard-stat-grid dashboard-stat-grid--3">
-            <DashboardMetricCard
+            {isCardVisible('overview', 'overview.total-users') ? <DashboardMetricCard
               title="Total Users"
               value={stats.totalUsers}
               icon={<Users />}
               loading={loading}
               className="dashboard-metric-card--tone-blue"
-            />
-            <DashboardMetricCard
+            /> : null}
+            {isCardVisible('overview', 'overview.pending-assignments') ? <DashboardMetricCard
               title="Pending Assignments"
               value={stats.pendingAssignments}
               icon={<FileCheck />}
               loading={loading}
               className="dashboard-metric-card--tone-amber"
-            />
+            /> : null}
             {/* Team Performance hidden until metric is finalized */}
-            <DashboardMetricCard
+            {isCardVisible('overview', 'overview.monthly-revenue') ? <DashboardMetricCard
               title="Monthly Revenue"
               value={formatDashboardCurrency(monthlyRevenue)}
               icon={<BsGraphUpArrow />}
               loading={loading}
               className="dashboard-metric-card--tone-teal"
-            />
+            /> : null}
           </div>
         ) : null}
 
-        <DashboardChartsSection variant="overview" filters={appliedFilters} />
+        <DashboardChartsSection variant="overview" filters={appliedFilters} isCardVisible={isCardVisible} />
 
         {dashboardPermissions.canViewPendingAssignments() || dashboardPermissions.canViewMeetings() ? (
           <OverviewPanels
@@ -247,8 +248,8 @@ const Dashboard: React.FC = () => {
             onPriorityChange={handlePriorityChange}
             onCompleteAssignment={(id) => setAssignments((prev) => prev.filter((item) => item.id !== id))}
             onDismissMeeting={(id) => setMeetings((prev) => prev.filter((item) => item.id !== id))}
-            showAssignments={dashboardPermissions.canViewPendingAssignments()}
-            showMeetings={dashboardPermissions.canViewMeetings()}
+            showAssignments={dashboardPermissions.canViewPendingAssignments() && isCardVisible('overview', 'overview.pending-assignments-list')}
+            showMeetings={dashboardPermissions.canViewMeetings() && isCardVisible('overview', 'overview.meetings')}
           />
         ) : null}
       </div>
@@ -278,6 +279,10 @@ const Dashboard: React.FC = () => {
           onApply={handleApplyFilters}
           onDateApply={handleDateApply}
           hasPendingChanges={hasPendingFilterChanges}
+          activeView={activeView}
+          cardPreferences={cardPreferences}
+          onToggleCard={toggleCard}
+          onResetCards={resetCards}
         />
       </div>
 
@@ -297,7 +302,7 @@ const Dashboard: React.FC = () => {
               title="Sales Performance"
               description="Leads, briefs, follow-ups, and recent activity."
             >
-              <SalesDashboard embedded filters={appliedFilters} />
+              <SalesDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
             </DashboardSection>
           )}
 
@@ -306,7 +311,7 @@ const Dashboard: React.FC = () => {
               title="Planner Workspace"
               description="Active briefs, planning metrics, and assigned submissions."
             >
-              <PlannerDashboard embedded filters={appliedFilters} />
+              <PlannerDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
             </DashboardSection>
           )}
         </div>

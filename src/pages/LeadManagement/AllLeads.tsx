@@ -30,6 +30,8 @@ import { setUnreadCount, setNotifications } from '../../redux/slices/notificatio
 import { getUnreadNotificationCount, listNotifications } from '../../services/notifications';
 import type { CallStatusOption, UserOption, AllLeadtype } from '../../types/AllLeadtype';
 import { buildBriefInitialDataFromLead } from '../../utils/briefLeadPrefill';
+import LeadChatModal from '../../components/lead/LeadChatModal';
+import { MessageCircle } from 'lucide-react';
 
 // Call status options will be fetched from API
 // (status mapping removed - not used in this file)
@@ -215,6 +217,16 @@ const AllLeads: React.FC = () => {
     });
   };
 
+  const handleOpenChatPage = (lead: AllLeadtype) => {
+    const leadId = String(lead.leadNumericId ?? lead.id).replace(/^#/, '');
+    if (!leadId) return;
+    navigate(ROUTES.LEAD.CHAT(leadId));
+  };
+
+  const handleChat = (lead: AllLeadtype) => {
+    setChatLead(lead);
+  };
+
   const handleAssignToChange = (leadId: string, newSalesMan: string) => {
     setLeads((prev) =>
       prev.map((lead) =>
@@ -261,6 +273,7 @@ const AllLeads: React.FC = () => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmDeleteLabel, setConfirmDeleteLabel] = useState<string>('');
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [chatLead, setChatLead] = useState<AllLeadtype | null>(null);
 
   // Open confirmation dialog (used by ActionMenu)
   const handleDelete = (leadId: string) => {
@@ -433,6 +446,43 @@ const AllLeads: React.FC = () => {
   );
 
   const columns: Column<AllLeadtype>[] = [
+    {
+      key: 'chat',
+      header: 'Chat',
+      minWidth: 72,
+      allowOverflow: true,
+      className: 'text-center whitespace-nowrap',
+      headerClassName: 'text-center',
+      render: (it: AllLeadtype) => (
+        <div className="flex items-center justify-center">
+          <button
+            type="button"
+            title="Chat"
+            aria-label={`Chat for lead ${it.id}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleOpenChatPage(it);
+            }}
+            className="app-icon-btn inline-flex items-center justify-center rounded-full border-0 text-white shadow-sm"
+            style={{
+              width: '2rem',
+              height: '2rem',
+              minWidth: '2rem',
+              padding: 0,
+              backgroundColor: '#f26222',
+              color: '#ffffff',
+            }}
+          >
+            <MessageCircle
+              className="h-4 w-4"
+              strokeWidth={2.25}
+              color="#ffffff"
+              style={{ width: 16, height: 16, stroke: '#ffffff', fill: 'none' }}
+            />
+          </button>
+        </div>
+      ),
+    },
     { key: 'sr', header: 'Id', render: (it: AllLeadtype) => it.id, className: 'text-left whitespace-nowrap' },
     { key: 'agencyName', header: 'Agency Name', render: (it: AllLeadtype) => it.agencyName || '-', className: 'max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap' },
     { key: 'brandName', header: 'Brand Name', render: (it: AllLeadtype) => it.brandName || '-', className: 'max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap' },
@@ -537,6 +587,17 @@ const AllLeads: React.FC = () => {
         onConfirm={confirmDelete}
       />
 
+      <LeadChatModal
+        isOpen={Boolean(chatLead)}
+        lead={chatLead}
+        callStatusOptions={callStatusOptions}
+        onClose={() => setChatLead(null)}
+        onSaved={async () => {
+          setChatLead(null);
+          await fetchLeads();
+        }}
+      />
+
       {hasPermission('leads.create') && (
         <MasterHeader
           onCreateClick={handleCreateLead}
@@ -580,6 +641,7 @@ const AllLeads: React.FC = () => {
             onDelete={(it: AllLeadtype) => handleDelete(it.id)}
             onCreateMeeting={(it: AllLeadtype) => handleCreateMeeting(it)}
             onBriefCreation={(it: AllLeadtype) => handleBriefCreation(it)}
+            onChat={(it: AllLeadtype) => handleChat(it)}
             editPermissionSlug="leads.edit"
             viewPermissionSlug="leads.view"
             deletePermissionSlug="leads.delete"

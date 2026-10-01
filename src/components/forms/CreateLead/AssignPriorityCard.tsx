@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import SelectField from '../../ui/SelectField';
+import CollapsibleFormCard from '../../ui/CollapsibleFormCard';
+import { ListChecks } from 'lucide-react';
 import { getUsers } from '../../../services/CreateLead';
 import { getPriorities, getPrioritiesByCallStatus } from '../../../services/Priority';
 import { getCallStatuses } from '../../../services/CallStatus';
@@ -17,6 +19,7 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
   organisationName,
   organisationError,
   mode = 'create',
+  collapsible = false,
   onChange
 }) => {
   const priorityRef = useRef(priority);
@@ -281,9 +284,13 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
   }, [callFeedback]); // Only fetch when callFeedback changes
 
   return (
-    <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-200">
-      <div className="p-6 bg-gray-50 rounded-2xl ">
-        <h3 className="text-base font-semibold text-gray-800 mb-4">Assignment & Priority</h3>
+    <CollapsibleFormCard
+      title="Assignment & Priority"
+      collapsible={collapsible}
+      defaultOpen={!collapsible}
+      titleWrapperClassName="mb-4"
+      icon={<ListChecks className="h-5 w-5" strokeWidth={2} />}
+    >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm text-gray-800 mb-1">
@@ -367,8 +374,7 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </CollapsibleFormCard>
   );
 };
 

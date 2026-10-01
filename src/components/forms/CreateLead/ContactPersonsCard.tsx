@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getDesignations, getZones, getCities, getStates, getCountries } from '../../../services/CreateLead';
 import { quickCreateApi } from '../../../services/QuickCreate';
 import { fetchLeadSubSources } from '../../../services/ContactPersonsCard';
-import { Trash2, X as XIcon, Plus } from 'lucide-react';
+import { Trash2, X as XIcon, Plus, UserRound } from 'lucide-react';
 import SelectField from '../../ui/SelectField';
 import ModalPopup from '../../ui/ModalPopup';
+import CollapsibleFormCard from '../../ui/CollapsibleFormCard';
 import { Button } from '../../ui';
 import type { Contact, ContactPersonsCardProps } from '../../../types/LeadManagentForm';
 import SweetAlert from '../../../utils/SweetAlert';
@@ -70,7 +71,8 @@ function pruneRecordByActiveIds<T>(prev: Record<string, T>, activeIds: Set<strin
 const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
   initialContacts,
   onChange
-  , errors
+  , errors,
+  collapsible = false,
 }) => {
   const [contacts, setContacts] = useState<Contact[]>(initialContacts || [emptyContact('1')]);
 
@@ -638,24 +640,28 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
 
   return (
     <>
-      <div className="space-y-6 mb-6">
+      <div className={collapsible ? 'space-y-3 sm:space-y-4' : 'space-y-6 mb-6'}>
         {contacts.map((c) => (
-          <div key={c.id} className="w-full bg-white rounded-2xl shadow-sm border border-gray-200">
-            <div className="px-4 py-5 p-5 bg-gray-50">
-              <div className="flex items-center justify-between mb-6">
-                <div className="text-base font-semibold text-gray-800">Contact Person</div>
-                {contacts.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeContact(c.id)}
-                    className="text-sm px-4 py-2 rounded-lg bg-[#F5F0F0] text-[#D92D20] font-medium flex items-center justify-center hover:bg-[#FFD7D7] transition-colors duration-200"
-                    style={{ backgroundColor: '#F5F0F0' }}
-                  >
-                    <Trash2 strokeWidth={2.5} className="w-4 h-4 mr-1" /> Delete
-                  </button>
-                )}
-              </div>
-
+          <CollapsibleFormCard
+            key={c.id}
+            title="Contact Person"
+            collapsible={collapsible}
+            defaultOpen={!collapsible}
+            innerClassName="px-4 py-5 p-5 bg-gray-50"
+            icon={<UserRound className="h-5 w-5" strokeWidth={2} />}
+            headerRight={
+              contacts.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => removeContact(c.id)}
+                  className="text-sm px-4 py-2 rounded-lg bg-[#F5F0F0] text-[#D92D20] font-medium flex items-center justify-center hover:bg-[#FFD7D7] transition-colors duration-200"
+                  style={{ backgroundColor: '#F5F0F0' }}
+                >
+                  <Trash2 strokeWidth={2.5} className="w-4 h-4 mr-1" /> Delete
+                </button>
+              ) : undefined
+            }
+          >
               <div className="space-y-4">
                 {/* Row 1: Full Name, Profile URL */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -975,8 +981,7 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+          </CollapsibleFormCard>
         ))}
       </div>
 

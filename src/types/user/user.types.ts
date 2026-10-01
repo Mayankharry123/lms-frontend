@@ -41,3 +41,35 @@ export type UserListResponse = {
     total?: number;
   };
 };
+
+/** User node from `/profile/child-planing-users`. */
+export interface ChildPlanningUser {
+  id: number;
+  name: string;
+  assignedBriefCount: number;
+  children: ChildPlanningUser[];
+}
+
+export type OrganisationPlannerLoadResult =
+  | { status: 'success'; users: ChildPlanningUser[] }
+  | { status: 'api_error'; message: string }
+  | { status: 'api_failure'; message: string };
+
+export interface AssignmentSubmissionCycle {
+  briefId: number;
+  briefName: string;
+  assignedAt: string;
+  planSubmittedAt: string | null;
+  duration: string | null;
+}
+
+export type AssignmentSubmissionLoadResult =
+  | {
+      status: 'success';
+      userName: string;
+      cycles: AssignmentSubmissionCycle[];
+      currentPage: number;
+      lastPage: number;
+    }
+  | { status: 'api_error'; message: string }
+  | { status: 'api_failure'; message: string };

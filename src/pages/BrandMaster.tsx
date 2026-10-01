@@ -21,6 +21,7 @@ import { deleteBrand } from '../services/BrandMaster';
 import { listBrands, getBrand } from '../services/BrandMaster';
 import type { BrandItem } from '../types/master/master.types';
 import { usePermissions } from '../hooks/SidebarMenuHooks';
+import { BrandExcelActions } from '../components/brand';
 
 import SweetAlert from '../utils/SweetAlert';
 import TableHeader from '../components/ui/TableHeader.tsx';
@@ -36,6 +37,7 @@ const BrandMaster: React.FC = () => {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
+  const [listRefreshKey, setListRefreshKey] = useState(0);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [viewItem, setViewItem] = useState<Brand | null>(null);
@@ -185,7 +187,15 @@ const BrandMaster: React.FC = () => {
     }
     load();
     return () => { cancelled = true; };
-  }, [currentPage, itemsPerPage, searchQuery, isListRoute]);
+  }, [currentPage, itemsPerPage, searchQuery, isListRoute, listRefreshKey]);
+
+  const refreshBrandList = () => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+      return;
+    }
+    setListRefreshKey((key) => key + 1);
+  };
 
   const handlePageChange = (page: number) => setCurrentPage(page);
   console.log("isCreateRoute ",isCreateRoute);
@@ -231,6 +241,7 @@ const BrandMaster: React.FC = () => {
             showBreadcrumb={true}
             showCreateButton={hasPermission('brand.create')}
             createPermissionSlug="brand.create"
+            extraActions={<BrandExcelActions onImported={refreshBrandList} />}
           />
 
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-4">

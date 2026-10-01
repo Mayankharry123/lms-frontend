@@ -72,6 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobile = false, mobileOpen = false,
         if (match) return `/user-management/${match[1]}`;
       }
       if (pathname.match(/^\/lead-management\/edit\//)) return '/lead-management/all-leads';
+      if (pathname.match(/^\/lead-management\/chat\//)) return '/lead-management/all-leads';
       if (pathname.match(/^\/lead-management\/\d+$/)) return '/lead-management/all-leads';
       if (pathname.match(/^\/brief\/edit-submitted-plan\//)) return '/brief/log';
       if (pathname.match(/^\/brief\/plan-history\//)) return '/brief/log';

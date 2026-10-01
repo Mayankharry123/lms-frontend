@@ -16,6 +16,7 @@ interface BreadcrumbProps {
 
 const segmentNameMap: Record<string, string> = {
   'dashboard': 'Dashboard',
+  'organisation-planner': 'Organisation Planner',
   'master': 'Master Data',
   'agency': 'Agency Master',
   'brand': 'Brand Master',
@@ -33,6 +34,7 @@ const segmentNameMap: Record<string, string> = {
   'miss-campaign': 'Miss Campaign',
   'create': 'Create',
   'edit': 'Edit',
+  'chat': 'Chat',
   'view': 'View',
 };
 
@@ -161,6 +163,10 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
 
       if (pathname.includes('/create')) {
         crumbs.push({ label: 'Create', isActive: true });
+      } else if (pathname.includes('/chat/')) {
+        const id = pathname.split('/chat/')[1];
+        crumbs.push({ label: 'All Leads', path: '/lead-management/all-leads' });
+        crumbs.push({ label: id ? `Chat #${id}` : 'Chat', isActive: true });
       } else if (pathname.includes('/edit/')) {
         const id = pathname.split('/edit/')[1];
         crumbs.push({ label: `ID: ${id}`, path: `/lead-management/${id}` });
@@ -187,6 +193,16 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
       if (pathname.includes('/create')) {
         crumbs.push({
           label: 'Create',
+          isActive: true,
+        });
+      } else if (parts[1] === 'chat' && parts[2]) {
+        const id = decodeURIComponent(parts[2]);
+        crumbs.push({
+          label: 'Brief Pipeline',
+          path: '/brief/Brief_Pipeline',
+        });
+        crumbs.push({
+          label: `Brief Chat #${id}`,
           isActive: true,
         });
       } else if (pathname.includes('/edit')) {

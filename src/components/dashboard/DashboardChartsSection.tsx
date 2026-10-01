@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
 
 import { useApiQuery } from '../../hooks/useApiQuery';
+import { listOrganisationZones } from '../../api/users';
 
 import {
 
   getDashboardChartMetrics,
+
 
   getPlannerChartMetrics,
 
@@ -23,7 +25,9 @@ import { serializeDashboardFilters } from '../../utils/dashboardFilters';
 
 import { useDashboardPermissions } from '../../utils/dashboardPermissions';
 import type { DashboardChartKey } from '../../utils/dashboardPermissions';
+import type { DashboardView } from '../../utils/dashboardCardVisibility';
 import PlannerOrganisationTable from './PlannerOrganisationTable';
+import ZoneLeadPerformanceCards from './ZoneLeadPerformanceCards';
 
 import {
   ChartsSectionHeader,
@@ -45,12 +49,15 @@ type DashboardChartsSectionProps = {
 
   filters: DashboardFilterState;
 
+  isCardVisible: (view: DashboardView, cardId: string) => boolean;
+
 };
 
 
 
 type MetricConfig = {
   key: string;
+  cardId: string;
   chartKey: DashboardChartKey;
   title: string;
   color: string;
@@ -61,13 +68,13 @@ type MetricConfig = {
 
 const OVERVIEW_METRICS: MetricConfig[] = [
 
-  { key: 'totalLeads', chartKey: 'totalLeads', title: 'Total Leads', color: '#2563eb' },
+  { key: 'totalLeads', cardId: 'overview.total-leads-analytics', chartKey: 'totalLeads', title: 'Total Leads', color: '#2563eb' },
 
-  { key: 'preLeads', chartKey: 'preLeads', title: 'Pre Leads', color: '#7c3aed' },
+  { key: 'preLeads', cardId: 'overview.pre-leads-analytics', chartKey: 'preLeads', title: 'Pre Leads', color: '#7c3aed' },
 
-  { key: 'briefs', chartKey: 'briefs', title: 'Briefs', color: '#ea580c' },
+  { key: 'briefs', cardId: 'overview.briefs-analytics', chartKey: 'briefs', title: 'Briefs', color: '#ea580c' },
 
-  { key: 'briefBudget', chartKey: 'briefBudget', title: 'Brief Budget', color: '#059669', valueFormatter: formatCurrency },
+  { key: 'briefBudget', cardId: 'overview.brief-budget-analytics', chartKey: 'briefBudget', title: 'Brief Budget', color: '#059669', valueFormatter: formatCurrency },
 
 ];
 
@@ -75,11 +82,11 @@ const OVERVIEW_METRICS: MetricConfig[] = [
 
 const SALES_METRICS: MetricConfig[] = [
 
-  { key: 'totalLeads', chartKey: 'totalLeads', title: 'Total Leads', color: '#2563eb' },
+  { key: 'totalLeads', cardId: 'sales.total-leads-analytics', chartKey: 'totalLeads', title: 'Total Leads', color: '#2563eb' },
 
-  { key: 'briefs', chartKey: 'briefs', title: 'Briefs', color: '#ea580c' },
+  { key: 'briefs', cardId: 'sales.briefs-analytics', chartKey: 'briefs', title: 'Briefs', color: '#ea580c' },
 
-  { key: 'briefBudget', chartKey: 'briefBudget', title: 'Brief Budget', color: '#059669', valueFormatter: formatCurrency },
+  { key: 'briefBudget', cardId: 'sales.brief-budget', chartKey: 'briefBudget', title: 'Brief Budget', color: '#059669', valueFormatter: formatCurrency },
 
 ];
 
@@ -88,10 +95,11 @@ const SALES_METRICS: MetricConfig[] = [
 const formatDays = (value: number) => `${value.toLocaleString('en-IN', { maximumFractionDigits: 1 })} days`;
 
 const PLANNER_METRICS: MetricConfig[] = [
-  { key: 'briefs', chartKey: 'briefs', title: 'Briefs', color: '#ea580c' },
-  { key: 'assignedPlans', chartKey: 'assignedPlans', title: 'Plans Assigned', color: '#2563eb' },
+  { key: 'briefs', cardId: 'planner.briefs-analytics', chartKey: 'briefs', title: 'Briefs', color: '#ea580c' },
+  { key: 'assignedPlans', cardId: 'planner.assigned-plans-analytics', chartKey: 'assignedPlans', title: 'Plans Assigned', color: '#2563eb' },
   {
     key: 'avgAssignmentDays',
+    cardId: 'planner.avg-submission-analytics',
     chartKey: 'avgAssignmentDays',
     title: 'Avg Plan Submission Time',
     color: '#7c3aed',
@@ -99,6 +107,7 @@ const PLANNER_METRICS: MetricConfig[] = [
   },
   {
     key: 'briefBudget',
+    cardId: 'planner.brief-budget-analytics',
     chartKey: 'briefBudget',
     title: 'Brief Budget',
     color: '#059669',
@@ -295,24 +304,26 @@ function renderTotals(
 
 
 
-const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant, filters }) => {
+const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant, filters, isCardVisible }) => {
 
   const dashboardPermissions = useDashboardPermissions();
-
-
-
   const allMetricConfigs =
 
     variant === 'overview' ? OVERVIEW_METRICS : variant === 'sales' ? SALES_METRICS : PLANNER_METRICS;
 
 
 
-  const visibleMetrics = useMemo(
+  const permittedMetrics = useMemo(
 
     () => allMetricConfigs.filter((chart) => dashboardPermissions.canViewChart(chart.chartKey)),
 
     [allMetricConfigs, dashboardPermissions],
 
+  );
+
+  const visibleMetrics = useMemo(
+    () => permittedMetrics.filter((chart) => isCardVisible(variant, chart.cardId)),
+    [isCardVisible, permittedMetrics, variant],
   );
 
 
@@ -331,14 +342,19 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
 
 
 
-  const showPipeline = variant === 'sales' && dashboardPermissions.canViewPipelineChart();
+  const showPipeline = variant === 'sales'
+    && dashboardPermissions.canViewPipelineChart()
+    && isCardVisible('sales', 'sales.sales-pipeline');
 
-  const showBriefStatus = variant === 'planner' && dashboardPermissions.canViewBriefStatusChart();
+  const showBriefStatus = variant === 'planner'
+    && dashboardPermissions.canViewBriefStatusChart()
+    && isCardVisible('planner', 'planner.brief-status');
 
 
 
   const filterKey = serializeDashboardFilters(filters);
-  const fetchEnabled = canFetch && (visibleMetrics.length > 0 || showPipeline || showBriefStatus);
+  const fetchEnabled = canFetch
+    && (permittedMetrics.length > 0 || dashboardPermissions.canViewPipelineChart() || dashboardPermissions.canViewBriefStatusChart());
 
   const overviewQuery = useApiQuery(
     () => getDashboardChartMetrics(filters),
@@ -352,6 +368,12 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
     { enabled: variant === 'sales' && fetchEnabled },
   );
 
+  const organisationZonesQuery = useApiQuery(
+    () => listOrganisationZones(filters.organisationIds),
+    ['organisation-zones', filterKey],
+    { enabled: variant === 'sales' && showPipeline && filters.organisationIds.length > 0 },
+  );
+
   const plannerQuery = useApiQuery(
     () => getPlannerChartMetrics(filters),
     ['planner', filterKey],
@@ -363,6 +385,15 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
 
   const { data, loading, error } = activeQuery;
   const salesData = salesQuery.data;
+  const zonePerformanceData = useMemo(
+    () =>
+      (organisationZonesQuery.data ?? []).map((zone) => ({
+        zoneId: String(zone.zone_id),
+        zoneName: zone.zone_name,
+        assignedLeads: zone.assigned_leads_count,
+      })),
+    [organisationZonesQuery.data],
+  );
   const plannerData = plannerQuery.data;
 
   const orgChartData = useMemo(() => {
@@ -487,6 +518,12 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
 
             colors={PIPELINE_COLORS}
 
+          />
+
+          <ZoneLeadPerformanceCards
+            data={zonePerformanceData}
+            loading={organisationZonesQuery.loading}
+            organisationIds={filters.organisationIds}
           />
 
         </div>

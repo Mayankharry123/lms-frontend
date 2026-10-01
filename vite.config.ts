@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: apiProxy.target,
           changeOrigin: true,
-          secure: true,
+          secure: apiProxy.target.startsWith('https://'),
           rewrite: (path) => path.replace(/^\/api/, apiProxy.basePath || ''),
         },
         '/ssp-api': {
@@ -50,6 +50,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: true,
           rewrite: (path) => path.replace(/^\/ssp-api/, sspApiProxy.basePath || ''),
+        },
+        '/exports': {
+          target: apiProxy.target,
+          changeOrigin: true,
+          secure: apiProxy.target.startsWith('https://'),
         },
         '/remote-images': {
           target: remoteImagesProxy.target,

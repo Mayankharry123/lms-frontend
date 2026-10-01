@@ -15,6 +15,7 @@ export { default as StatusPill } from './StatusPill';
 export { default as MultiSelectDropdown } from './MultiSelectDropdown';
 export { default as LoadingModal } from './LoadingModal';
 export { default as FormCard } from './FormCard';
+export { default as CollapsibleFormCard } from './CollapsibleFormCard';
 export { default as PageBackHeader } from './PageBackHeader';
 export { default as DetailField } from './DetailField';
 export { default as LoadingState } from './LoadingState';

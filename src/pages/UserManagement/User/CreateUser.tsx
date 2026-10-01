@@ -9,7 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants';
-import { MasterFormHeader, MultiSelectDropdown, SelectField } from '../../../components/ui';
+import { MasterFormHeader, MultiSelectDropdown } from '../../../components/ui';
 import { createUser, updateUser } from '../../../services/CreateUser';
 import { useUserFormLookups } from '../../../hooks/useUserFormLookups';
 import SweetAlert from '../../../utils/SweetAlert';
@@ -30,7 +30,7 @@ const CreateUser: React.FC<RbacFormPageProps> = ({ mode = 'create', initialData 
     roles: [] as string[],
     managers: [] as string[],
     departments: [] as string[],
-    zone: '',
+    zones: [] as string[],
     organisations: [] as string[],
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -61,9 +61,13 @@ const CreateUser: React.FC<RbacFormPageProps> = ({ mode = 'create', initialData 
         initialData.organisation ??
         initialData.origination ??
         initialData.orientation;
-      const zoneValue = typeof zoneRaw === 'object' && zoneRaw !== null
-        ? String((zoneRaw as any).id ?? (zoneRaw as any).value ?? (zoneRaw as any).zone ?? (zoneRaw as any).name ?? '')
-        : String(zoneRaw ?? '');
+      const zonesValue = Array.isArray(zoneRaw)
+        ? zoneRaw.map((item: any) => String(item?.id ?? item?.zone_id ?? item?.value ?? item?.name ?? item ?? '')).filter(Boolean)
+        : zoneRaw
+          ? [typeof zoneRaw === 'object' && zoneRaw !== null
+              ? String((zoneRaw as any).id ?? (zoneRaw as any).zone_id ?? (zoneRaw as any).value ?? (zoneRaw as any).zone ?? (zoneRaw as any).name ?? '')
+              : String(zoneRaw)]
+          : [];
       const organisationsValue = Array.isArray(originationRaw)
         ? originationRaw
             .map((item: any) =>
@@ -123,7 +127,7 @@ const CreateUser: React.FC<RbacFormPageProps> = ({ mode = 'create', initialData 
           ? initialData.managers.map((m: any) => String(m.id))
           : prev.managers,
         departments: departmentsValue.length > 0 ? departmentsValue : prev.departments,
-        zone: zoneValue || prev.zone,
+        zones: zonesValue.length > 0 ? zonesValue : prev.zones,
         organisations: organisationsValue.length > 0 ? organisationsValue : prev.organisations,
         // Ensure password inputs remain empty
         password: '',
@@ -185,13 +189,13 @@ const CreateUser: React.FC<RbacFormPageProps> = ({ mode = 'create', initialData 
     try {
       setSaving(true);
       const base = { ...form } as Record<string, any>;
-      const selectedZone = zoneOptions.find((opt) => opt.value === String(base.zone));
+      const selectedZones = zoneOptions.filter((opt) => (base.zones as string[]).includes(opt.value));
       const selectedOrganisations = originationOptions.filter((opt) =>
         (base.organisations as string[]).includes(opt.value)
       );
-      const zoneId = base.zone ? String(base.zone) : null;
+      const zoneIds = (base.zones as string[]).map((id: string) => Number(id));
       const organisationIds = (base.organisations as string[]).map((id: string) => Number(id));
-      const zoneName = selectedZone?.label || null;
+      const zoneName = selectedZones.map((opt) => opt.label).join(', ') || null;
       const organisationName = selectedOrganisations.map((opt) => opt.label).join(', ') || null;
       const primaryOrganisationId =
         base.organisations && base.organisations.length > 0 ? String(base.organisations[0]) : null;
@@ -200,8 +204,10 @@ const CreateUser: React.FC<RbacFormPageProps> = ({ mode = 'create', initialData 
         name: String(base.name || ''),
         email: base.email || '',
         phone: base.phone || null,
-        zone: zoneId,
-        zone_id: zoneId,
+        zones: zoneIds,
+        zone_ids: zoneIds,
+        zone: zoneIds[0] ? String(zoneIds[0]) : null,
+        zone_id: zoneIds[0] ?? null,
         zone_name: zoneName,
         origination: primaryOrganisationId,
         organisation_id: primaryOrganisationId,
@@ -550,17 +556,15 @@ const CreateUser: React.FC<RbacFormPageProps> = ({ mode = 'create', initialData 
             {/* Zone */}
             <div className="col-span-2 sm:col-span-1">
               <label className="block text-sm text-gray-40 mb-1">Zone</label>
-              <SelectField
-                name="zone"
-                value={form.zone}
-                onChange={(v) => {
-                  const val = typeof v === 'string' ? v : v[0] ?? '';
-                  setForm((prev) => ({ ...prev, zone: val }));
-                }}
+              <MultiSelectDropdown
+                name="zones"
+                value={form.zones}
+                onChange={(v) => setForm((prev) => ({ ...prev, zones: v }))}
                 options={zoneOptions}
-                placeholder={zoneLoading ? 'Loading zones...' : 'Select zone'}
+                placeholder={zoneLoading ? 'Loading zones...' : 'Select zone(s)'}
                 inputClassName="border-gray-200 focus:ring-black"
                 disabled={zoneLoading}
+                maxVisibleOptions={2}
               />
             </div>
 
