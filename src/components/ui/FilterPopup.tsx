@@ -31,8 +31,6 @@ import {
 import { isAbortError } from '../../utils/requestControl';
 import type { LocationFilterValues } from '../../types/inventory/location-filter.types';
 import { ALL_FILTER_FIELDS } from '../../constants/inventory/filterFields';
-import { CLONE_NEXT_FILTER } from '../../constants/inventory/clone';
-
 export type { LocationFilterValues };
 
 /** Comma-separated tokens (legacy labels or IDs during hydration). */
@@ -93,39 +91,15 @@ export type FilterSection = {
 export type FilterOptions = Record<string, LocationOption[]>;
 const EMPTY_FILTER_OPTIONS: FilterOptions = {};
 
-const FIELD_PREREQUISITES: Partial<
-  Record<keyof LocationFilterValues, keyof LocationFilterValues>
-> = { state: 'country' };
-
-(
-  Object.entries(CLONE_NEXT_FILTER) as Array<
-    [keyof LocationFilterValues, keyof LocationFilterValues]
-  >
-).forEach(([parent, child]) => {
-  FIELD_PREREQUISITES[child] = parent;
-});
-
 function fieldHasValue(values: LocationFilterValues, name: keyof LocationFilterValues): boolean {
   return Boolean(String(values[name] ?? '').trim());
 }
 
-function getFieldPrerequisite(
-  values: LocationFilterValues,
-  name: keyof LocationFilterValues
-): keyof LocationFilterValues | undefined {
-  if (name !== 'country' && name !== 'state' && !fieldHasValue(values, 'state')) {
-    return 'state';
-  }
-  return FIELD_PREREQUISITES[name];
-}
-
 function fieldCanBeSelected(
-  values: LocationFilterValues,
-  name: keyof LocationFilterValues
+  _values: LocationFilterValues,
+  _name: keyof LocationFilterValues
 ): boolean {
-  if (fieldHasValue(values, name)) return true;
-  const prerequisite = getFieldPrerequisite(values, name);
-  return !prerequisite || fieldHasValue(values, prerequisite);
+  return true;
 }
 
 function filterFieldLabel(field: { name: string; label: string }): string {
@@ -473,83 +447,47 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
           let pincodes: LocationOption[] = [];
           let arterialRoutes: LocationOption[] = [];
 
-          // 3. Once country list is loaded & country is selected -> trigger States API
+          // Load every location list for the selected country so filters can be opened immediately.
           if (selectedCountry) {
-            setFieldLoading('state', true);
-            states = await fetchStates(selectedCountry);
-            if (cancelled) return;
-            updateFieldOptions('state', states);
-            setFieldLoading('state', false);
-
             const selectedStates = splitCsvTokens(appliedValues.state);
-            if (selectedStates.length) {
-              setFieldLoading('city', true);
-              cities = await fetchCities(selectedStates, {
-                country: [selectedCountry],
+            const selectedCities = splitCsvTokens(appliedValues.city);
+            const selectedZones = splitCsvTokens(appliedValues.zoneArea);
+            const selectedSubZones = splitCsvTokens(appliedValues.subZoneArea);
+            const selectedPincodes = splitCsvTokens(appliedValues.pincode);
+            const country = [selectedCountry];
+            const locationFields = ['state', 'city', 'zoneArea', 'subZoneArea', 'pincode', 'arterialRoute'] as const;
+            locationFields.forEach((field) => setFieldLoading(field, true));
+
+            [states, cities, zones, subZones, pincodes, arterialRoutes] = await Promise.all([
+              fetchStates(selectedCountry),
+              fetchCities(selectedStates, { country, state: selectedStates }),
+              fetchZones(undefined, { country, state: selectedStates, city: selectedCities }),
+              fetchSubZones(undefined, { country, state: selectedStates, city: selectedCities, zone: selectedZones }),
+              fetchPincodes({
+                country,
                 state: selectedStates,
-              });
-              if (cancelled) return;
-              updateFieldOptions('city', cities);
-              setFieldLoading('city', false);
+                city: selectedCities,
+                zone: selectedZones,
+                subZone: selectedSubZones,
+              }),
+              fetchArterialRoutes(undefined, {
+                country,
+                state: selectedStates,
+                city: selectedCities,
+                zone: selectedZones,
+                subZone: selectedSubZones,
+                pincode: selectedPincodes,
+              }),
+            ]);
+            if (cancelled) return;
 
-              const selectedCities = splitCsvTokens(appliedValues.city);
-              if (selectedCities.length) {
-                setFieldLoading('zoneArea', true);
-                zones = await fetchZones(undefined, {
-                  country: [selectedCountry],
-                  state: selectedStates,
-                  city: selectedCities,
-                });
-                if (cancelled) return;
-                updateFieldOptions('zoneArea', zones);
-                setFieldLoading('zoneArea', false);
-
-                const selectedZones = splitCsvTokens(appliedValues.zoneArea);
-                if (selectedZones.length) {
-                  setFieldLoading('subZoneArea', true);
-                  subZones = await fetchSubZones(undefined, {
-                    country: [selectedCountry],
-                    state: selectedStates,
-                    city: selectedCities,
-                    zone: selectedZones,
-                  });
-                  if (cancelled) return;
-                  updateFieldOptions('subZoneArea', subZones);
-                  setFieldLoading('subZoneArea', false);
-
-                  const selectedSubZones = splitCsvTokens(appliedValues.subZoneArea);
-                  if (selectedSubZones.length) {
-                    setFieldLoading('pincode', true);
-                    pincodes = await fetchPincodes({
-                      country: [selectedCountry],
-                      state: selectedStates,
-                      city: selectedCities,
-                      zone: selectedZones,
-                      subZone: selectedSubZones,
-                    });
-                    if (cancelled) return;
-                    updateFieldOptions('pincode', pincodes);
-                    setFieldLoading('pincode', false);
-
-                    const selectedPincodes = splitCsvTokens(appliedValues.pincode);
-                    if (selectedPincodes.length) {
-                      setFieldLoading('arterialRoute', true);
-                      arterialRoutes = await fetchArterialRoutes(undefined, {
-                        country: [selectedCountry],
-                        state: selectedStates,
-                        city: selectedCities,
-                        zone: selectedZones,
-                        subZone: selectedSubZones,
-                        pincode: selectedPincodes,
-                      });
-                      if (cancelled) return;
-                      updateFieldOptions('arterialRoute', arterialRoutes);
-                      setFieldLoading('arterialRoute', false);
-                    }
-                  }
-                }
-              }
-            }
+            updateFieldOptions('state', states);
+            updateFieldOptions('city', cities);
+            updateFieldOptions('zoneArea', zones);
+            updateFieldOptions('subZoneArea', subZones);
+            updateFieldOptions('pincode', pincodes);
+            updateFieldOptions('arterialRoute', arterialRoutes);
+            locationFields.forEach((field) => setFieldLoading(field, false));
           }
 
           // 4. Load Category & Device base options
@@ -1410,28 +1348,18 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
         {ALL_FILTER_FIELDS.map((field) => {
           const isVisible = visibleFields.has(field.name);
           const isApplied = fieldHasValue(draft, field.name);
-          const prerequisite = getFieldPrerequisite(draft, field.name);
-          const canSelect = fieldCanBeSelected(draft, field.name);
-          const prerequisiteLabel = prerequisite
-            ? ALL_FILTER_FIELDS.find((item) => item.name === prerequisite)
-            : undefined;
           return (
             <button
               key={field.name}
               type="button"
-              disabled={!canSelect}
               onClick={() => handleToggleFieldVisibility(field.name)}
               title={
-                !canSelect
-                  ? `Select ${prerequisiteLabel ? filterFieldLabel(prerequisiteLabel) : 'parent filter'} first`
-                  : isVisible
-                    ? `Hide ${filterFieldLabel(field)}`
-                    : `Show ${filterFieldLabel(field)}`
+                isVisible
+                  ? `Hide ${filterFieldLabel(field)}`
+                  : `Show ${filterFieldLabel(field)}`
               }
               className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
-                !canSelect
-                  ? 'cursor-not-allowed border-transparent bg-transparent text-gray-300 opacity-70'
-                  : isVisible
+                isVisible
                   ? 'border-gray-300 bg-white text-gray-800'
                   : isApplied
                   ? 'border-teal-200 bg-teal-50 font-semibold text-[#007B83]'
@@ -1440,9 +1368,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
             >
               <span
                 className={`flex h-4 w-4 items-center justify-center rounded border ${
-                  !canSelect
-                    ? 'border-gray-200 bg-gray-100'
-                    : isVisible
+                  isVisible
                     ? 'border-[#007B83] bg-[#007B83] text-white'
                     : 'border-gray-300 bg-white'
                 }`}

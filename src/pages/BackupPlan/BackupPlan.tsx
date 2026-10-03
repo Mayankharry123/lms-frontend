@@ -5,9 +5,11 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { FileText } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import MasterHeader from '../../components/ui/MasterHeader';
 import TableHeader from '../../components/ui/TableHeader';
 import SearchBar from '../../components/ui/SearchBar';
+import ExportExcelButton from '../../components/ui/ExportExcelButton';
 import Table, { type Column } from '../../components/ui/Table';
 import Pagination from '../../components/ui/Pagination';
 import FilePreviewModal from '../../components/ui/FilePreviewModal';
@@ -16,6 +18,7 @@ import AssignDropdown from '../../components/ui/AssignDropdown';
 import PageBackHeader from '../../components/ui/PageBackHeader';
 import Badge from '../../components/ui/Badge';
 import { fetchOperationStatuses } from '../../services/OperationStatus';
+import { defaultDatedXlsxFilename, downloadBlobFile } from '../../utils/downloadFile';
 
 type BackupPlanStatus = string;
 
@@ -102,6 +105,41 @@ const matchesQuery = (row: BackupPlanRow, query: string) => {
     .join(' ')
     .toLowerCase();
   return haystack.includes(query);
+};
+
+const exportBackupPlansExcel = (rows: BackupPlanRow[]) => {
+  const headers = [
+    'Plan ID',
+    'Brief Name',
+    'Product Name',
+    'Campaign Start Date',
+    'Campaign End Date',
+    'Sales User Name',
+    'Planner Name',
+    'Assign User',
+    'Status',
+    'File',
+  ];
+  const body = rows.map((row) => [
+    row.planId,
+    row.briefName,
+    row.productName,
+    row.campaignStartDate,
+    row.campaignEndDate,
+    row.salesUserName,
+    row.plannerName,
+    row.assignUser,
+    row.status,
+    row.fileName ?? '',
+  ]);
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...body]);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Backup Plan');
+  const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  downloadBlobFile(defaultDatedXlsxFilename('backup-plan'), blob);
 };
 
 const downloadPlanFile = (row: BackupPlanRow) => {
@@ -390,6 +428,16 @@ const BackupPlan: React.FC = () => {
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <TableHeader title="Backup Plan">
+          <ExportExcelButton
+            className="w-full sm:w-auto"
+            buttonClassName="btn-primary !bg-gray-800 w-full sm:w-auto"
+            label="Excel Export"
+            fetchExport={async () => {
+              exportBackupPlansExcel(filtered);
+            }}
+            disabled={loading || filtered.length === 0}
+            aria-label="Export backup plans as Excel"
+          />
           <SearchBar
             delay={0}
             placeholder="Please Search Backup Plan"

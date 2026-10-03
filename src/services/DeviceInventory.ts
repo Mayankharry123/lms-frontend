@@ -8,6 +8,7 @@ import type {
   ListDeviceInventoryParams,
 } from '../types/inventory.types';
 import { exportDeviceInventoryExcel } from '../utils/deviceInventoryExcel';
+import { resolveCdnImageUrl, resolveDeviceImageUrl } from '../utils/deviceImageLoader';
 
 export type { DeviceData, DeviceMapMarker };
 
@@ -168,7 +169,7 @@ const MAP_PAGE_SIZE = 2500;
 const MAP_MAX_PAGES = 20;
 const MAP_CACHE_TTL_MS = 5 * 60 * 1000;
 const MAP_FIELDS =
-  'device_details_id,device_id,latitude,longitude,status,category_name,main_category_name';
+  'device_details_id,device_id,latitude,longitude,status,category_name,main_category_name,device_image,aws_device_image,old_device_image';
 
 type MapCacheEntry = {
   markers: DeviceMapMarker[];
@@ -187,12 +188,16 @@ function toMapMarker(row: DeviceData): DeviceMapMarker | null {
   const id = String(row.device_details_id || row.device_id || '').trim();
   if (!id) return null;
 
+  const rawImage = resolveDeviceImageUrl(row);
+  const imageUrl = rawImage ? resolveCdnImageUrl(rawImage) : '';
+
   return {
     id,
     latitude,
     longitude,
     status: row.status?.trim() || undefined,
     category: row.category_name?.trim() || row.main_category_name?.trim() || undefined,
+    imageUrl: imageUrl || undefined,
   };
 }
 

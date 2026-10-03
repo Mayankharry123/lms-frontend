@@ -209,51 +209,47 @@ const DeviceInventory: React.FC<DeviceInventoryPageProps> = ({
         breadcrumbItems={[{ label: title, path }]}
         endContent={
           filterOpen ? (
-            <div className="flex w-full items-center justify-end">
-              <div className="flex shrink-0 items-center gap-1 rounded-xl border border-gray-200 !bg-white p-1 shadow-sm">
-                <div className="flex h-8 items-center gap-2 border-r border-gray-200 px-2.5">
-                  <Filter className="h-3.5 w-3.5 text-gray-600" aria-hidden />
-                  <span className="text-xs font-bold uppercase tracking-wider text-gray-800">
-                    Filters
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  aria-label="Reset all filters"
-                  title="Reset all filters"
-                  className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent !bg-transparent px-2.5 text-xs font-semibold text-[#007B83] transition-colors hover:border-teal-200 hover:!bg-teal-50"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  <span>Reset</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCloseFilters}
-                  aria-label="Close filters"
-                  title="Close filters"
-                  className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent !bg-transparent px-2.5 text-xs font-semibold text-red-600 transition-colors hover:border-red-200 hover:!bg-red-50 hover:text-red-700"
-                >
-                  <X className="h-4 w-4" />
-                  <span>Close</span>
-                </button>
+            <div className="flex items-center justify-end gap-2">
+              <div className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--nav-active-border)] bg-[var(--nav-active-bg)] px-3 text-sm font-semibold text-[var(--nav-active-text)] shadow-[var(--card-shadow)]">
+                <Filter className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                <span>Filters</span>
               </div>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                aria-label="Reset all filters"
+                title="Reset all filters"
+                className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--brand-primary)] shadow-[var(--card-shadow)] transition-colors hover:border-[var(--brand-primary)] hover:bg-[var(--nav-hover)]"
+              >
+                <RotateCcw className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                <span>Reset</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleCloseFilters}
+                aria-label="Close filters"
+                title="Close filters"
+                className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text-nav)] shadow-[var(--card-shadow)] transition-colors hover:border-[var(--brand-accent)] hover:bg-[var(--brand-accent-soft)] hover:text-[var(--brand-accent)]"
+              >
+                <X className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                <span>Close</span>
+              </button>
             </div>
           ) : (
-            <div className="flex w-full items-center justify-end">
+            <div className="flex items-center justify-end">
               <button
                 type="button"
                 onClick={handleOpenFilters}
                 aria-expanded={false}
                 aria-label="Open filters"
                 title="Open filters"
-                className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-gray-200 !bg-white px-3 text-xs font-semibold shadow-sm transition-colors hover:border-gray-300 hover:!bg-gray-50 ${
+                className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-[var(--surface)] px-3.5 text-sm font-semibold shadow-[var(--card-shadow)] transition-colors hover:bg-[var(--nav-hover)] ${
                   hasActiveLocationFilter
-                    ? 'text-[var(--brand-primary,#007b83)]'
-                    : 'text-gray-700'
+                    ? 'border-[var(--brand-primary)] text-[var(--brand-primary)]'
+                    : 'border-[var(--border-subtle)] text-[var(--text-nav)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)]'
                 }`}
               >
-                <Filter className="h-4 w-4" strokeWidth={2} aria-hidden />
+                <Filter className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
                 <span>Filters</span>
               </button>
             </div>
