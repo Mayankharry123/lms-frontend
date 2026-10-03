@@ -42,6 +42,11 @@ interface TableProps<T> {
   onChat?: (item: T) => void;
   onCreateMeeting?: (item: T) => void;
   onBriefCreation?: (item: T) => void;
+  onDownload?: (item: T) => void;
+  /** Show the View action without a permission slug. */
+  showViewWithoutPermission?: boolean;
+  /** Empty-state title. Defaults to the shared table message. */
+  emptyMessage?: string;
   /** Permission slugs for actions */
   editPermissionSlug?: string;
   viewPermissionSlug?: string;
@@ -56,7 +61,7 @@ interface TableProps<T> {
 }
 
 const Table = <T,>(props: TableProps<T>) => {
-  const { data, columns, startIndex = 0, loading = false, onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, keyExtractor, compact = false, desktopOnMobile = true } = props;
+  const { data, columns, startIndex = 0, loading = false, onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, onDownload, showViewWithoutPermission = false, emptyMessage = 'No records found', editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, keyExtractor, compact = false, desktopOnMobile = true } = props;
   const { show: showCellTooltip, hide: hideCellTooltip, TooltipLayer } = useTableCellTooltip();
 
   // responsive padding classes used for cells/headers; compact mode reduces padding further
@@ -133,7 +138,7 @@ const Table = <T,>(props: TableProps<T>) => {
 
   // Always show table structure, even when loading or empty
   const hasData = data && data.length > 0;
-  const showActions = !!(onEdit || onView || onDelete);
+  const showActions = !!(onEdit || onView || onDelete || onDownload);
 
   return (
     <>
@@ -192,7 +197,7 @@ const Table = <T,>(props: TableProps<T>) => {
                         d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
                       />
                     </svg>
-                    <p className="text-sm font-medium text-gray-500">No records found</p>
+                    <p className="text-sm font-medium text-gray-500">{emptyMessage}</p>
                     <p className="text-xs text-gray-400">Try adjusting your search or filters</p>
                   </div>
                 </td>
@@ -228,6 +233,8 @@ const Table = <T,>(props: TableProps<T>) => {
                           {...(onChat && { onChat: () => onChat(item) })}
                           {...(onCreateMeeting && { onCreateMeeting: () => onCreateMeeting(item) })}
                           {...(onBriefCreation && { onBriefCreation: () => onBriefCreation(item) })}
+                          {...(onDownload && { onDownload: () => onDownload(item) })}
+                          showViewWithoutPermission={showViewWithoutPermission}
                           editPermissionSlug={editPermissionSlug}
                           viewPermissionSlug={viewPermissionSlug}
                           deletePermissionSlug={deletePermissionSlug}
@@ -267,7 +274,7 @@ const Table = <T,>(props: TableProps<T>) => {
                   d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
                 />
               </svg>
-              <p className="text-sm font-medium text-gray-500">No records found</p>
+              <p className="text-sm font-medium text-gray-500">{emptyMessage}</p>
               <p className="text-xs text-gray-400">Try adjusting your search or filters</p>
             </div>
           </div>
@@ -294,6 +301,8 @@ const Table = <T,>(props: TableProps<T>) => {
                   {...(onChat && { onChat: () => onChat(item) })}
                   {...(onCreateMeeting && { onCreateMeeting: () => onCreateMeeting(item) })}
                   {...(onBriefCreation && { onBriefCreation: () => onBriefCreation(item) })}
+                  {...(onDownload && { onDownload: () => onDownload(item) })}
+                  showViewWithoutPermission={showViewWithoutPermission}
                   editPermissionSlug={editPermissionSlug}
                   viewPermissionSlug={viewPermissionSlug}
                   deletePermissionSlug={deletePermissionSlug}

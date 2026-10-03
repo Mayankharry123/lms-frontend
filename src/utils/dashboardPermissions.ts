@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useSidebarMenu } from '../hooks/SidebarMenuHooks';
+import type { DashboardView } from './dashboardCardVisibility';
 
 export const DASHBOARD_PERMISSIONS = {
   LEGACY_READ: 'dashboard.read',
@@ -49,6 +50,44 @@ export function createDashboardPermissionChecker(hasPermission: (name: string) =
     canViewPipelineChart: () => can(DASHBOARD_PERMISSIONS.CHART_PIPELINE),
     canViewBriefStatusChart: () => can(DASHBOARD_PERMISSIONS.CHART_BRIEF_STATUS),
   };
+}
+
+export type DashboardPermissionChecker = ReturnType<typeof createDashboardPermissionChecker>;
+
+const VIEW_ACCESS: Record<DashboardView, (permissions: DashboardPermissionChecker) => boolean> = {
+  overview: (permissions) => permissions.canViewOverviewTab(),
+  sales: (permissions) => permissions.canViewSalesTab(),
+  planner: (permissions) => permissions.canViewPlannerTab(),
+};
+
+const CARD_ACCESS: Record<string, (permissions: DashboardPermissionChecker) => boolean> = {
+  'overview.total-users': (permissions) => permissions.canViewOverviewStats(),
+  'overview.pending-assignments': (permissions) => permissions.canViewOverviewStats(),
+  'overview.monthly-revenue': (permissions) => permissions.canViewOverviewStats(),
+  'overview.total-leads-analytics': (permissions) => permissions.canViewChart('totalLeads'),
+  'overview.pre-leads-analytics': (permissions) => permissions.canViewChart('preLeads'),
+  'overview.briefs-analytics': (permissions) => permissions.canViewChart('briefs'),
+  'overview.brief-budget-analytics': (permissions) => permissions.canViewChart('briefBudget'),
+  'overview.pending-assignments-list': (permissions) => permissions.canViewPendingAssignments(),
+  'overview.meetings': (permissions) => permissions.canViewMeetings(),
+  'sales.total-leads-analytics': (permissions) => permissions.canViewChart('totalLeads'),
+  'sales.briefs-analytics': (permissions) => permissions.canViewChart('briefs'),
+  'sales.brief-budget': (permissions) => permissions.canViewChart('briefBudget'),
+  'sales.sales-pipeline': (permissions) => permissions.canViewPipelineChart(),
+  'planner.briefs-analytics': (permissions) => permissions.canViewChart('briefs'),
+  'planner.assigned-plans-analytics': (permissions) => permissions.canViewChart('assignedPlans'),
+  'planner.avg-submission-analytics': (permissions) => permissions.canViewChart('avgAssignmentDays'),
+  'planner.brief-budget-analytics': (permissions) => permissions.canViewChart('briefBudget'),
+  'planner.brief-status': (permissions) => permissions.canViewBriefStatusChart(),
+};
+
+export function canShowDashboardCard(
+  permissions: DashboardPermissionChecker,
+  view: DashboardView,
+  cardId: string,
+) {
+  if (!VIEW_ACCESS[view](permissions)) return false;
+  return CARD_ACCESS[cardId]?.(permissions) ?? true;
 }
 
 export function useDashboardPermissions() {
