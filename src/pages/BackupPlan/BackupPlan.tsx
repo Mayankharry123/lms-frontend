@@ -15,8 +15,9 @@ import StatusDropdown from '../../components/ui/StatusDropdown';
 import AssignDropdown from '../../components/ui/AssignDropdown';
 import PageBackHeader from '../../components/ui/PageBackHeader';
 import Badge from '../../components/ui/Badge';
+import { fetchOperationStatuses } from '../../services/OperationStatus';
 
-type BackupPlanStatus = 'Pending' | 'Live';
+type BackupPlanStatus = string;
 
 type BackupPlanRow = {
   id: string;
@@ -75,7 +76,6 @@ const SAMPLE_PLANS: BackupPlanRow[] = [
 ];
 
 const ITEMS_PER_PAGE = 10;
-const STATUS_OPTIONS: BackupPlanStatus[] = ['Pending', 'Live'];
 const ASSIGN_USER_OPTIONS = [
   'Mayank Sharma',
   'Aryan Sharma',
@@ -136,9 +136,11 @@ const BackupPlan: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewItem, setViewItem] = useState<BackupPlanRow | null>(null);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [statusOptions, setStatusOptions] = useState<string[]>([]);
 
   const handleStatusChange = (id: string, status: string) => {
-    const nextStatus: BackupPlanStatus = status === 'Live' ? 'Live' : 'Pending';
+    const nextStatus = status.trim();
+    if (!nextStatus) return;
     setPlans((current) =>
       current.map((row) => (row.id === id ? { ...row, status: nextStatus } : row))
     );
@@ -159,6 +161,23 @@ const BackupPlan: React.FC = () => {
   useEffect(() => {
     const timer = window.setTimeout(() => setLoading(false), 400);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const statuses = await fetchOperationStatuses();
+        if (!mounted) return;
+        setStatusOptions(statuses.map((item) => item.name));
+      } catch (err) {
+        console.error('Failed to load operation statuses', err);
+        if (mounted) setStatusOptions([]);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const filtered = useMemo(() => {
@@ -248,13 +267,20 @@ const BackupPlan: React.FC = () => {
     {
       key: 'status',
       header: 'Status',
-      className: 'min-w-[140px]',
+      minWidth: 140,
+      headerClassName: 'text-left',
+      className: 'min-w-[140px] align-middle',
       allowOverflow: true,
       render: (row) => (
-        <div className="min-w-[140px]">
+        <div className="relative min-w-[140px]">
           <StatusDropdown
             value={row.status}
-            options={STATUS_OPTIONS}
+            appearance="link"
+            options={
+              statusOptions.includes(row.status) || !row.status
+                ? statusOptions
+                : [row.status, ...statusOptions]
+            }
             onChange={(nextStatus) => handleStatusChange(row.id, nextStatus)}
             onConfirm={async () => undefined}
           />
@@ -264,21 +290,22 @@ const BackupPlan: React.FC = () => {
     {
       key: 'file',
       header: 'File',
-      minWidth: 160,
-      className: 'whitespace-nowrap',
+      minWidth: 220,
+      headerClassName: 'text-left',
+      className: 'whitespace-nowrap align-middle',
       render: (row) => {
         if (!row.fileName) {
-          return <span className="text-xs text-gray-400">-</span>;
+          return <span className="inline-flex h-7 items-center text-sm leading-none text-gray-400">-</span>;
         }
         return (
           <button
             type="button"
             onClick={() => openFile(row)}
             title={row.fileName}
-            className="inline-flex max-w-[11rem] items-center gap-1.5 text-left text-sm text-gray-800 hover:text-orange-600"
+            className="inline-flex h-7 items-center gap-1.5 text-left text-sm leading-none text-gray-800 hover:text-orange-600"
           >
             <FileText className="h-4 w-4 shrink-0 text-orange-600" aria-hidden />
-            <span className="truncate">{row.fileName}</span>
+            <span className="whitespace-nowrap">{row.fileName}</span>
           </button>
         );
       },
