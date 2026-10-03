@@ -151,7 +151,7 @@ export function mapMenu(apiItems: ApiSidebarItem[]): NavigationItem[] {
     (item) =>
       !(item.name === '$P' || item.url === 'profile')
   );
-  return filteredItems.map((item) => {
+  const mapped: NavigationItem[] = filteredItems.map((item) => {
     // Dashboard is one page — show a single sidebar link, not feature-permission children.
     if (item.name === 'menu.dashboard') {
       return {
@@ -198,6 +198,8 @@ export function mapMenu(apiItems: ApiSidebarItem[]): NavigationItem[] {
       children: children && children.length > 0 ? children : undefined,
     };
   });
+
+  return mapped;
 }
 
 // Example usage:

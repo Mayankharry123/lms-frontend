@@ -184,6 +184,9 @@ export const ENDPOINTS = {
   MEDIA_TYPES: {
     LIST: '/media-types',
   },
+  OPERATION_STATUSES: {
+    LIST: '/operation-statuses',
+  },
   GEO: {
     ZONES: {
       LIST: '/zones',

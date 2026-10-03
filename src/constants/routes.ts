@@ -34,6 +34,7 @@ export const ROUTE_SEGMENTS = {
   PRE_LEAD_DETAIL: 'pre-lead/view/:id',
   PRE_LEAD_EDIT: 'pre-lead/view/:id/edit',
   BRIEF: 'brief',
+  BACKUP_PLAN: 'backup-plan',
   /** Matches backend permission paths; do not rename without updating permissions. */
   BRIEF_PIPELINE: 'Brief_Pipeline',
   BRIEF_CREATE: 'brief/create',
@@ -133,6 +134,7 @@ export const ROUTES = {
     MEETING_SCHEDULE_WITH_LEAD: (leadId: string) =>
       `${abs(ROUTE_SEGMENTS.MEETING_SCHEDULE)}?leadId=${encodeURIComponent(leadId)}`,
   },
+  BACKUP_PLAN: abs(ROUTE_SEGMENTS.BACKUP_PLAN),
   BRIEF: {
     ROOT: abs(ROUTE_SEGMENTS.BRIEF),
     PIPELINE: `/brief/${ROUTE_SEGMENTS.BRIEF_PIPELINE}`,

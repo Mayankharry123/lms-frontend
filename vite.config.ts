@@ -38,6 +38,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwind()],
     server: {
+      host: '0.0.0.0',
+      port: 5173,
       proxy: {
         '/api': {
           target: apiProxy.target,

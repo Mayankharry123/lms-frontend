@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreHorizontal, Edit, Eye, Trash, Upload, MessageCircle, CalendarPlus, FilePlus2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Eye, Trash, Upload, MessageCircle, CalendarPlus, FilePlus2, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // import { usePermissions } from '../../hooks/SidebarMenuHooks';
 import { usePermissions } from '../../hooks/SidebarMenuHooks';
@@ -14,6 +14,9 @@ interface ActionMenuProps {
   onChat?: () => void;
   onCreateMeeting?: () => void;
   onBriefCreation?: () => void;
+  onDownload?: () => void;
+  /** Show View even when no permission slug is configured (UI-only pages). */
+  showViewWithoutPermission?: boolean;
   /** Permission slugs for additional checks */
   editPermissionSlug?: string;
   viewPermissionSlug?: string;
@@ -27,7 +30,7 @@ interface ActionMenuProps {
   totalRows?: number;
 }
 
-const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, isLast, rowIndex, totalRows }) => {
+const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, onDownload, showViewWithoutPermission = false, editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, isLast, rowIndex, totalRows }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showAbove, setShowAbove] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -339,7 +342,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpl
               </button>
             )}
 
-            {(onView && viewPermissionSlug && hasPermission(viewPermissionSlug)) && (
+            {(onView && ((showViewWithoutPermission) || (viewPermissionSlug && hasPermission(viewPermissionSlug)))) && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -359,6 +362,29 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpl
               >
                 <Eye className="w-4 h-4 flex-shrink-0" />
                 <span>View</span>
+              </button>
+            )}
+
+            {onDownload && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDownload();
+                  setIsOpen(false);
+                }}
+                className="
+                      w-full px-4 py-2.5 text-sm font-medium bg-white shadow-none outline-0
+                      text-gray-700 hover:text-gray-700 hover:bg-white
+                      flex items-center gap-3
+                      transition-colors duration-150 ease-in-out
+                      first:rounded-t-lg last:rounded-b-lg
+                      focus:outline-none focus:bg-white focus:text-gray-700
+                    "
+                role="menuitem"
+                tabIndex={0}
+              >
+                <Download className="w-4 h-4 flex-shrink-0" />
+                <span>Download File</span>
               </button>
             )}
 

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import Badge from './Badge';
+import AssignButton from './AssignButton';
 import ConfirmDialog from './ConfirmDialog';
 
 const DROPDOWN_WIDTH = 176;
@@ -10,9 +11,11 @@ interface StatusDropdownProps {
   options: string[];
   onChange: (newValue: string) => void;
   onConfirm?: (newValue: string) => Promise<void>;
+  /** Badge keeps the Brief Pipeline pill. Link matches Assign User. */
+  appearance?: 'badge' | 'link';
 }
 
-const StatusDropdown: React.FC<StatusDropdownProps> = ({ value, options, onChange, onConfirm }) => {
+const StatusDropdown: React.FC<StatusDropdownProps> = ({ value, options, onChange, onConfirm, appearance = 'badge' }) => {
   const [open, setOpen] = useState(false);
   const [openAbove, setOpenAbove] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -102,10 +105,14 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({ value, options, onChang
   };
 
   return (
-    <div ref={ref} className="relative inline-block">
-      <span onClick={handleToggle} className="inline-block cursor-pointer text-blue-600 hover:text-blue-700 underline transition-colors">
-        <Badge status={value}>{value}</Badge>
-      </span>
+    <div ref={ref} className={appearance === 'link' ? 'relative w-full min-w-0' : 'relative inline-block'}>
+      {appearance === 'link' ? (
+        <AssignButton value={value} onClick={handleToggle} isActive={open} />
+      ) : (
+        <span onClick={handleToggle} className="inline-block cursor-pointer text-blue-600 hover:text-blue-700 underline transition-colors">
+          <Badge status={value}>{value}</Badge>
+        </span>
+      )}
 
       {open && (
         <div
