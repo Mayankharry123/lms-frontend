@@ -103,10 +103,17 @@ export const ENDPOINTS = {
     CHAT: (id: string | number) => `/briefs/${encodeURIComponent(String(id))}/activity`,
     ASSIGN_HISTORY: (id: string | number) => `/briefs/${encodeURIComponent(String(id))}/assign-histories-chat`,
     LOGS: '/briefs/brief-logs',
+    COST_SHEET: (id: string | number) => `/briefs/${id}/cost-sheet`,
     BUSINESS_FORECAST: '/briefs/business-forecast',
     LATEST_TWO: '/briefs/latest/two-briefs',
     RECENT: '/briefs/recent',
     STATUSES: '/brief-statuses',
+  },
+  COST_SHEETS: {
+    LIST: '/cost-sheets',
+    DETAIL: (id: string | number) => `/cost-sheets/${id}`,
+    STATUS: (id: string | number) => `/cost-sheets/${id}/status`,
+    FINANCE_STATUS: (id: string | number) => `/cost-sheets/${id}/finance-status`,
   },
   PLANNERS: {
     UPDATE_STATUS: (plannerId: string | number) => `/planners/${plannerId}/update-status`,

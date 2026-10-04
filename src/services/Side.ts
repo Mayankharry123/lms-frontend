@@ -32,7 +32,6 @@ export function extractAllPaths(apiItems: ApiSidebarItem[]): string[] {
   if (paths.includes(DEVICE_INVENTORY_PATH)) {
     paths.push(DEVICE_INVENTORY_CLONE_PATH);
   }
-
   // Remove duplicates
   return [...new Set(paths)];
 }

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreHorizontal, Edit, Eye, Trash, Upload, MessageCircle, CalendarPlus, FilePlus2, Download } from 'lucide-react';
+import { MoreHorizontal, Edit, Eye, Trash, Upload, MessageCircle, CalendarPlus, FilePlus2, FileSpreadsheet, Download, Check, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // import { usePermissions } from '../../hooks/SidebarMenuHooks';
 import { usePermissions } from '../../hooks/SidebarMenuHooks';
@@ -14,7 +14,10 @@ interface ActionMenuProps {
   onChat?: () => void;
   onCreateMeeting?: () => void;
   onBriefCreation?: () => void;
+  onCostSheet?: () => void;
   onDownload?: () => void;
+  onApprove?: () => void;
+  onDecline?: () => void;
   /** Show View even when no permission slug is configured (UI-only pages). */
   showViewWithoutPermission?: boolean;
   /** Permission slugs for additional checks */
@@ -22,6 +25,10 @@ interface ActionMenuProps {
   viewPermissionSlug?: string;
   deletePermissionSlug?: string;
   uploadPermissionSlug?: string;
+  planSubmissionPermissionSlug?: string;
+  costSheetPermissionSlug?: string;
+  approvePermissionSlug?: string;
+  declinePermissionSlug?: string;
   /** If true, forces the menu to open above the trigger (used for last rows) */
   isLast?: boolean;
   /** Index of the row (0-based) - helps determine if near bottom */
@@ -30,7 +37,7 @@ interface ActionMenuProps {
   totalRows?: number;
 }
 
-const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, onDownload, showViewWithoutPermission = false, editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, isLast, rowIndex, totalRows }) => {
+const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, onCostSheet, onDownload, onApprove, onDecline, showViewWithoutPermission = false, editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, isLast, rowIndex, totalRows }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showAbove, setShowAbove] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -388,6 +395,52 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpl
               </button>
             )}
 
+            {(onApprove && approvePermissionSlug && hasPermission(approvePermissionSlug)) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onApprove();
+                  setIsOpen(false);
+                }}
+                className="
+                      w-full px-4 py-2.5 text-sm font-medium bg-white shadow-none outline-0
+                      text-gray-700 hover:text-gray-700 hover:bg-white
+                      flex items-center gap-3
+                      transition-colors duration-150 ease-in-out
+                      first:rounded-t-lg last:rounded-b-lg
+                      focus:outline-none focus:bg-white focus:text-gray-700
+                    "
+                role="menuitem"
+                tabIndex={0}
+              >
+                <Check className="w-4 h-4 flex-shrink-0" />
+                <span>Approve</span>
+              </button>
+            )}
+
+            {(onDecline && declinePermissionSlug && hasPermission(declinePermissionSlug)) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDecline();
+                  setIsOpen(false);
+                }}
+                className="
+                      w-full px-4 py-2.5 text-sm font-medium bg-white shadow-none outline-0
+                      text-gray-700 hover:text-gray-700 hover:bg-white
+                      flex items-center gap-3
+                      transition-colors duration-150 ease-in-out
+                      first:rounded-t-lg last:rounded-b-lg
+                      focus:outline-none focus:bg-white focus:text-gray-700
+                    "
+                role="menuitem"
+                tabIndex={0}
+              >
+                <X className="w-4 h-4 flex-shrink-0" />
+                <span>Denied</span>
+              </button>
+            )}
+
             {(onUpload && uploadPermissionSlug && hasPermission(uploadPermissionSlug)) && (
               <button
                 onClick={(e) => {
@@ -457,7 +510,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpl
               </button>
             )}
 
-            {onBriefCreation && (
+            {(onBriefCreation && (!planSubmissionPermissionSlug || hasPermission(planSubmissionPermissionSlug))) && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -476,7 +529,30 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpl
                 tabIndex={0}
               >
                 <FilePlus2 className="w-4 h-4 flex-shrink-0" />
-                <span>Brief Creation</span>
+                <span>Plan Submission</span>
+              </button>
+            )}
+
+            {(onCostSheet && costSheetPermissionSlug && hasPermission(costSheetPermissionSlug)) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCostSheet();
+                  setIsOpen(false);
+                }}
+                className="
+                      w-full px-4 py-2.5 text-sm font-medium bg-white shadow-none outline-0
+                      text-gray-700 hover:text-gray-700 hover:bg-white
+                      flex items-center gap-3
+                      transition-colors duration-150 ease-in-out
+                      first:rounded-t-lg last:rounded-b-lg
+                      focus:outline-none focus:bg-white focus:text-gray-700
+                    "
+                role="menuitem"
+                tabIndex={0}
+              >
+                <FileSpreadsheet className="w-4 h-4 flex-shrink-0" />
+                <span>Cost Sheet</span>
               </button>
             )}
 

@@ -54,7 +54,27 @@ export async function uploadPlanSubmission(
   return response.data;
 }
 
+/**
+ * Uploads a single Excel cost sheet for a brief.
+ * The brief id is sent in the URL and again as brief_id.
+ */
+export async function uploadCostSheet(
+  briefId: number,
+  file: File
+): Promise<PlanSubmissionResponse> {
+  const formData = new FormData();
+  formData.append('brief_id', String(briefId));
+  formData.append('cost_sheet', file);
+
+  const response = await api.customRequest<PlanSubmissionResponse>(
+    ENDPOINTS.BRIEFS.COST_SHEET(briefId),
+    { method: 'POST', data: formData }
+  );
+  return response.data;
+}
+
 import api from './api';
+import { ENDPOINTS } from '../constants/endpoints';
 
 // TypeScript interfaces for API response
 export interface BriefDetail {
@@ -91,6 +111,18 @@ export interface BriefDetail {
     name: string;
     email: string;
   };
+  sales_user?: {
+    id?: number;
+    name?: string;
+    email?: string;
+  } | null;
+  sales_person?: {
+    id?: number;
+    name?: string;
+    email?: string;
+  } | string | null;
+  campaign_start_date?: string | null;
+  campaign_end_date?: string | null;
   brief_status?: {
     id: number;
     name: string;

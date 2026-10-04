@@ -42,7 +42,12 @@ interface TableProps<T> {
   onChat?: (item: T) => void;
   onCreateMeeting?: (item: T) => void;
   onBriefCreation?: (item: T) => void;
+  onCostSheet?: (item: T) => void;
   onDownload?: (item: T) => void;
+  onApprove?: (item: T) => void;
+  onDecline?: (item: T) => void;
+  canApprove?: (item: T) => boolean;
+  canDecline?: (item: T) => boolean;
   /** Show the View action without a permission slug. */
   showViewWithoutPermission?: boolean;
   /** Empty-state title. Defaults to the shared table message. */
@@ -52,6 +57,10 @@ interface TableProps<T> {
   viewPermissionSlug?: string;
   deletePermissionSlug?: string;
   uploadPermissionSlug?: string;
+  planSubmissionPermissionSlug?: string;
+  costSheetPermissionSlug?: string;
+  approvePermissionSlug?: string;
+  declinePermissionSlug?: string;
   /** optional render key extractor (defaults to item.id || index) */
   keyExtractor?: (item: T, index: number) => string;
   /** compact mode reduces cell padding (default false) */
@@ -61,7 +70,7 @@ interface TableProps<T> {
 }
 
 const Table = <T,>(props: TableProps<T>) => {
-  const { data, columns, startIndex = 0, loading = false, onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, onDownload, showViewWithoutPermission = false, emptyMessage = 'No records found', editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, keyExtractor, compact = false, desktopOnMobile = true } = props;
+  const { data, columns, startIndex = 0, loading = false, onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, onCostSheet, onDownload, onApprove, onDecline, canApprove, canDecline, showViewWithoutPermission = false, emptyMessage = 'No records found', editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, keyExtractor, compact = false, desktopOnMobile = true } = props;
   const { show: showCellTooltip, hide: hideCellTooltip, TooltipLayer } = useTableCellTooltip();
 
   // responsive padding classes used for cells/headers; compact mode reduces padding further
@@ -233,12 +242,19 @@ const Table = <T,>(props: TableProps<T>) => {
                           {...(onChat && { onChat: () => onChat(item) })}
                           {...(onCreateMeeting && { onCreateMeeting: () => onCreateMeeting(item) })}
                           {...(onBriefCreation && { onBriefCreation: () => onBriefCreation(item) })}
+                          {...(onCostSheet && { onCostSheet: () => onCostSheet(item) })}
                           {...(onDownload && { onDownload: () => onDownload(item) })}
+                          {...(onApprove && (!canApprove || canApprove(item)) && { onApprove: () => onApprove(item) })}
+                          {...(onDecline && (!canDecline || canDecline(item)) && { onDecline: () => onDecline(item) })}
                           showViewWithoutPermission={showViewWithoutPermission}
                           editPermissionSlug={editPermissionSlug}
                           viewPermissionSlug={viewPermissionSlug}
                           deletePermissionSlug={deletePermissionSlug}
                           uploadPermissionSlug={uploadPermissionSlug}
+                          planSubmissionPermissionSlug={planSubmissionPermissionSlug}
+                          costSheetPermissionSlug={costSheetPermissionSlug}
+                          approvePermissionSlug={approvePermissionSlug}
+                          declinePermissionSlug={declinePermissionSlug}
                         />
                       </div>
                     </td>
@@ -301,12 +317,19 @@ const Table = <T,>(props: TableProps<T>) => {
                   {...(onChat && { onChat: () => onChat(item) })}
                   {...(onCreateMeeting && { onCreateMeeting: () => onCreateMeeting(item) })}
                   {...(onBriefCreation && { onBriefCreation: () => onBriefCreation(item) })}
+                  {...(onCostSheet && { onCostSheet: () => onCostSheet(item) })}
                   {...(onDownload && { onDownload: () => onDownload(item) })}
+                  {...(onApprove && (!canApprove || canApprove(item)) && { onApprove: () => onApprove(item) })}
+                  {...(onDecline && (!canDecline || canDecline(item)) && { onDecline: () => onDecline(item) })}
                   showViewWithoutPermission={showViewWithoutPermission}
                   editPermissionSlug={editPermissionSlug}
                   viewPermissionSlug={viewPermissionSlug}
                   deletePermissionSlug={deletePermissionSlug}
                   uploadPermissionSlug={uploadPermissionSlug}
+                  planSubmissionPermissionSlug={planSubmissionPermissionSlug}
+                  costSheetPermissionSlug={costSheetPermissionSlug}
+                  approvePermissionSlug={approvePermissionSlug}
+                  declinePermissionSlug={declinePermissionSlug}
                 />
               </div>
 

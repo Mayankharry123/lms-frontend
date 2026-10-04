@@ -183,6 +183,18 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
       return crumbs;
     }
 
+    if (pathname.startsWith('/brief/cost-sheet')) {
+      crumbs.push({
+        label: 'Brief Log',
+        path: '/brief/log',
+      });
+      crumbs.push({
+        label: 'Cost Sheet',
+        isActive: true,
+      });
+      return crumbs;
+    }
+
     // Handle brief routes
     if (pathname.startsWith('/brief')) {
       crumbs.push({

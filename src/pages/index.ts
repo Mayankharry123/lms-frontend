@@ -20,6 +20,7 @@ export { default as DepartmentMaster } from './DepartmentMaster';
 export { default as BriefLog } from './Brief/BriefLog';
 export { default as PlanHistory } from './Brief/PlanHistory';
 export { default as PlanSubmission } from './Brief/PlanSubmission';
+export { default as CostSheet } from './Brief/CostSheet';
 export { default as EditSubmittedPlan } from './Brief/EditSubmittedPlan';
 export { default as Notifications } from './Notifications';
 export { default as BackupPlan } from './BackupPlan/BackupPlan';

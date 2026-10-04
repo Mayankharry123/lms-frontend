@@ -12,6 +12,7 @@ import { meetingRoutes } from './meeting.routes';
 import { userManagementRoutes } from './user-management.routes';
 import { miscRoutes } from './misc.routes';
 import { backupPlanRoutes } from './backup-plan.routes';
+import { costSheetsRoutes } from './cost-sheets.routes';
 
 export const protectedRoutes = (
   <Route
@@ -31,6 +32,7 @@ export const protectedRoutes = (
     {missCampaignRoutes}
     {briefRoutes}
     {backupPlanRoutes}
+    {costSheetsRoutes}
     {meetingRoutes}
     {userManagementRoutes}
   </Route>
