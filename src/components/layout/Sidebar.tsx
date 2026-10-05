@@ -78,6 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobile = false, mobileOpen = false,
       if (pathname.match(/^\/brief\/plan-history\//)) return '/brief/log';
       if (pathname.match(/^\/brief\/plan-submission\//)) return '/brief/log';
       if (pathname.match(/^\/brief\/cost-sheet\//)) return '/brief/log';
+      if (pathname.match(/^\/cost-sheets\/create-po\//)) return '/cost-sheets';
       if (
         pathname.match(
           /^\/brief\/(?!create|log|Brief_Pipeline|plan-history|plan-submission|cost-sheet|edit-submitted-plan)[^/]+$/

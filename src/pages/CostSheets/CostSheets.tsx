@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import MasterHeader from '../../components/ui/MasterHeader';
@@ -17,6 +18,7 @@ import StatusDropdown from '../../components/ui/StatusDropdown';
 import PageBackHeader from '../../components/ui/PageBackHeader';
 import Badge from '../../components/ui/Badge';
 import { defaultDatedXlsxFilename, downloadBlobFile } from '../../utils/downloadFile';
+import { ROUTES } from '../../constants';
 import { listCostSheets, type CostSheetRow, type CostSheetStatus, type FinanceStatus } from '../../services/CostSheets';
 
 const COST_SHEET_STATUSES: CostSheetStatus[] = ['Pending', 'Submitted'];
@@ -129,6 +131,7 @@ const rowWorkbookFile = (row: CostSheetRow) => {
 };
 
 const CostSheets: React.FC = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<CostSheetRow[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -414,6 +417,7 @@ const CostSheets: React.FC = () => {
             keyExtractor={(row) => row.id}
             columns={columns}
             onView={(row) => setViewItem(row)}
+            onCreatePo={(row) => navigate(ROUTES.COST_SHEETS_CREATE_PO(row.costSheetId || row.id))}
             onDownload={downloadFile}
             onApprove={(row) => updateRow(row.id, { financeStatus: 'Approved' })}
             onDecline={(row) => updateRow(row.id, { financeStatus: 'Denied' })}
@@ -422,6 +426,7 @@ const CostSheets: React.FC = () => {
             showViewWithoutPermission
             approvePermissionSlug="cost-sheets.approve"
             declinePermissionSlug="cost-sheets.decline"
+            createPoPermissionSlug="cost-sheets.create-po"
           />
         </div>
       </div>

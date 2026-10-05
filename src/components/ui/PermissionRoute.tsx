@@ -70,7 +70,9 @@ const PermissionRoute: React.FC<PermissionRouteProps> = ({ children }) => {
 
   const normalizedPath = normalizePath(path);
   const permissionCandidates =
-    normalizedPath === '/dashboard/organisation-planner' ? ['/dashboard'] : [path];
+    normalizedPath === '/dashboard/organisation-planner'
+      ? ['/dashboard']
+      : [path];
 
   const hasPermission = permissionCandidates.some((candidate) =>
     allPermittedPaths.some((permittedPath) => matchPath(permittedPath, candidate))

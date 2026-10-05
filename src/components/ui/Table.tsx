@@ -46,6 +46,7 @@ interface TableProps<T> {
   onDownload?: (item: T) => void;
   onApprove?: (item: T) => void;
   onDecline?: (item: T) => void;
+  onCreatePo?: (item: T) => void;
   canApprove?: (item: T) => boolean;
   canDecline?: (item: T) => boolean;
   /** Show the View action without a permission slug. */
@@ -61,6 +62,7 @@ interface TableProps<T> {
   costSheetPermissionSlug?: string;
   approvePermissionSlug?: string;
   declinePermissionSlug?: string;
+  createPoPermissionSlug?: string;
   /** optional render key extractor (defaults to item.id || index) */
   keyExtractor?: (item: T, index: number) => string;
   /** compact mode reduces cell padding (default false) */
@@ -70,7 +72,7 @@ interface TableProps<T> {
 }
 
 const Table = <T,>(props: TableProps<T>) => {
-  const { data, columns, startIndex = 0, loading = false, onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, onCostSheet, onDownload, onApprove, onDecline, canApprove, canDecline, showViewWithoutPermission = false, emptyMessage = 'No records found', editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, keyExtractor, compact = false, desktopOnMobile = true } = props;
+  const { data, columns, startIndex = 0, loading = false, onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, onCostSheet, onDownload, onApprove, onDecline, onCreatePo, canApprove, canDecline, showViewWithoutPermission = false, emptyMessage = 'No records found', editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, createPoPermissionSlug, keyExtractor, compact = false, desktopOnMobile = true } = props;
   const { show: showCellTooltip, hide: hideCellTooltip, TooltipLayer } = useTableCellTooltip();
 
   // responsive padding classes used for cells/headers; compact mode reduces padding further
@@ -244,6 +246,7 @@ const Table = <T,>(props: TableProps<T>) => {
                           {...(onBriefCreation && { onBriefCreation: () => onBriefCreation(item) })}
                           {...(onCostSheet && { onCostSheet: () => onCostSheet(item) })}
                           {...(onDownload && { onDownload: () => onDownload(item) })}
+                          {...(onCreatePo && { onCreatePo: () => onCreatePo(item) })}
                           {...(onApprove && (!canApprove || canApprove(item)) && { onApprove: () => onApprove(item) })}
                           {...(onDecline && (!canDecline || canDecline(item)) && { onDecline: () => onDecline(item) })}
                           showViewWithoutPermission={showViewWithoutPermission}
@@ -255,6 +258,7 @@ const Table = <T,>(props: TableProps<T>) => {
                           costSheetPermissionSlug={costSheetPermissionSlug}
                           approvePermissionSlug={approvePermissionSlug}
                           declinePermissionSlug={declinePermissionSlug}
+                          createPoPermissionSlug={createPoPermissionSlug}
                         />
                       </div>
                     </td>
@@ -319,6 +323,7 @@ const Table = <T,>(props: TableProps<T>) => {
                   {...(onBriefCreation && { onBriefCreation: () => onBriefCreation(item) })}
                   {...(onCostSheet && { onCostSheet: () => onCostSheet(item) })}
                   {...(onDownload && { onDownload: () => onDownload(item) })}
+                  {...(onCreatePo && { onCreatePo: () => onCreatePo(item) })}
                   {...(onApprove && (!canApprove || canApprove(item)) && { onApprove: () => onApprove(item) })}
                   {...(onDecline && (!canDecline || canDecline(item)) && { onDecline: () => onDecline(item) })}
                   showViewWithoutPermission={showViewWithoutPermission}
@@ -330,6 +335,7 @@ const Table = <T,>(props: TableProps<T>) => {
                   costSheetPermissionSlug={costSheetPermissionSlug}
                   approvePermissionSlug={approvePermissionSlug}
                   declinePermissionSlug={declinePermissionSlug}
+                  createPoPermissionSlug={createPoPermissionSlug}
                 />
               </div>
 

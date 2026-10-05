@@ -115,6 +115,13 @@ export const ENDPOINTS = {
     STATUS: (id: string | number) => `/cost-sheets/${id}/status`,
     FINANCE_STATUS: (id: string | number) => `/cost-sheets/${id}/finance-status`,
   },
+  PURCHASE_ORDERS: {
+    CREATE: '/purchase-orders',
+  },
+  PUBLISHERS: {
+    LIST: '/publisher/list',
+    DETAIL: (id: string | number) => `/publisher/details/${id}`,
+  },
   PLANNERS: {
     UPDATE_STATUS: (plannerId: string | number) => `/planners/${plannerId}/update-status`,
     STATUSES: '/planner-statuses',

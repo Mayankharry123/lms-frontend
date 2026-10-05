@@ -132,6 +132,10 @@ function isSidebarNavChild(child: ApiSidebarItem): boolean {
   if (!child.url || child.url.trim() === '' || child.url === 'javascript:void(0)') {
     return false;
   }
+  // Placeholder routes such as cost-sheets/create-po/{id} are actions, not menu links.
+  if (child.url.includes('{')) {
+    return false;
+  }
   if (isDashboardFeaturePermission(child.name)) {
     return false;
   }

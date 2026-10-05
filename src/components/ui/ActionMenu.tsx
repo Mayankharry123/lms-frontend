@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreHorizontal, Edit, Eye, Trash, Upload, MessageCircle, CalendarPlus, FilePlus2, FileSpreadsheet, Download, Check, X } from 'lucide-react';
+import { MoreHorizontal, Edit, Eye, Trash, Upload, MessageCircle, CalendarPlus, FilePlus2, FileSpreadsheet, Download, Check, X, Receipt } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // import { usePermissions } from '../../hooks/SidebarMenuHooks';
 import { usePermissions } from '../../hooks/SidebarMenuHooks';
@@ -18,6 +18,7 @@ interface ActionMenuProps {
   onDownload?: () => void;
   onApprove?: () => void;
   onDecline?: () => void;
+  onCreatePo?: () => void;
   /** Show View even when no permission slug is configured (UI-only pages). */
   showViewWithoutPermission?: boolean;
   /** Permission slugs for additional checks */
@@ -29,6 +30,7 @@ interface ActionMenuProps {
   costSheetPermissionSlug?: string;
   approvePermissionSlug?: string;
   declinePermissionSlug?: string;
+  createPoPermissionSlug?: string;
   /** If true, forces the menu to open above the trigger (used for last rows) */
   isLast?: boolean;
   /** Index of the row (0-based) - helps determine if near bottom */
@@ -37,7 +39,7 @@ interface ActionMenuProps {
   totalRows?: number;
 }
 
-const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, onCostSheet, onDownload, onApprove, onDecline, showViewWithoutPermission = false, editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, isLast, rowIndex, totalRows }) => {
+const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, onCostSheet, onDownload, onApprove, onDecline, onCreatePo, showViewWithoutPermission = false, editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, createPoPermissionSlug, isLast, rowIndex, totalRows }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showAbove, setShowAbove] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -369,6 +371,29 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpl
               >
                 <Eye className="w-4 h-4 flex-shrink-0" />
                 <span>View</span>
+              </button>
+            )}
+
+            {(onCreatePo && createPoPermissionSlug && hasPermission(createPoPermissionSlug)) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreatePo();
+                  setIsOpen(false);
+                }}
+                className="
+                      w-full px-4 py-2.5 text-sm font-medium bg-white shadow-none outline-0
+                      text-gray-700 hover:text-gray-700 hover:bg-white
+                      flex items-center gap-3
+                      transition-colors duration-150 ease-in-out
+                      first:rounded-t-lg last:rounded-b-lg
+                      focus:outline-none focus:bg-white focus:text-gray-700
+                    "
+                role="menuitem"
+                tabIndex={0}
+              >
+                <Receipt className="w-4 h-4 flex-shrink-0" />
+                <span>Create PO</span>
               </button>
             )}
 

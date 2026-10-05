@@ -36,6 +36,7 @@ export const ROUTE_SEGMENTS = {
   BRIEF: 'brief',
   BACKUP_PLAN: 'backup-plan',
   COST_SHEETS: 'cost-sheets',
+  COST_SHEETS_CREATE_PO: 'cost-sheets/create-po/:costSheetId',
   /** Matches backend permission paths; do not rename without updating permissions. */
   BRIEF_PIPELINE: 'Brief_Pipeline',
   BRIEF_CREATE: 'brief/create',
@@ -138,6 +139,8 @@ export const ROUTES = {
   },
   BACKUP_PLAN: abs(ROUTE_SEGMENTS.BACKUP_PLAN),
   COST_SHEETS: abs(ROUTE_SEGMENTS.COST_SHEETS),
+  COST_SHEETS_CREATE_PO: (costSheetId: string) =>
+    `/cost-sheets/create-po/${encodeURIComponent(costSheetId)}`,
   BRIEF: {
     ROOT: abs(ROUTE_SEGMENTS.BRIEF),
     PIPELINE: `/brief/${ROUTE_SEGMENTS.BRIEF_PIPELINE}`,

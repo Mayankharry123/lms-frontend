@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type Option = { value: string; label: string } | string;
 
@@ -15,6 +16,8 @@ type SelectDropdownProps = {
   isMulti?: boolean;
   autoCloseOnSelect?: boolean;
   placement?: 'bottom' | 'top';
+  onSearch?: (query: string) => void;
+  menuMaxHeight?: number;
 };
 
 const normalize = (opt: Option): { value: string; label: string } => {
@@ -35,21 +38,59 @@ const SelectDropdown: React.FC<SelectDropdownProps> = ({
   isMulti = false,
   autoCloseOnSelect = true,
   placement = 'bottom',
+  onSearch,
+  menuMaxHeight = 240,
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
   const ref = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const normalized = options.map(normalize);
-  const filtered = query ? normalized.filter(o => o.label.toLowerCase().includes(query.toLowerCase())) : normalized;
+  const filtered = query && !onSearch
+    ? normalized.filter(o => o.label.toLowerCase().includes(query.toLowerCase()))
+    : normalized;
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    const updatePosition = () => {
+      const element = ref.current;
+      if (!element) return;
+      const rect = element.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openAbove = placement === 'top' || (spaceBelow < menuMaxHeight && rect.top > spaceBelow);
+      setMenuStyle({
+        position: 'fixed',
+        left: rect.left,
+        width: rect.width,
+        maxHeight: menuMaxHeight,
+        zIndex: 1000,
+        ...(openAbove
+          ? { bottom: window.innerHeight - rect.top + 8, top: 'auto' }
+          : { top: rect.bottom + 8, bottom: 'auto' }),
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [open, placement, menuMaxHeight]);
 
   useEffect(() => {
     if (!open) setQuery('');
@@ -122,6 +163,7 @@ const SelectDropdown: React.FC<SelectDropdownProps> = ({
             value={open && searchable ? query : (!isMulti ? (selectedLabels[0]?.label || '') : '')}
             onChange={(e) => {
               setQuery(e.target.value);
+              onSearch?.(e.target.value);
               if (!open) setOpen(true);
             }}
             onFocus={() => setOpen(true)}
@@ -146,13 +188,13 @@ const SelectDropdown: React.FC<SelectDropdownProps> = ({
         </div>
       </div>
 
+      {open && typeof document !== 'undefined'
+        ? createPortal(
       <div
+        ref={menuRef}
         role="listbox"
-        aria-hidden={!open}
-        className={`select-dropdown absolute z-[80] left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-y-auto transition-all duration-150 ${
-          placement === 'top' ? 'bottom-full top-auto mb-2' : 'top-full bottom-auto mt-2'
-        } ${open ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
-        style={{ maxHeight: '140px' }} // Show only 2 options (each ~40px)
+        className="select-dropdown overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+        style={menuStyle}
       >
         {sortedFiltered.length === 0 ? (
           <div className="px-4 py-2 text-gray-500">No matches found</div>
@@ -198,7 +240,10 @@ const SelectDropdown: React.FC<SelectDropdownProps> = ({
             );
           })
         )}
-      </div>
+      </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 };
