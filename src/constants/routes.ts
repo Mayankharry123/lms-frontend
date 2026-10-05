@@ -37,6 +37,7 @@ export const ROUTE_SEGMENTS = {
   BACKUP_PLAN: 'backup-plan',
   COST_SHEETS: 'cost-sheets',
   COST_SHEETS_CREATE_PO: 'cost-sheets/create-po/:costSheetId',
+  PURCHASE_ORDER: 'purchase-order',
   /** Matches backend permission paths; do not rename without updating permissions. */
   BRIEF_PIPELINE: 'Brief_Pipeline',
   BRIEF_CREATE: 'brief/create',
@@ -139,6 +140,7 @@ export const ROUTES = {
   },
   BACKUP_PLAN: abs(ROUTE_SEGMENTS.BACKUP_PLAN),
   COST_SHEETS: abs(ROUTE_SEGMENTS.COST_SHEETS),
+  PURCHASE_ORDER: abs(ROUTE_SEGMENTS.PURCHASE_ORDER),
   COST_SHEETS_CREATE_PO: (costSheetId: string) =>
     `/cost-sheets/create-po/${encodeURIComponent(costSheetId)}`,
   BRIEF: {

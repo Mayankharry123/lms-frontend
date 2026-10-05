@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Badge from './Badge';
 import AssignButton from './AssignButton';
 import ConfirmDialog from './ConfirmDialog';
@@ -17,11 +18,12 @@ interface StatusDropdownProps {
 
 const StatusDropdown: React.FC<StatusDropdownProps> = ({ value, options, onChange, onConfirm, appearance = 'badge' }) => {
   const [open, setOpen] = useState(false);
-  const [openAbove, setOpenAbove] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const computePlacement = () => {
     const el = ref.current;
@@ -30,7 +32,18 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({ value, options, onChang
     const rect = el.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
-    setOpenAbove(spaceBelow < DROPDOWN_EST_HEIGHT && spaceAbove > spaceBelow);
+    const openAbove = spaceBelow < DROPDOWN_EST_HEIGHT && spaceAbove > spaceBelow;
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - DROPDOWN_WIDTH - 8));
+
+    setMenuStyle({
+      position: 'fixed',
+      left,
+      width: DROPDOWN_WIDTH,
+      zIndex: 1000,
+      ...(openAbove
+        ? { bottom: window.innerHeight - rect.top + 4, top: 'auto' }
+        : { top: rect.bottom + 4, bottom: 'auto' }),
+    });
   };
 
   useLayoutEffect(() => {
@@ -40,9 +53,9 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({ value, options, onChang
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     if (open) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -114,12 +127,11 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({ value, options, onChang
         </span>
       )}
 
-      {open && (
+      {open && typeof document !== 'undefined' && createPortal(
         <div
-          className={`absolute left-0 z-[200] rounded-xl border border-gray-200 bg-white shadow-lg ${
-            openAbove ? 'bottom-full mb-1' : 'top-full mt-1'
-          }`}
-          style={{ width: `${DROPDOWN_WIDTH}px` }}
+          ref={menuRef}
+          className="max-h-56 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg"
+          style={menuStyle}
         >
           <ul
             tabIndex={-1}
@@ -141,19 +153,8 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({ value, options, onChang
               </li>
             ))}
           </ul>
-          <style>{`
-            ul::-webkit-scrollbar {
-              width: 6px;
-            }
-            ul::-webkit-scrollbar-thumb {
-              background: #e5e7eb;
-              border-radius: 4px;
-            }
-            ul::-webkit-scrollbar-track {
-              background: #fff;
-            }
-          `}</style>
-        </div>
+        </div>,
+        document.body
       )}
       <ConfirmDialog
         isOpen={confirmDialogOpen}

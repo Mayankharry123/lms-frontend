@@ -1,5 +1,6 @@
 import { ENDPOINTS } from '../constants/endpoints';
 import { apiClient } from '../utils/apiClient';
+import { fileBaseName } from '../utils/downloadFile';
 
 export type CostSheetStatus = 'Pending' | 'Submitted';
 export type FinanceStatus = 'Approved' | 'Denied' | null;
@@ -22,6 +23,13 @@ export type CostSheetRow = {
 
 const asText = (value: unknown) => (value == null ? '' : String(value).trim());
 
+const asName = (value: unknown) => {
+  if (value && typeof value === 'object') {
+    return asText((value as Record<string, unknown>).name);
+  }
+  return asText(value);
+};
+
 const asFinanceStatus = (value: unknown): FinanceStatus => {
   const text = asText(value).toLowerCase();
   if (text === 'approved') return 'Approved';
@@ -35,12 +43,18 @@ const asCostSheetStatus = (value: unknown): CostSheetStatus => {
 
 export function mapCostSheet(raw: Record<string, unknown>): CostSheetRow {
   const id = asText(raw.id ?? raw.cost_sheet_id ?? raw.costSheetId);
-  const file = raw.file ?? raw.cost_sheet_file ?? raw.attachment;
+  const file = raw.file ?? raw.cost_sheet_file ?? raw.attachment ?? raw.cost_sheet;
   const fileObject = file && typeof file === 'object' ? (file as Record<string, unknown>) : null;
-  const fileName = asText(
+  const fileUrl = asText(
+    raw.file_url ??
+      raw.fileUrl ??
+      fileObject?.url ??
+      (typeof file === 'string' && /^https?:\/\//i.test(file) ? file : '')
+  );
+  const storedName = asText(
     raw.file_name ?? raw.fileName ?? fileObject?.name ?? (typeof file === 'string' ? file : '')
   );
-  const fileUrl = asText(raw.file_url ?? raw.fileUrl ?? fileObject?.url);
+  const fileName = storedName ? fileBaseName(storedName) : fileUrl ? fileBaseName(fileUrl) : '';
 
   return {
     id: id || asText(raw.cost_sheet_code),
@@ -48,12 +62,12 @@ export function mapCostSheet(raw: Record<string, unknown>): CostSheetRow {
     briefId: asText(raw.brief_id ?? raw.briefId),
     briefName: asText(raw.brief_name ?? raw.briefName),
     planId: asText(raw.plan_id ?? raw.planId),
-    plannerName: asText(raw.planner_name ?? raw.plannerName),
+    plannerName: asName(raw.planner_name ?? raw.plannerName ?? raw.planner),
     submittedDate: asText(raw.submitted_date ?? raw.submittedDate),
-    assignBy: asText(raw.assign_by ?? raw.assignBy),
-    assignTo: asText(raw.assign_to ?? raw.assignTo),
-    costSheetStatus: asCostSheetStatus(raw.cost_sheet_status ?? raw.costSheetStatus ?? raw.status),
-    financeStatus: asFinanceStatus(raw.finance_status ?? raw.financeStatus),
+    assignBy: asName(raw.assign_by ?? raw.assignBy),
+    assignTo: asName(raw.assign_to ?? raw.assignTo),
+    costSheetStatus: asCostSheetStatus(asName(raw.cost_sheet_status ?? raw.costSheetStatus) || asName(raw.status)),
+    financeStatus: asFinanceStatus(asName(raw.finance_status ?? raw.financeStatus)),
     fileName: fileName || null,
     fileUrl: fileUrl || null,
   };

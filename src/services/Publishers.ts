@@ -51,12 +51,22 @@ export type PublisherBankDetails = {
   bankName: string;
 };
 
+export type PublisherAddress = {
+  id: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+};
+
 export type PublisherDetail = {
   id: string;
   name: string;
   primaryEmail: string;
   companyName: string;
   bank: PublisherBankDetails;
+  addresses: PublisherAddress[];
 };
 
 const asText = (value: unknown) => (value == null ? '' : String(value).trim());
@@ -82,6 +92,23 @@ export function mapPublisherOption(raw: unknown): PublisherOption | null {
   return { id, name };
 }
 
+function mapAddresses(value: unknown): PublisherAddress[] {
+  const list = Array.isArray(value) ? value : value ? [value] : [];
+  return list
+    .map((item, index) => {
+      const record = asRecord(item);
+      return {
+        id: asText(record.id) || `address-${index}`,
+        address: asText(record.address),
+        city: asText(record.city),
+        state: asText(record.state),
+        country: asText(record.country),
+        pincode: asText(record.pincode ?? record.pin_code),
+      };
+    })
+    .filter((item) => item.address || item.city || item.state || item.country || item.pincode);
+}
+
 export function mapPublisherDetail(raw: unknown): PublisherDetail {
   const record = asRecord(unwrapData(raw) ?? raw);
   const bank = asRecord(record.bank_details ?? record.bankDetails);
@@ -98,6 +125,7 @@ export function mapPublisherDetail(raw: unknown): PublisherDetail {
       ifscCode: asText(bank.ifsc_code ?? bank.ifscCode),
       bankName: asText(bank.bank_name ?? bank.bankName),
     },
+    addresses: mapAddresses(record.address ?? record.addresses),
   };
 }
 

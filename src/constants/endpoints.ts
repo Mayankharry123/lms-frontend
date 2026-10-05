@@ -103,7 +103,6 @@ export const ENDPOINTS = {
     CHAT: (id: string | number) => `/briefs/${encodeURIComponent(String(id))}/activity`,
     ASSIGN_HISTORY: (id: string | number) => `/briefs/${encodeURIComponent(String(id))}/assign-histories-chat`,
     LOGS: '/briefs/brief-logs',
-    COST_SHEET: (id: string | number) => `/briefs/${id}/cost-sheet`,
     BUSINESS_FORECAST: '/briefs/business-forecast',
     LATEST_TWO: '/briefs/latest/two-briefs',
     RECENT: '/briefs/recent',
@@ -116,6 +115,7 @@ export const ENDPOINTS = {
     FINANCE_STATUS: (id: string | number) => `/cost-sheets/${id}/finance-status`,
   },
   PURCHASE_ORDERS: {
+    LIST: '/purchase-orders',
     CREATE: '/purchase-orders',
   },
   PUBLISHERS: {
@@ -124,6 +124,7 @@ export const ENDPOINTS = {
   },
   PLANNERS: {
     UPDATE_STATUS: (plannerId: string | number) => `/planners/${plannerId}/update-status`,
+    UPLOAD_COST_SHEET: (plannerId: string | number) => `/planners/${plannerId}/upload-cost-sheet`,
     STATUSES: '/planner-statuses',
   },
   MISS_CAMPAIGNS: {
@@ -200,6 +201,11 @@ export const ENDPOINTS = {
   },
   OPERATION_STATUSES: {
     LIST: '/operation-statuses',
+  },
+  OPERATIONS: {
+    LIST: '/operations',
+    DETAIL: (id: string | number) => `/operations/${id}`,
+    BACKUP_PLAN: (id: string | number) => `/operations/${id}/backup-plan`,
   },
   GEO: {
     ZONES: {

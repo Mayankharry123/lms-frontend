@@ -55,19 +55,18 @@ export async function uploadPlanSubmission(
 }
 
 /**
- * Uploads a single Excel cost sheet for a brief.
- * The brief id is sent in the URL and again as brief_id.
+ * Uploads an Excel cost sheet for a plan.
+ * POST /planners/{plannerId}/upload-cost-sheet with form field cost_sheet.
  */
 export async function uploadCostSheet(
-  briefId: number,
+  plannerId: number,
   file: File
 ): Promise<PlanSubmissionResponse> {
   const formData = new FormData();
-  formData.append('brief_id', String(briefId));
   formData.append('cost_sheet', file);
 
   const response = await api.customRequest<PlanSubmissionResponse>(
-    ENDPOINTS.BRIEFS.COST_SHEET(briefId),
+    ENDPOINTS.PLANNERS.UPLOAD_COST_SHEET(plannerId),
     { method: 'POST', data: formData }
   );
   return response.data;
@@ -132,7 +131,8 @@ export interface BriefDetail {
     // Removed duplicate import statement
     name: string;
   };
-  planner_status?: string | null;
+  planner_id?: number | string | null;
+  planner_status?: { id?: number; name?: string } | string | null;
   created_at?: string;
   updated_at?: string;
 }

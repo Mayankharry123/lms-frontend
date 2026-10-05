@@ -66,6 +66,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: apiProxy.target.startsWith('https://'),
         },
+        '/storage': {
+          target: apiProxy.target,
+          changeOrigin: true,
+          secure: apiProxy.target.startsWith('https://'),
+        },
         '/remote-images': {
           target: remoteImagesProxy.target,
           changeOrigin: true,

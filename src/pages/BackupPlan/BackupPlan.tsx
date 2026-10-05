@@ -1,6 +1,6 @@
 /**
  * @file BackupPlan.tsx
- * @description Backup Plan list UI. Sample rows only — no API.
+ * @description Backup Plan list. Rows come from GET /operations.
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -18,65 +18,16 @@ import AssignDropdown from '../../components/ui/AssignDropdown';
 import PageBackHeader from '../../components/ui/PageBackHeader';
 import Badge from '../../components/ui/Badge';
 import { fetchOperationStatuses } from '../../services/OperationStatus';
+import { downloadOperationBackupPlan, listOperations, type OperationRow } from '../../services/Operations';
 import { defaultDatedXlsxFilename, downloadBlobFile } from '../../utils/downloadFile';
+import SweetAlert from '../../utils/SweetAlert';
 
-type BackupPlanStatus = string;
+type BackupPlanRow = OperationRow;
 
-type BackupPlanRow = {
-  id: string;
-  planId: string;
-  briefName: string;
-  productName: string;
-  campaignStartDate: string;
-  campaignEndDate: string;
-  salesUserName: string;
-  plannerName: string;
-  assignUser: string;
-  status: BackupPlanStatus;
-  fileName: string | null;
-};
-
-const SAMPLE_PLANS: BackupPlanRow[] = [
-  {
-    id: '312',
-    planId: '#312',
-    briefName: 'Mayank Brief',
-    productName: 'XYZ',
-    campaignStartDate: '03 Oct 2026',
-    campaignEndDate: '15 Oct 2026',
-    salesUserName: 'Mayank Sharma',
-    plannerName: 'Aryan Sharma',
-    assignUser: 'Aryan Sharma',
-    status: 'Live',
-    fileName: 'backup-plan-312.xlsx',
-  },
-  {
-    id: '311',
-    planId: '#311',
-    briefName: 'Mobiyoung Brief',
-    productName: 'LAVA',
-    campaignStartDate: '05 Oct 2026',
-    campaignEndDate: '20 Oct 2026',
-    salesUserName: 'Riya Kapoor',
-    plannerName: 'Neha Verma',
-    assignUser: 'Neha Verma',
-    status: 'Pending',
-    fileName: 'backup-plan-311.xlsx',
-  },
-  {
-    id: '310',
-    planId: '#310',
-    briefName: 'Festival Launch',
-    productName: 'AURA',
-    campaignStartDate: '08 Oct 2026',
-    campaignEndDate: '28 Oct 2026',
-    salesUserName: 'Karan Mehta',
-    plannerName: 'Aryan Sharma',
-    assignUser: 'Priyanka',
-    status: 'Pending',
-    fileName: null,
-  },
-];
+type PreviewSource =
+  | { kind: 'file'; file: File }
+  | { kind: 'remote'; url: string; name?: string }
+  | null;
 
 const ITEMS_PER_PAGE = 10;
 const ASSIGN_USER_OPTIONS = [
@@ -142,38 +93,22 @@ const exportBackupPlansExcel = (rows: BackupPlanRow[]) => {
   downloadBlobFile(defaultDatedXlsxFilename('backup-plan'), blob);
 };
 
-const downloadPlanFile = (row: BackupPlanRow) => {
-  if (!row.fileName) return;
-  const contents = [
-    'Plan ID,Brief Name,Product Name,Campaign Start Date,Campaign End Date,Sales User Name,Planner Name,Assign User,Status',
-    [
-      row.planId,
-      row.briefName,
-      row.productName,
-      row.campaignStartDate,
-      row.campaignEndDate,
-      row.salesUserName,
-      row.plannerName,
-      row.assignUser,
-      row.status,
-    ].join(','),
-  ].join('\n');
-  const blob = new Blob([contents], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = row.fileName;
-  link.click();
-  URL.revokeObjectURL(url);
+const downloadPlanFile = async (row: BackupPlanRow) => {
+  if (!row.fileUrl && !row.fileName) return;
+  try {
+    await downloadOperationBackupPlan(row);
+  } catch (err) {
+    SweetAlert.showError(err instanceof Error ? err.message : 'Failed to download file');
+  }
 };
 
 const BackupPlan: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [plans, setPlans] = useState<BackupPlanRow[]>(SAMPLE_PLANS);
+  const [plans, setPlans] = useState<BackupPlanRow[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewItem, setViewItem] = useState<BackupPlanRow | null>(null);
-  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewSource, setPreviewSource] = useState<PreviewSource>(null);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
 
   const handleStatusChange = (id: string, status: string) => {
@@ -197,8 +132,24 @@ const BackupPlan: React.FC = () => {
   };
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 400);
-    return () => window.clearTimeout(timer);
+    let mounted = true;
+    (async () => {
+      try {
+        const rows = await listOperations();
+        if (mounted) setPlans(rows);
+      } catch (err) {
+        console.error('Failed to load backup plans', err);
+        if (mounted) {
+          setPlans([]);
+          SweetAlert.showError(err instanceof Error ? err.message : 'Failed to load backup plans');
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -229,13 +180,17 @@ const BackupPlan: React.FC = () => {
   const pageRows = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const openFile = (row: BackupPlanRow) => {
+    if (row.fileUrl) {
+      setPreviewSource({ kind: 'remote', url: row.fileUrl, name: row.fileName ?? undefined });
+      return;
+    }
     if (!row.fileName) return;
     const file = new File(
       [`Backup plan file for ${row.planId} — ${row.briefName}`],
       row.fileName,
       { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
     );
-    setPreviewFile(file);
+    setPreviewSource({ kind: 'file', file });
   };
 
   const columns: Column<BackupPlanRow>[] = [
@@ -407,9 +362,9 @@ const BackupPlan: React.FC = () => {
         </div>
 
         <FilePreviewModal
-          isOpen={Boolean(previewFile)}
-          source={previewFile ? { kind: 'file', file: previewFile } : null}
-          onClose={() => setPreviewFile(null)}
+          isOpen={Boolean(previewSource)}
+          source={previewSource}
+          onClose={() => setPreviewSource(null)}
           panelClassName="!w-[95%] md:!w-[600px]"
           closeButtonClassName="btn-secondary"
         />
@@ -472,9 +427,9 @@ const BackupPlan: React.FC = () => {
       />
 
       <FilePreviewModal
-        isOpen={Boolean(previewFile)}
-        source={previewFile ? { kind: 'file', file: previewFile } : null}
-        onClose={() => setPreviewFile(null)}
+        isOpen={Boolean(previewSource)}
+        source={previewSource}
+        onClose={() => setPreviewSource(null)}
         panelClassName="!w-[95%] md:!w-[600px]"
         closeButtonClassName="btn-secondary"
       />

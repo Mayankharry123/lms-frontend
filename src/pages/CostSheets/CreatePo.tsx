@@ -12,6 +12,7 @@ import Button from '../../components/ui/Button';
 import { ROUTES } from '../../constants';
 import { getPublisherById, listPublishers, type PublisherDetail, type PublisherOption } from '../../services/Publishers';
 import { createPurchaseOrder } from '../../services/PurchaseOrders';
+import { downloadFileFromUrl, fileBaseName } from '../../utils/downloadFile';
 import SweetAlert from '../../utils/SweetAlert';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
@@ -69,6 +70,7 @@ const CreatePo: React.FC = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [publisher, setPublisher] = useState<PublisherDetail | null>(null);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
   const [lines, setLines] = useState<OrderLine[]>([blankLine()]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -97,6 +99,7 @@ const CreatePo: React.FC = () => {
   }, [publisherSearch]);
 
   useEffect(() => {
+    setSelectedAddressId('');
     if (!selectedPublisherId) {
       setPublisher(null);
       setDetailError(null);
@@ -108,7 +111,9 @@ const CreatePo: React.FC = () => {
     setDetailError(null);
     getPublisherById(selectedPublisherId)
       .then((detail) => {
-        if (mounted) setPublisher(detail);
+        if (!mounted) return;
+        setPublisher(detail);
+        setSelectedAddressId(detail.addresses[0]?.id ?? '');
       })
       .catch((err) => {
         console.error('Failed to load publisher details', err);
@@ -133,9 +138,13 @@ const CreatePo: React.FC = () => {
     setLines((current) => (current.length <= 1 ? current : current.filter((line) => line.key !== key)));
   };
 
+  const addresses = publisher?.addresses ?? [];
+  const selectedAddress = addresses.find((item) => item.id === selectedAddressId) ?? null;
+
   const validate = (): string | null => {
     if (!displayId) return 'Cost Sheet ID is missing.';
     if (!publisher?.id) return 'Please select a publisher.';
+    if (addresses.length > 0 && !selectedAddress) return 'Please select an address.';
     for (let i = 0; i < lines.length; i += 1) {
       const line = lines[i];
       const rowLabel = `Row ${i + 1}`;
@@ -168,18 +177,29 @@ const CreatePo: React.FC = () => {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await createPurchaseOrder({
-        cost_sheet_id: displayId,
-        publisher_id: publisher!.id,
-        items: lines.map((line) => ({
-          order: line.order.trim(),
-          hsn_sac: line.hsnSac.trim(),
+      const result = await createPurchaseOrder({
+        financeRecordId: displayId,
+        publisherId: publisher!.id,
+        ...(selectedAddress && !selectedAddress.id.startsWith('address-')
+          ? { publisherAddressId: selectedAddress.id }
+          : {}),
+        orders: lines.map((line) => ({
+          description: line.order.trim(),
+          hsnSac: line.hsnSac.trim(),
           city: line.city.trim(),
           qty: toNumber(line.qty),
           rate: toNumber(line.rate),
           amount: toNumber(line.amount),
         })),
       });
+      if (result.pdf_url) {
+        try {
+          await downloadFileFromUrl(result.pdf_url, fileBaseName(result.pdf_url));
+        } catch (downloadError) {
+          console.error('Failed to download purchase order PDF', downloadError);
+          SweetAlert.showError('Purchase order was created, but the PDF could not be downloaded.');
+        }
+      }
       await SweetAlert.showSubmitSuccess({ text: 'Purchase order created successfully' });
       navigate(ROUTES.COST_SHEETS);
     } catch (err) {
@@ -263,12 +283,49 @@ const CreatePo: React.FC = () => {
             {detailError ? <p className="mt-3 text-sm text-red-600">{detailError}</p> : null}
 
             {publisher ? (
-              <div className="mt-5 border-t border-gray-100 pt-5">
-                <h4 className="mb-3 text-sm font-semibold text-gray-900">Publisher Information</h4>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {publisherFields.map((field) => (
-                    <InfoTile key={field.label} label={field.label} value={field.value || '-'} />
-                  ))}
+              <div className="mt-5 space-y-5 border-t border-gray-100 pt-5">
+                <div>
+                  <h4 className="mb-3 text-sm font-semibold text-gray-900">Publisher Information</h4>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {publisherFields.map((field) => (
+                      <InfoTile key={field.label} label={field.label} value={field.value || '-'} />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="mb-3 text-sm font-semibold text-gray-900">Address</h4>
+                  {addresses.length > 0 ? (
+                    <>
+                      <div className="mb-3 md:w-1/2 md:pr-1.5">
+                        <FieldLabel>Select Address</FieldLabel>
+                        <SelectDropdown
+                          name="publisher_address"
+                          value={selectedAddressId}
+                          placeholder="Select Address"
+                          options={addresses.map((item) => ({
+                            value: item.id,
+                            label: item.address || [item.city, item.state].filter(Boolean).join(', ') || `Address ${item.id}`,
+                          }))}
+                          menuMaxHeight={240}
+                          onChange={(value) => setSelectedAddressId(String(value))}
+                        />
+                      </div>
+                      {selectedAddress ? (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <InfoTile label="Address" value={selectedAddress.address} />
+                          <InfoTile label="City" value={selectedAddress.city} />
+                          <InfoTile label="State" value={selectedAddress.state} />
+                          <InfoTile label="Country" value={selectedAddress.country} />
+                          <InfoTile label="Pincode" value={selectedAddress.pincode} />
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+                      No address available for this publisher.
+                    </div>
+                  )}
                 </div>
               </div>
             ) : null}

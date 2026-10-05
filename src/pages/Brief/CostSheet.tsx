@@ -159,8 +159,13 @@ const CostSheet: React.FC = () => {
 
   const handleSubmit = async () => {
     if (submitLock.current || submitLoading) return;
+    const plannerId = Number(brief?.planner_id);
     if (!id || Number.isNaN(Number(id))) {
       setFileError('Brief not found.');
+      return;
+    }
+    if (!plannerId) {
+      setFileError('Plan ID is missing for this brief.');
       return;
     }
     if (!costSheetFile) {
@@ -182,7 +187,7 @@ const CostSheet: React.FC = () => {
         title: 'Submitting Cost Sheet...',
         text: 'Please wait while we upload your Excel file',
       });
-      await uploadCostSheet(Number(id), costSheetFile);
+      await uploadCostSheet(plannerId, costSheetFile);
       SweetAlert.close();
       await SweetAlert.showSubmitSuccess({
         title: 'Submitted Successfully!',
@@ -206,6 +211,8 @@ const CostSheet: React.FC = () => {
     brief?.sales_person,
     brief?.created_by_user
   );
+  const planId = brief?.planner_id == null || brief.planner_id === '' ? '-' : String(brief.planner_id);
+  const planStatus = personName(brief?.planner_status);
 
   return (
     <>
@@ -227,6 +234,8 @@ const CostSheet: React.FC = () => {
                 <Field label="Brief ID:" value={brief ? `#${brief.id}` : '-'} />
                 <Field label="Brief Name:" value={brief?.name} />
                 <Field label="Planner:" value={brief?.assigned_user?.name} />
+                <Field label="Plan ID:" value={planId} />
+                <Field label="Plan Status:" value={planStatus} />
                 <Field label="Sales User:" value={salesUser} />
                 <Field label="Brief Status:" value={brief?.brief_status?.name || brief?.status} />
                 <Field label="Budget:" value={brief?.budget} />
