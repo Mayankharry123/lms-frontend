@@ -60,7 +60,7 @@ const matchesQuery = (row: BackupPlanRow, query: string) => {
 
 const exportBackupPlansExcel = (rows: BackupPlanRow[]) => {
   const headers = [
-    'Plan ID',
+    'ID',
     'Brief Name',
     'Product Name',
     'Campaign Start Date',
@@ -196,7 +196,7 @@ const BackupPlan: React.FC = () => {
   const columns: Column<BackupPlanRow>[] = [
     {
       key: 'planId',
-      header: <span>Plan ID</span>,
+      header: <span>ID</span>,
       className: 'whitespace-nowrap',
       render: (row) => row.planId,
     },
@@ -307,7 +307,7 @@ const BackupPlan: React.FC = () => {
 
   const detailFields: { label: string; value: React.ReactNode }[] = viewItem
     ? [
-        { label: 'Plan ID', value: viewItem.planId },
+        { label: 'ID', value: viewItem.planId },
         { label: 'Brief Name', value: viewItem.briefName },
         { label: 'Product Name', value: viewItem.productName },
         { label: 'Campaign Start Date', value: viewItem.campaignStartDate },
@@ -378,7 +378,6 @@ const BackupPlan: React.FC = () => {
         onCreateClick={() => undefined}
         showBreadcrumb
         showCreateButton={false}
-        breadcrumbItems={[{ label: 'Backup Plan', isActive: true }]}
       />
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">

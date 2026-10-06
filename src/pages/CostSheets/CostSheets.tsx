@@ -382,7 +382,6 @@ const CostSheets: React.FC = () => {
         onCreateClick={() => undefined}
         showBreadcrumb
         showCreateButton={false}
-        breadcrumbItems={[{ label: 'Cost Sheets', isActive: true }]}
       />
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">

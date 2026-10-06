@@ -77,8 +77,11 @@ const displayValue = (value: string) => value || '-';
 
 export function mapPurchaseOrder(raw: Record<string, unknown>): PurchaseOrderRow {
   const id = asText(raw.id);
-  const fileValue = raw.cost_sheet ?? raw.file_url ?? raw.file;
-  const fileText = typeof fileValue === 'string' ? asText(fileValue) : '';
+  const fileValue = raw.purchase_order_url ?? raw.cost_sheet ?? raw.file_url ?? raw.file;
+  const fileRecord = fileValue && typeof fileValue === 'object' ? (fileValue as Record<string, unknown>) : null;
+  const fileText = fileRecord
+    ? asText(fileRecord.url ?? fileRecord.path ?? fileRecord.name)
+    : asText(fileValue);
   const fileUrl = /^https?:\/\//i.test(fileText) ? fileText : '';
   const fileName = fileText ? fileBaseName(fileText) : '';
 

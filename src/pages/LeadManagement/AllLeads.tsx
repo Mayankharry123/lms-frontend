@@ -271,6 +271,7 @@ const AllLeads: React.FC = () => {
   };
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [scheduleMeetingLeadId, setScheduleMeetingLeadId] = useState<string | null>(null);
   const [confirmDeleteLabel, setConfirmDeleteLabel] = useState<string>('');
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [chatLead, setChatLead] = useState<AllLeadtype | null>(null);
@@ -348,6 +349,26 @@ const AllLeads: React.FC = () => {
     void _newStatus; // mark as intentionally unused
     // This is called when user confirms the call status change in the dialog
     // The actual API call happens after confirmation in handleCallStatusChange
+  };
+
+  const interceptMeetingSchedule = (leadId: string, option: string) => {
+    if (option.trim().toLowerCase() !== 'meeting schedule') return false;
+    setScheduleMeetingLeadId(leadId);
+    return true;
+  };
+
+  const openMeetingScheduleForLead = () => {
+    if (!scheduleMeetingLeadId) return;
+    const leadId = scheduleMeetingLeadId.replace(/^#/, '');
+    const callStatus = callStatusOptions.find(
+      (option) => option.name.trim().toLowerCase() === 'meeting schedule'
+    );
+    const params = new URLSearchParams({ lead_id: leadId });
+    if (callStatus?.id != null) params.set('call_status_id', String(callStatus.id));
+    setScheduleMeetingLeadId(null);
+    navigate(`${ROUTES.LEAD.MEETING_SCHEDULE}?${params.toString()}`, {
+      state: { prefillLeadId: leadId, updateCallStatusId: callStatus?.id },
+    });
   };
 
   // Fetch leads from API
@@ -428,7 +449,7 @@ const AllLeads: React.FC = () => {
         },
         {
           key: 'current_assign_user',
-          label: 'Assign To',
+          label: 'Sales User',
           options: userFilterOptions,
           isMulti: true,
         },
@@ -493,7 +514,7 @@ const AllLeads: React.FC = () => {
     { key: 'assignBy', header: 'Created By', render: (it: AllLeadtype) => it.assignBy || '-', className: 'whitespace-nowrap' },
     ...(hasPermission('all-lead.assign') ? [{
       key: 'assignTo',
-      header: 'Assign To',
+      header: 'Sales User',
       render: (it: AllLeadtype) => {
         const displayedName = it.assignTo ?? '';
         const rowAssignOptions = assignOptionsByLeadId[it.id] || [];
@@ -555,6 +576,7 @@ const AllLeads: React.FC = () => {
               options={callStatusOptions.map(opt => opt.name)}
               onChange={(newStatus) => handleCallStatusChange(it.id, newStatus)}
               onConfirm={handleCallStatusConfirm}
+              onIntercept={(option) => interceptMeetingSchedule(it.id, option)}
             />
           ) : (
             <span>{it.callStatus || 'N/A'}</span>
@@ -576,6 +598,17 @@ const AllLeads: React.FC = () => {
 
   return (
     <div className="flex-1 w-full max-w-full overflow-x-hidden">
+      <ConfirmDialog
+        isOpen={scheduleMeetingLeadId !== null}
+        type="warning"
+        title="Schedule Meeting Before Change Status"
+        message="Please schedule a meeting for this Lead before changing the Lead status."
+        confirmLabel="Schedule Meeting"
+        cancelLabel="Cancel"
+        onCancel={() => setScheduleMeetingLeadId(null)}
+        onConfirm={openMeetingScheduleForLead}
+      />
+
       <ConfirmDialog
         isOpen={!!confirmDeleteId}
         title={`Delete lead "${confirmDeleteLabel}"?`}

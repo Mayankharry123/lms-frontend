@@ -14,6 +14,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import MasterHeader from '../../components/ui/MasterHeader';
 import SearchBar from '../../components/ui/SearchBar';
 import StatusDropdown from '../../components/ui/StatusDropdown';
+import AssignDropdown from '../../components/ui/AssignDropdown';
+import { listChildPlaningUsers } from '../../api/lookups';
+import updateAssignUser from '../../services/BriefAssignTo';
+import { usePermissions } from '../../hooks/SidebarMenuHooks';
 import { ROUTES } from '../../constants';
 import { listBriefLogs } from '../../services/BriefLog';
 import type { BriefLogItem } from '../../services/BriefLog';
@@ -27,6 +31,8 @@ import { Eye, MessageCircle } from 'lucide-react';
 const BriefLog: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
+  type PlannerOption = { id: string | number; name: string };
 
   // Validate URL to only allow safe protocols (http, https, blob)
   const isValidAttachmentUrl = (url: string): boolean => {
@@ -48,6 +54,8 @@ const BriefLog: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
   const [plannerStatusOptions, setPlannerStatusOptions] = useState<{ id: number; name: string }[]>([]);
+  const [assignOptionsByBriefId, setAssignOptionsByBriefId] = useState<Record<string, PlannerOption[]>>({});
+  const [reloadKey, setReloadKey] = useState(0);
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   // removed unused pendingStatusChange state
   const [isAttachmentModalOpen, setIsAttachmentModalOpen] = useState(false);
@@ -97,7 +105,68 @@ const BriefLog: React.FC = () => {
     };
     load();
     return () => { mounted = false; };
-  }, [currentPage, id]);
+  }, [currentPage, id, reloadKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPlannerOptions = async () => {
+      if (briefLogs.length === 0) {
+        setAssignOptionsByBriefId({});
+        return;
+      }
+
+      const entries = await Promise.all(
+        briefLogs.map(async (log) => {
+          const briefId = String(log.brief_id ?? log.id);
+          const contact = log.contact_person;
+          const contactPersonId = contact && typeof contact === 'object' ? contact.id : undefined;
+          try {
+            const users = await listChildPlaningUsers(briefId, contactPersonId);
+            return [briefId, users.map((user) => ({ id: user.id, name: user.name }))] as const;
+          } catch (err) {
+            console.error(`Failed to fetch planning users for brief ${briefId}:`, err);
+            return [briefId, []] as const;
+          }
+        })
+      );
+
+      if (!cancelled) setAssignOptionsByBriefId(Object.fromEntries(entries));
+    };
+
+    loadPlannerOptions();
+    return () => {
+      cancelled = true;
+    };
+  }, [briefLogs]);
+
+  const handleAssignPlanner = async (briefId: string, plannerName: string) => {
+    try {
+      setLoading(true);
+      const found = (assignOptionsByBriefId[briefId] || []).find((option) => option.name === plannerName);
+      const assignId = found ? found.id : plannerName;
+      await updateAssignUser(briefId, assignId);
+      setBriefLogs((current) =>
+        current.map((log) => {
+          if (String(log.brief_id ?? log.id) !== briefId) return log;
+          return {
+            ...log,
+            assigned_user: {
+              id: Number(assignId) || log.assigned_user?.id || 0,
+              name: plannerName,
+            },
+          };
+        })
+      );
+      SweetAlert.showUpdateSuccess();
+      setReloadKey((value) => value + 1);
+    } catch (err) {
+      console.error('Failed to update planner', err);
+      SweetAlert.showError('Failed to update assignment');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter logs locally (search only applies to current page of results)
   const filteredLogs = useMemo(() => {
@@ -203,6 +272,38 @@ const BriefLog: React.FC = () => {
       key: 'priority',
       header: 'Priority',
       render: (item) => item.priority || 'N/A',
+    },
+    {
+      key: 'planner',
+      header: 'Planner',
+      className: 'min-w-[140px]',
+      allowOverflow: true,
+      render: (item) => {
+        const briefId = String(item.brief_id ?? item.id);
+        const assigned = item.assigned_user;
+        const displayName = assigned && typeof assigned === 'object' && assigned.name
+          ? String(assigned.name)
+          : '';
+        const optionNames = (assignOptionsByBriefId[briefId] || []).map((option) => option.name);
+        const options = displayName && !optionNames.includes(displayName)
+          ? [displayName, ...optionNames]
+          : optionNames;
+
+        if (!hasPermission('brief.assign')) {
+          return <div className="min-w-[140px] text-sm text-gray-700">{displayName || 'Not Assigned'}</div>;
+        }
+
+        return (
+          <div className="relative min-w-[140px]">
+            <AssignDropdown
+              value={displayName}
+              options={options}
+              onChange={(plannerName: string) => handleAssignPlanner(briefId, plannerName)}
+              onConfirm={async () => undefined}
+            />
+          </div>
+        );
+      },
     },
     {
       key: 'status',
@@ -408,10 +509,6 @@ const BriefLog: React.FC = () => {
     <div className="flex-1 w-full max-w-full overflow-x-hidden">
       <MasterHeader
         showBreadcrumb={true}
-        breadcrumbItems={[
-          { label: 'Brief', path: '/brief' },
-          { label: 'Brief Log', isActive: true }
-        ]}
         showCreateButton={false}
         onCreateClick={() => { }}
       />

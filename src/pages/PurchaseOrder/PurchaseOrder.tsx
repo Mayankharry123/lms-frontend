@@ -136,13 +136,10 @@ const PurchaseOrder: React.FC = () => {
         type="button"
         onClick={() => downloadFile(row)}
         title={row.fileName}
-        className="inline-flex flex-col items-start text-left"
+        className="inline-flex h-7 items-center gap-1.5 text-left text-sm leading-none text-gray-800 hover:text-orange-600"
       >
-        <span className="text-xs font-medium text-[#007b83]">View/Download</span>
-        <span className="mt-0.5 inline-flex items-center gap-1.5 text-sm leading-none text-gray-800 hover:text-orange-600">
-          <FileText className="h-4 w-4 shrink-0 text-orange-600" aria-hidden />
-          <span className="whitespace-nowrap">{row.fileName}</span>
-        </span>
+        <FileText className="h-4 w-4 shrink-0 text-orange-600" aria-hidden />
+        <span className="whitespace-nowrap">{row.fileName}</span>
       </button>
     );
   };
@@ -264,7 +261,6 @@ const PurchaseOrder: React.FC = () => {
         onCreateClick={() => undefined}
         showBreadcrumb
         showCreateButton={false}
-        breadcrumbItems={[{ label: 'Purchase Order', isActive: true }]}
       />
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">

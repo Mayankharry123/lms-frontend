@@ -99,6 +99,15 @@ const EditLead: React.FC = () => {
           type: resolvedLeadTypeValue,
           designation: apiLead.designation?.id ? String(apiLead.designation.id) : '',
           agencyBrand: apiLead.brand?.name || (apiLead.agency ? apiLead.agency.name : ''),
+          source: String(
+            rawLead.lead_source?.id ??
+            rawLead.source?.id ??
+            rawLead.lead_source_id ??
+            rawLead.source_id ??
+            rawLead.sub_source?.lead_source_id ??
+            rawLead.sub_source?.lead_source?.id ??
+            ''
+          ),
           subSource: apiLead.sub_source?.id ? String(apiLead.sub_source.id) : '',
           department: apiLead.department?.id ? String(apiLead.department.id) : '',
           country: apiLead.country?.id ? String(apiLead.country.id) : '',
@@ -306,6 +315,8 @@ const EditLead: React.FC = () => {
         priority_id: lead.priority ? extractNumericId(lead.priority) : undefined,
         designation_id: contact?.designation ? Number(contact.designation) : undefined,
         department_id: contact?.department ? Number(contact.department) : undefined,
+        lead_source_id: contact?.source ? Number(contact.source) : undefined,
+        source_id: contact?.source ? Number(contact.source) : undefined,
         sub_source_id: contact?.subSource ? Number(contact.subSource) : undefined,
         country_id: contact?.country ? Number(contact.country) : undefined,
         state_id: contact?.state ? Number(contact.state) : undefined,

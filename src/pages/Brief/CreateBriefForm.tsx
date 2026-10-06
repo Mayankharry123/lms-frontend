@@ -6,6 +6,8 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../redux/store';
 import Table from '../../components/ui/Table';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -41,6 +43,10 @@ const EditSection: React.FC<{
 };
 
 const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, initialData, mode = 'create' }) => {
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+  const canAssignTo = (currentUser?.roles ?? []).some(
+    (role) => String(role?.name ?? '').trim() === 'Super Admin'
+  );
   useEffect(() => {
     
   }, [initialData]);
@@ -1200,6 +1206,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                     </div>
                   )}
                 </div>
+                {canAssignTo && (
                 <div>
                   <label className="block text-sm text-gray-800 mb-1">Assign To</label>
                   <SelectField
@@ -1226,6 +1233,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                   )}
                   {usersError && <div className="text-xs text-red-600 mt-1">{usersError}</div>}
                 </div>
+                )}
                 <div>
                   <label className="block text-sm text-gray-800 mb-1">Brief Status</label>
                   <SelectField

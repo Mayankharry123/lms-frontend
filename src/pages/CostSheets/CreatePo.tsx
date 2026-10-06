@@ -232,10 +232,6 @@ const CreatePo: React.FC = () => {
         onCreateClick={() => undefined}
         showBreadcrumb
         showCreateButton={false}
-        breadcrumbItems={[
-          { label: 'Cost Sheets', path: ROUTES.COST_SHEETS },
-          { label: 'Create PO', isActive: true },
-        ]}
       />
 
       <div className="space-y-5">

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
+import { useSidebarMenu } from '../../hooks/SidebarMenuHooks';
+import type { NavigationItem } from '../../services/Side';
 
 export interface BreadcrumbItem {
   label: string;
@@ -38,6 +40,74 @@ const segmentNameMap: Record<string, string> = {
   'view': 'View',
 };
 
+const normalizePath = (value: string) => {
+  const path = value.startsWith('/') ? value : `/${value}`;
+  return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+};
+
+const pathScore = (menuPath: string, pathname: string) => {
+  const menu = normalizePath(menuPath);
+  const current = normalizePath(pathname);
+  if (!menu || menu === '/') return 0;
+  if (menu === current) return 1000 + menu.length;
+  if (current.startsWith(`${menu}/`)) return menu.length;
+  return 0;
+};
+
+const remainderLabel = (basePath: string, pathname: string): BreadcrumbItem | null => {
+  const rest = normalizePath(pathname).slice(normalizePath(basePath).length).split('/').filter(Boolean);
+  if (rest[0] === 'create-po') return { label: 'Create PO', isActive: true };
+  if (rest[0] === 'create') return { label: 'Create', isActive: true };
+  if (rest[0] === 'edit') return { label: 'Edit', isActive: true };
+  return null;
+};
+
+/** Parent labels come from the permission menu, such as Finance Managements > Cost Sheets. */
+const crumbsFromMenu = (menu: NavigationItem[], pathname: string): BreadcrumbItem[] | null => {
+  let bestScore = 0;
+  let bestTrail: NavigationItem[] = [];
+
+  const walk = (items: NavigationItem[], trail: NavigationItem[]) => {
+    items.forEach((item) => {
+      const next = [...trail, item];
+      if (item.path) {
+        const score = pathScore(item.path, pathname);
+        if (score > 0 && (score > bestScore || (score === bestScore && next.length >= bestTrail.length))) {
+          bestScore = score;
+          bestTrail = next;
+        }
+      }
+      if (item.children?.length) walk(item.children, next);
+    });
+  };
+
+  walk(menu, []);
+  if (!bestTrail.length) return null;
+
+  const matched = bestTrail[bestTrail.length - 1];
+  const extra = matched.path ? remainderLabel(matched.path, pathname) : null;
+  const crumbs: BreadcrumbItem[] = bestTrail
+    .filter((item) => item.name.trim())
+    .map((item, index, list) => {
+      const isMatch = item === matched && !extra;
+      const isLast = index === list.length - 1 && !extra;
+      const firstChildPath = item.children?.find((child) => child.path)?.path;
+      const path = isMatch || isLast
+        ? undefined
+        : item.children?.length
+          ? (firstChildPath && firstChildPath !== matched.path ? firstChildPath : undefined)
+          : item.path;
+      return {
+        label: item.name,
+        path,
+        isActive: isMatch || isLast,
+      };
+    });
+
+  if (extra) crumbs.push(extra);
+  return crumbs.length ? crumbs : null;
+};
+
 const Breadcrumb: React.FC<BreadcrumbProps> = ({
   items,
   showHome = true,
@@ -45,9 +115,12 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
 }) => {
   const location = useLocation();
   const { pathname } = location;
+  const { sidebarMenu } = useSidebarMenu();
+  const menuCrumbs = crumbsFromMenu(sidebarMenu, pathname);
+  const displayItems = menuCrumbs ?? items;
 
-  // If items are provided, use them directly
-  if (items && items.length > 0) {
+  // Menu trail wins so parent labels stay in sync with the sidebar.
+  if (displayItems && displayItems.length > 0) {
     return (
       <nav className="flex items-center space-x-2 text-sm breadcrumb-wrapper" aria-label="Breadcrumb">
         <ol className="flex items-center space-x-2">
@@ -63,7 +136,7 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
               <ChevronRight className="w-4 h-4 text-gray-400" />
             </>
           )}
-          {items.map((item, index) => (
+          {displayItems.map((item, index) => (
             <li key={index} className="flex items-center space-x-2">
               {index > 0 && <ChevronRight className="w-4 h-4 text-gray-400" />}
               {item.path && !item.isActive ? (
@@ -74,7 +147,7 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
                   {item.label}
                 </Link>
               ) : (
-                <span className='text-orange-600' style={{ fontWeight: item.isActive ? 600 : 500 }}>
+                <span className={item.isActive ? 'font-semibold text-orange-600' : 'font-semibold text-gray-800'}>
                   {item.label}
                 </span>
               )}

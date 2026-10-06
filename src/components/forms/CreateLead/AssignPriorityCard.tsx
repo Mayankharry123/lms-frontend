@@ -20,6 +20,7 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
   organisationError,
   mode = 'create',
   collapsible = false,
+  defaultOpen,
   onChange
 }) => {
   const priorityRef = useRef(priority);
@@ -287,7 +288,7 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
     <CollapsibleFormCard
       title="Assignment & Priority"
       collapsible={collapsible}
-      defaultOpen={!collapsible}
+      defaultOpen={defaultOpen ?? !collapsible}
       titleWrapperClassName="mb-4"
       icon={<ListChecks className="h-5 w-5" strokeWidth={2} />}
     >

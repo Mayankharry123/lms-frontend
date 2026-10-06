@@ -89,12 +89,11 @@ const LeadManagementSection: React.FC<Props> = ({
       <CollapsibleFormCard
         title="Lead Management"
         collapsible={collapsible}
-        defaultOpen={!collapsible}
+        defaultOpen
         icon={<BriefcaseBusiness className="h-5 w-5" strokeWidth={2} />}
       >
         <div className="flex items-center flex-wrap gap-6 mb-6">
-          <label className="relative flex items-center cursor-pointer group">
-            <div className="group-hover:bg-[rgba(66,133,244,0.05)] absolute -inset-2 rounded-md transition-colors duration-200" />
+          <label className="relative flex items-center cursor-pointer">
             <input
               type="radio"
               name="leadType"
@@ -109,8 +108,7 @@ const LeadManagementSection: React.FC<Props> = ({
             </span>
           </label>
 
-          <label className="relative flex items-center cursor-pointer group">
-            <div className="group-hover:bg-[rgba(66,133,244,0.05)] absolute -inset-2 rounded-md transition-colors duration-200" />
+          <label className="relative flex items-center cursor-pointer">
             <input
               type="radio"
               name="leadType"

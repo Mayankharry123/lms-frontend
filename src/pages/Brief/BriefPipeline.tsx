@@ -539,10 +539,6 @@ const BriefPipeline: React.FC = () => {
               onCreateClick={handleCreate}
               createButtonLabel="Create Brief"
               showBreadcrumb={true}
-              breadcrumbItems={[
-                { label: 'Brief', path: ROUTES.BRIEF.ROOT },
-                { label: 'Brief Pipeline', isActive: true }
-              ]}
               createPermissionSlug="brief.create"
             />
           )}
@@ -653,7 +649,7 @@ const BriefPipeline: React.FC = () => {
                   }
                   return String(createdByVal ?? '');
                 }, className: 'whitespace-nowrap overflow-hidden truncate' },
-                { key: 'assignTo', header: 'Assign To', render: (it: Brief) => {
+                { key: 'assignTo', header: 'Planner', render: (it: Brief) => {
                   const assignToVal = it.assignTo;
                   let displayName = '';
                   if (typeof assignToVal === 'object' && assignToVal !== null && 'name' in assignToVal) {
