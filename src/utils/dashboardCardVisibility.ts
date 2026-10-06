@@ -1,4 +1,4 @@
-export type DashboardView = 'overview' | 'sales' | 'planner';
+export type DashboardView = 'overview' | 'sales' | 'planner' | 'operations' | 'finance';
 
 export type DashboardCardDefinition = {
   id: string;
@@ -45,6 +45,30 @@ export const DASHBOARD_CARD_DEFINITIONS: Record<DashboardView, DashboardCardDefi
     { id: 'planner.brief-budget-analytics', label: 'Brief Budget Analytics' },
     { id: 'planner.brief-status', label: 'Brief Status Mix' },
     { id: 'planner.assigned-briefs', label: 'My Assigned Briefs' },
+  ],
+  operations: [
+    { id: 'operations.total', label: 'Total Operations' },
+    { id: 'operations.pending', label: 'Pending Operations' },
+    { id: 'operations.live', label: 'Live Operations' },
+    { id: 'operations.assigned', label: 'Assigned Operations' },
+    { id: 'operations.operations-analytics', label: 'Operations Analytics' },
+    { id: 'operations.pending-analytics', label: 'Pending Operations Analytics' },
+    { id: 'operations.live-analytics', label: 'Live Operations Analytics' },
+    { id: 'operations.assigned-analytics', label: 'Assigned Operations Analytics' },
+    { id: 'operations.status', label: 'Operation Status Mix' },
+    { id: 'operations.recent', label: 'Recent Operations' },
+  ],
+  finance: [
+    { id: 'finance.cost-sheets', label: 'Cost Sheets' },
+    { id: 'finance.pending', label: 'Pending Review' },
+    { id: 'finance.approved', label: 'Approved' },
+    { id: 'finance.purchase-orders', label: 'Purchase Order Amount' },
+    { id: 'finance.cost-sheets-analytics', label: 'Cost Sheets Analytics' },
+    { id: 'finance.approved-analytics', label: 'Approved Analytics' },
+    { id: 'finance.denied-analytics', label: 'Denied Analytics' },
+    { id: 'finance.purchase-order-analytics', label: 'Purchase Order Analytics' },
+    { id: 'finance.status', label: 'Finance Status Mix' },
+    { id: 'finance.recent', label: 'Recent Cost Sheets' },
   ],
 };
 

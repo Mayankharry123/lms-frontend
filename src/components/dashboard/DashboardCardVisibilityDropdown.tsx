@@ -18,6 +18,8 @@ const VIEW_LABELS: Record<DashboardView, string> = {
   overview: 'Overview',
   sales: 'Sales',
   planner: 'Planner',
+  operations: 'Operations',
+  finance: 'Finance',
 };
 
 const DashboardCardVisibilityDropdown: React.FC<DashboardCardVisibilityDropdownProps> = ({

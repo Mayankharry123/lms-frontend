@@ -1,5 +1,6 @@
 import { apiClient } from '../utils/apiClient';
 import { handleApiError } from '../utils/apiErrorHandler';
+import { ENDPOINTS } from '../constants/endpoints';
 import {
   type DashboardFilterState,
   withDashboardFilters,
@@ -635,4 +636,226 @@ export async function getPlannerChartMetrics(
     handleApiError(error);
     throw error;
   }
+}
+
+export type OperationsChartOrganisationRow = {
+  organisationId: string;
+  organisationName: string;
+  operations: number;
+  pendingOperations: number;
+  liveOperations: number;
+  assignedOperations: number;
+};
+
+export type OperationsDashboardItem = {
+  id: string;
+  briefId: string;
+  briefName: string;
+  productName: string;
+  status: string;
+  assignUser: string;
+  campaignStartDate: string;
+};
+
+export type OperationsChartMetrics = {
+  rows: OperationsChartOrganisationRow[];
+  totals: {
+    operations: number;
+    pendingOperations: number;
+    liveOperations: number;
+    assignedOperations: number;
+  };
+  operationStatus: {
+    pending: number;
+    live: number;
+  };
+  recent: OperationsDashboardItem[];
+};
+
+export type FinanceChartOrganisationRow = {
+  organisationId: string;
+  organisationName: string;
+  costSheets: number;
+  approved: number;
+  denied: number;
+  purchaseOrderAmount: number;
+};
+
+export type FinanceDashboardItem = {
+  id: string;
+  briefId: string;
+  briefName: string;
+  plannerName: string;
+  financeStatus: string;
+  assignUser: string;
+  purchaseOrderAmount: number;
+};
+
+export type FinanceChartMetrics = {
+  rows: FinanceChartOrganisationRow[];
+  totals: {
+    costSheets: number;
+    pending: number;
+    approved: number;
+    denied: number;
+    purchaseOrderAmount: number;
+  };
+  financeStatus: {
+    approved: number;
+    denied: number;
+    pending: number;
+  };
+  recent: FinanceDashboardItem[];
+};
+
+function organisationRows(data: unknown): unknown[] {
+  const payload = (data ?? {}) as Record<string, unknown>;
+  return Array.isArray(payload.by_organisation) ? payload.by_organisation : [];
+}
+
+function normalizeOperationsRow(raw: unknown, index: number): OperationsChartOrganisationRow | null {
+  const base = normalizeRow(raw, index);
+  if (!base) return null;
+  const record = raw as Record<string, unknown>;
+  return {
+    organisationId: base.organisationId,
+    organisationName: base.organisationName,
+    operations: toNumber(record.operations ?? record.total_operations),
+    pendingOperations: toNumber(record.pending_operations ?? record.pendingOperations),
+    liveOperations: toNumber(record.live_operations ?? record.liveOperations),
+    assignedOperations: toNumber(record.assigned_operations ?? record.assignedOperations),
+  };
+}
+
+function normalizeRecentOperations(rawItems: unknown): OperationsDashboardItem[] {
+  if (!Array.isArray(rawItems)) return [];
+  return rawItems.reduce<OperationsDashboardItem[]>((items, raw, index) => {
+    if (!raw || typeof raw !== 'object') return items;
+    const record = raw as Record<string, unknown>;
+    items.push({
+      id: pickString(record, ['id']) || String(index + 1),
+      briefId: pickString(record, ['brief_id', 'briefId']),
+      briefName: pickString(record, ['brief_name', 'briefName']) || '-',
+      productName: pickString(record, ['product_name', 'productName']) || '-',
+      status: pickString(record, ['status', 'operation_status']) || '-',
+      assignUser: pickString(record, ['assign_user', 'assignUser', 'assign_user_name']) || '-',
+      campaignStartDate: pickString(record, ['campaign_start_date', 'campaignStartDate']) || '-',
+    });
+    return items;
+  }, []);
+}
+
+function normalizeOperationsMetrics(data: unknown): OperationsChartMetrics {
+  const payload = (data ?? {}) as Record<string, unknown>;
+  const rows = organisationRows(data)
+    .map((row, index) => normalizeOperationsRow(row, index))
+    .filter((row): row is OperationsChartOrganisationRow => row != null);
+  const totalsSource = (payload.totals ?? {}) as Record<string, unknown>;
+  const statusSource = (payload.operation_status ?? payload.operationStatus ?? {}) as Record<string, unknown>;
+
+  return {
+    rows,
+    totals: {
+      operations: toNumber(totalsSource.operations ?? totalsSource.total_operations),
+      pendingOperations: toNumber(totalsSource.pending_operations ?? totalsSource.pendingOperations),
+      liveOperations: toNumber(totalsSource.live_operations ?? totalsSource.liveOperations),
+      assignedOperations: toNumber(totalsSource.assigned_operations ?? totalsSource.assignedOperations),
+    },
+    operationStatus: {
+      pending: toNumber(statusSource.pending),
+      live: toNumber(statusSource.live),
+    },
+    recent: normalizeRecentOperations(payload.recent),
+  };
+}
+
+function normalizeFinanceRow(raw: unknown, index: number): FinanceChartOrganisationRow | null {
+  const base = normalizeRow(raw, index);
+  if (!base) return null;
+  const record = raw as Record<string, unknown>;
+  return {
+    organisationId: base.organisationId,
+    organisationName: base.organisationName,
+    costSheets: toNumber(record.cost_sheets ?? record.costSheets),
+    approved: toNumber(record.approved),
+    denied: toNumber(record.denied),
+    purchaseOrderAmount: toNumber(record.purchase_order_amount ?? record.purchaseOrderAmount),
+  };
+}
+
+function normalizeRecentFinance(rawItems: unknown): FinanceDashboardItem[] {
+  if (!Array.isArray(rawItems)) return [];
+  return rawItems.reduce<FinanceDashboardItem[]>((items, raw, index) => {
+    if (!raw || typeof raw !== 'object') return items;
+    const record = raw as Record<string, unknown>;
+    items.push({
+      id: pickString(record, ['id']) || String(index + 1),
+      briefId: pickString(record, ['brief_id', 'briefId']),
+      briefName: pickString(record, ['brief_name', 'briefName']) || '-',
+      plannerName: pickString(record, ['planner_name', 'plannerName']) || '-',
+      financeStatus: pickString(record, ['finance_status', 'financeStatus']) || 'Pending',
+      assignUser: pickString(record, ['assign_user', 'assignUser', 'assign_user_name']) || '-',
+      purchaseOrderAmount: toNumber(record.purchase_order_amount ?? record.purchaseOrderAmount),
+    });
+    return items;
+  }, []);
+}
+
+function normalizeFinanceMetrics(data: unknown): FinanceChartMetrics {
+  const payload = (data ?? {}) as Record<string, unknown>;
+  const rows = organisationRows(data)
+    .map((row, index) => normalizeFinanceRow(row, index))
+    .filter((row): row is FinanceChartOrganisationRow => row != null);
+  const totalsSource = (payload.totals ?? {}) as Record<string, unknown>;
+  const statusSource = (payload.finance_status ?? payload.financeStatus ?? {}) as Record<string, unknown>;
+
+  return {
+    rows,
+    totals: {
+      costSheets: toNumber(totalsSource.cost_sheets ?? totalsSource.costSheets),
+      pending: toNumber(totalsSource.pending),
+      approved: toNumber(totalsSource.approved),
+      denied: toNumber(totalsSource.denied),
+      purchaseOrderAmount: toNumber(totalsSource.purchase_order_amount ?? totalsSource.purchaseOrderAmount),
+    },
+    financeStatus: {
+      approved: toNumber(statusSource.approved),
+      denied: toNumber(statusSource.denied),
+      pending: toNumber(statusSource.pending),
+    },
+    recent: normalizeRecentFinance(payload.recent),
+  };
+}
+
+async function fetchChartMetrics<T>(path: string, filters: DashboardFilterState | undefined, normalize: (data: unknown) => T, fallbackMessage: string): Promise<T> {
+  try {
+    const res = await apiClient.get<unknown>(
+      withDashboardFilters(path, filters, { includePriority: false })
+    );
+    if (!res || !res.success) {
+      throw new Error(res?.message || fallbackMessage);
+    }
+    return normalize(res.data);
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+}
+
+export function getOperationsChartMetrics(filters?: DashboardFilterState): Promise<OperationsChartMetrics> {
+  return fetchChartMetrics(
+    '/dashboard/operations-charts',
+    filters,
+    normalizeOperationsMetrics,
+    'Failed to fetch operations chart metrics',
+  );
+}
+
+export function getFinanceChartMetrics(filters?: DashboardFilterState): Promise<FinanceChartMetrics> {
+  return fetchChartMetrics(
+    ENDPOINTS.DASHBOARD.FINANCE_CHARTS,
+    filters,
+    normalizeFinanceMetrics,
+    'Failed to fetch finance chart metrics',
+  );
 }

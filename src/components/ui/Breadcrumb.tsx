@@ -14,6 +14,7 @@ interface BreadcrumbProps {
   items?: BreadcrumbItem[];
   showHome?: boolean;
   currentPageTitle?: string;
+  preferItems?: boolean;
 }
 
 const segmentNameMap: Record<string, string> = {
@@ -111,13 +112,14 @@ const crumbsFromMenu = (menu: NavigationItem[], pathname: string): BreadcrumbIte
 const Breadcrumb: React.FC<BreadcrumbProps> = ({
   items,
   showHome = true,
-  currentPageTitle
+  currentPageTitle,
+  preferItems = false,
 }) => {
   const location = useLocation();
   const { pathname } = location;
   const { sidebarMenu } = useSidebarMenu();
   const menuCrumbs = crumbsFromMenu(sidebarMenu, pathname);
-  const displayItems = menuCrumbs ?? items;
+  const displayItems = preferItems ? items ?? menuCrumbs : menuCrumbs ?? items;
 
   // Menu trail wins so parent labels stay in sync with the sidebar.
   if (displayItems && displayItems.length > 0) {

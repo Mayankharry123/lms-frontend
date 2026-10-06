@@ -8,11 +8,19 @@ import {
   getDashboardChartMetrics,
 
 
+  getFinanceChartMetrics,
+
+  getOperationsChartMetrics,
+
   getPlannerChartMetrics,
 
   getSalesChartMetrics,
 
   type DashboardChartMetrics,
+
+  type FinanceChartMetrics,
+
+  type OperationsChartMetrics,
 
   type PlannerChartMetrics,
 
@@ -39,7 +47,7 @@ import { formatCount, formatCurrency, truncateLabel } from '../../utils/dashboar
 
 
 
-type ChartVariant = 'overview' | 'sales' | 'planner';
+type ChartVariant = 'overview' | 'sales' | 'planner' | 'operations' | 'finance';
 
 
 
@@ -115,6 +123,27 @@ const PLANNER_METRICS: MetricConfig[] = [
   },
 ];
 
+const OPERATIONS_METRICS: MetricConfig[] = [
+  { key: 'operations', cardId: 'operations.operations-analytics', chartKey: 'operations', title: 'Operations', color: '#2563eb' },
+  { key: 'pendingOperations', cardId: 'operations.pending-analytics', chartKey: 'pendingOperations', title: 'Pending', color: '#d97706' },
+  { key: 'liveOperations', cardId: 'operations.live-analytics', chartKey: 'liveOperations', title: 'Live', color: '#059669' },
+  { key: 'assignedOperations', cardId: 'operations.assigned-analytics', chartKey: 'assignedOperations', title: 'Assigned', color: '#7c3aed' },
+];
+
+const FINANCE_METRICS: MetricConfig[] = [
+  { key: 'costSheets', cardId: 'finance.cost-sheets-analytics', chartKey: 'costSheets', title: 'Cost Sheets', color: '#2563eb' },
+  { key: 'approved', cardId: 'finance.approved-analytics', chartKey: 'approvedFinance', title: 'Approved', color: '#059669' },
+  { key: 'denied', cardId: 'finance.denied-analytics', chartKey: 'deniedFinance', title: 'Denied', color: '#dc2626' },
+  {
+    key: 'purchaseOrderAmount',
+    cardId: 'finance.purchase-order-analytics',
+    chartKey: 'purchaseOrderAmount',
+    title: 'Purchase Order Amount',
+    color: '#0891b2',
+    valueFormatter: formatCurrency,
+  },
+];
+
 
 
 const PIPELINE_COLORS = ['#2563eb', '#7c3aed', '#0891b2', '#ea580c'];
@@ -158,6 +187,26 @@ const SECTION_COPY: Record<
     subtitle: 'Briefs, assigned plans, plan submission time (assign → submit), and budget by organisation.',
 
     gridClass: 'dashboard-charts__grid dashboard-charts__grid--2',
+
+  },
+
+  operations: {
+
+    title: 'Operations Metrics',
+
+    subtitle: 'Operations, pending, live, and assigned campaigns by organisation.',
+
+    gridClass: 'dashboard-charts__grid',
+
+  },
+
+  finance: {
+
+    title: 'Finance Metrics',
+
+    subtitle: 'Cost sheets, finance decisions, and purchase order amount by organisation.',
+
+    gridClass: 'dashboard-charts__grid',
 
   },
 
@@ -282,6 +331,46 @@ function renderTotals(
 
 
 
+  if (variant === 'operations') {
+    const data = metrics as OperationsChartMetrics;
+    return (
+      <>
+        {visibleMetrics.some((item) => item.chartKey === 'operations') ? (
+          <span>Operations: {formatCount(data.totals.operations)}</span>
+        ) : null}
+        {visibleMetrics.some((item) => item.chartKey === 'pendingOperations') ? (
+          <span>Pending: {formatCount(data.totals.pendingOperations)}</span>
+        ) : null}
+        {visibleMetrics.some((item) => item.chartKey === 'liveOperations') ? (
+          <span>Live: {formatCount(data.totals.liveOperations)}</span>
+        ) : null}
+        {visibleMetrics.some((item) => item.chartKey === 'assignedOperations') ? (
+          <span>Assigned: {formatCount(data.totals.assignedOperations)}</span>
+        ) : null}
+      </>
+    );
+  }
+
+  if (variant === 'finance') {
+    const data = metrics as FinanceChartMetrics;
+    return (
+      <>
+        {visibleMetrics.some((item) => item.chartKey === 'costSheets') ? (
+          <span>Cost Sheets: {formatCount(data.totals.costSheets)}</span>
+        ) : null}
+        {visibleMetrics.some((item) => item.chartKey === 'approvedFinance') ? (
+          <span>Approved: {formatCount(data.totals.approved)}</span>
+        ) : null}
+        {visibleMetrics.some((item) => item.chartKey === 'deniedFinance') ? (
+          <span>Denied: {formatCount(data.totals.denied)}</span>
+        ) : null}
+        {visibleMetrics.some((item) => item.chartKey === 'purchaseOrderAmount') ? (
+          <span>PO Amount: {formatCurrency(data.totals.purchaseOrderAmount)}</span>
+        ) : null}
+      </>
+    );
+  }
+
   const data = metrics as PlannerChartMetrics;
 
   return (
@@ -308,8 +397,15 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
 
   const dashboardPermissions = useDashboardPermissions();
   const allMetricConfigs =
-
-    variant === 'overview' ? OVERVIEW_METRICS : variant === 'sales' ? SALES_METRICS : PLANNER_METRICS;
+    variant === 'overview'
+      ? OVERVIEW_METRICS
+      : variant === 'sales'
+        ? SALES_METRICS
+        : variant === 'operations'
+          ? OPERATIONS_METRICS
+          : variant === 'finance'
+            ? FINANCE_METRICS
+            : PLANNER_METRICS;
 
 
 
@@ -329,16 +425,15 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
 
 
   const canFetch =
-
     variant === 'overview'
-
       ? dashboardPermissions.canViewOverviewTab()
-
       : variant === 'sales'
-
         ? dashboardPermissions.canViewSalesTab()
-
-        : dashboardPermissions.canViewPlannerTab();
+        : variant === 'operations'
+          ? dashboardPermissions.canViewOperationsTab()
+          : variant === 'finance'
+            ? dashboardPermissions.canViewFinanceTab()
+            : dashboardPermissions.canViewPlannerTab();
 
 
 
@@ -350,11 +445,21 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
     && dashboardPermissions.canViewBriefStatusChart()
     && isCardVisible('planner', 'planner.brief-status');
 
+  const showOperationStatus = variant === 'operations'
+    && dashboardPermissions.canViewOperationsTab()
+    && isCardVisible('operations', 'operations.status');
+
+  const showFinanceStatus = variant === 'finance'
+    && dashboardPermissions.canViewFinanceTab()
+    && isCardVisible('finance', 'finance.status');
+
+  const showStatusMix = showBriefStatus || showOperationStatus || showFinanceStatus;
+
 
 
   const filterKey = serializeDashboardFilters(filters);
   const fetchEnabled = canFetch
-    && (permittedMetrics.length > 0 || dashboardPermissions.canViewPipelineChart() || dashboardPermissions.canViewBriefStatusChart());
+    && (permittedMetrics.length > 0 || showPipeline || showStatusMix || dashboardPermissions.canViewPipelineChart() || dashboardPermissions.canViewBriefStatusChart());
 
   const overviewQuery = useApiQuery(
     () => getDashboardChartMetrics(filters),
@@ -380,8 +485,28 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
     { enabled: variant === 'planner' && fetchEnabled },
   );
 
+  const operationsQuery = useApiQuery(
+    () => getOperationsChartMetrics(filters),
+    ['operations', filterKey],
+    { enabled: variant === 'operations' && fetchEnabled },
+  );
+
+  const financeQuery = useApiQuery(
+    () => getFinanceChartMetrics(filters),
+    ['finance', filterKey],
+    { enabled: variant === 'finance' && fetchEnabled },
+  );
+
   const activeQuery =
-    variant === 'overview' ? overviewQuery : variant === 'sales' ? salesQuery : plannerQuery;
+    variant === 'overview'
+      ? overviewQuery
+      : variant === 'sales'
+        ? salesQuery
+        : variant === 'operations'
+          ? operationsQuery
+          : variant === 'finance'
+            ? financeQuery
+            : plannerQuery;
 
   const { data, loading, error } = activeQuery;
   const salesData = salesQuery.data;
@@ -395,6 +520,8 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
     [organisationZonesQuery.data],
   );
   const plannerData = plannerQuery.data;
+  const operationsData = operationsQuery.data;
+  const financeData = financeQuery.data;
 
   const orgChartData = useMemo(() => {
     const rows = (data?.rows ?? []) as Array<Record<string, string | number>>;
@@ -413,18 +540,45 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
   }, [showPipeline, salesData]);
 
   const statusData = useMemo(() => {
-    if (!showBriefStatus || !plannerData) return [];
-    const status = plannerData.briefStatus;
-    return [
-      { name: 'Active', value: status.activeBriefs },
-      { name: 'Closed', value: status.closedBriefs },
-      { name: 'Overdue', value: status.overdueBriefs },
-    ];
-  }, [showBriefStatus, plannerData]);
+    if (showBriefStatus && plannerData) {
+      const status = plannerData.briefStatus;
+      return [
+        { name: 'Active', value: status.activeBriefs },
+        { name: 'Closed', value: status.closedBriefs },
+        { name: 'Overdue', value: status.overdueBriefs },
+      ];
+    }
+    if (showOperationStatus && operationsData) {
+      return [
+        { name: 'Pending', value: operationsData.operationStatus.pending },
+        { name: 'Live', value: operationsData.operationStatus.live },
+      ];
+    }
+    if (showFinanceStatus && financeData) {
+      return [
+        { name: 'Approved', value: financeData.financeStatus.approved },
+        { name: 'Denied', value: financeData.financeStatus.denied },
+        { name: 'Pending', value: financeData.financeStatus.pending },
+      ];
+    }
+    return [];
+  }, [financeData, operationsData, plannerData, showBriefStatus, showFinanceStatus, showOperationStatus]);
+
+  const statusColors = showFinanceStatus
+    ? ['#059669', '#dc2626', '#d97706']
+    : showOperationStatus
+      ? ['#d97706', '#059669']
+      : STATUS_COLORS;
+
+  const statusTitle = showFinanceStatus
+    ? 'Finance Status Mix'
+    : showOperationStatus
+      ? 'Operation Status Mix'
+      : 'Brief Status Mix';
 
 
 
-  if (!canFetch || (visibleMetrics.length === 0 && !showPipeline && !showBriefStatus)) {
+  if (!canFetch || (visibleMetrics.length === 0 && !showPipeline && !showStatusMix)) {
 
     return null;
 
@@ -456,7 +610,7 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
 
 
 
-      {visibleMetrics.length > 0 || showBriefStatus ? (
+      {visibleMetrics.length > 0 || showStatusMix ? (
 
         <div className={copy.gridClass}>
 
@@ -482,17 +636,17 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
 
 
 
-          {showBriefStatus ? (
+          {showStatusMix ? (
 
             <StatusPieChartCard
 
-              title="Brief Status Mix"
+              title={statusTitle}
 
               data={statusData}
 
               loading={loading}
 
-              colors={STATUS_COLORS}
+              colors={statusColors}
 
             />
 

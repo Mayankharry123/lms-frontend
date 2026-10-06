@@ -72,7 +72,7 @@ const BriefPipeline: React.FC = () => {
   const currentData = briefs;
 
   const handleOpenChat = (brief: Brief) => {
-    navigate(ROUTES.BRIEF.CHAT(brief.id));
+    navigate(ROUTES.BRIEF.CHAT(brief.id), { state: { from: 'brief-pipeline' } });
   };
 
   const navigate = useNavigate();

@@ -166,9 +166,16 @@ type StatusPieChartCardProps = {
   data: ChartPoint[];
   loading: boolean;
   colors: string[];
+  emptyLabel?: string;
 };
 
-export function StatusPieChartCard({ title, data, loading, colors }: StatusPieChartCardProps) {
+export function StatusPieChartCard({
+  title,
+  data,
+  loading,
+  colors,
+  emptyLabel = 'No status data for selected filters',
+}: StatusPieChartCardProps) {
   const filtered = data.filter((point) => point.value > 0);
   const hasData = filtered.length > 0;
 
@@ -181,7 +188,7 @@ export function StatusPieChartCard({ title, data, loading, colors }: StatusPieCh
       {loading ? (
         <div className="dashboard-chart-card__empty">Loading chart...</div>
       ) : !hasData ? (
-        <div className="dashboard-chart-card__empty">No brief status data for selected filters</div>
+        <div className="dashboard-chart-card__empty">{emptyLabel}</div>
       ) : (
         <div className="dashboard-chart-card__body">
           <ResponsiveContainer width="100%" height={260}>
