@@ -11,7 +11,7 @@ interface AssignDropdownProps {
   options: string[];
   onChange: (newValue: string) => void;
   onConfirm?: (newValue: string) => Promise<void>;
-  context?: 'brief' | 'lead';
+  context?: 'brief' | 'lead' | 'user';
 }
 
 const AssignDropdown: React.FC<AssignDropdownProps> = ({
@@ -122,6 +122,9 @@ const AssignDropdown: React.FC<AssignDropdownProps> = ({
     setSelectedOption(null);
   };
 
+  const contextLabel = context === 'lead' ? 'Lead' : context === 'user' ? 'User' : 'Brief';
+  const contextItem = context === 'lead' ? 'lead' : context === 'user' ? 'user' : 'brief';
+
   return (
     <div ref={ref} className="relative w-full min-w-0">
       <AssignButton
@@ -163,8 +166,8 @@ const AssignDropdown: React.FC<AssignDropdownProps> = ({
       )}
       <ConfirmDialog
         isOpen={confirmDialogOpen}
-        title={`Assign ${context === 'lead' ? 'Lead' : 'Brief'}`}
-        message={`Assign this ${context === 'lead' ? 'lead' : 'brief'} to ${selectedOption ? `"${selectedOption}"` : 'this user'}?`}
+        title={`Assign ${contextLabel}`}
+        message={`Assign this ${contextItem} to ${selectedOption ? `"${selectedOption}"` : 'this user'}?`}
         confirmLabel="Confirm"
         cancelLabel="Cancel"
         loading={confirmLoading}

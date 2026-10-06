@@ -14,6 +14,7 @@ interface ActionMenuProps {
   onChat?: () => void;
   onCreateMeeting?: () => void;
   onBriefCreation?: () => void;
+  briefCreationLabel?: string;
   onCostSheet?: () => void;
   onDownload?: () => void;
   onApprove?: () => void;
@@ -39,7 +40,7 @@ interface ActionMenuProps {
   totalRows?: number;
 }
 
-const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, onCostSheet, onDownload, onApprove, onDecline, onCreatePo, showViewWithoutPermission = false, editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, createPoPermissionSlug, isLast, rowIndex, totalRows }) => {
+const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, briefCreationLabel = 'Brief Creation', onCostSheet, onDownload, onApprove, onDecline, onCreatePo, showViewWithoutPermission = false, editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, createPoPermissionSlug, isLast, rowIndex, totalRows }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showAbove, setShowAbove] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -531,7 +532,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpl
                 tabIndex={0}
               >
                 <CalendarPlus className="w-4 h-4 flex-shrink-0" />
-                <span>Create Meeting</span>
+                <span>Meeting Schedule</span>
               </button>
             )}
 
@@ -554,7 +555,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpl
                 tabIndex={0}
               >
                 <FilePlus2 className="w-4 h-4 flex-shrink-0" />
-                <span>Plan Submission</span>
+                <span>{briefCreationLabel}</span>
               </button>
             )}
 

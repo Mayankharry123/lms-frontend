@@ -14,6 +14,7 @@ export type OperationRow = {
   plannerName: string;
   assignUser: string;
   status: string;
+  operationStatusId?: string;
   fileName: string | null;
   fileUrl: string | null;
 };
@@ -74,6 +75,7 @@ export function mapOperation(raw: Record<string, unknown>): OperationRow {
     plannerName: asText(raw.planner_name),
     assignUser: asText(raw.assign_user_name),
     status: asText(raw.operation_status),
+    operationStatusId: asText(raw.operation_status_id) || undefined,
     fileName: fileName || null,
     fileUrl: fileUrl || null,
   };
@@ -125,11 +127,21 @@ export async function updateOperationStatus(
   operationId: string | number,
   statusId: string | number
 ): Promise<unknown> {
-  const payload = {
-    status: typeof statusId === 'string' && /^\d+$/.test(statusId) ? Number(statusId) : statusId,
-  };
+  const formData = new FormData();
+  formData.append('status', String(statusId));
+  const res = await apiClient.post(ENDPOINTS.OPERATIONS.DETAIL(operationId), formData);
+  return res.data;
+}
 
-  const res = await apiClient.post(ENDPOINTS.OPERATIONS.DETAIL(operationId), payload);
+export async function updateOperationAssignUser(
+  operationId: string | number,
+  assignUserId: string | number,
+  statusId: string | number
+): Promise<unknown> {
+  const formData = new FormData();
+  formData.append('assign_to', String(assignUserId));
+  formData.append('status', String(statusId));
+  const res = await apiClient.post(ENDPOINTS.OPERATIONS.DETAIL(operationId), formData);
   return res.data;
 }
 

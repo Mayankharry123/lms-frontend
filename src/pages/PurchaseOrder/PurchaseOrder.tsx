@@ -260,6 +260,7 @@ const PurchaseOrder: React.FC = () => {
         return (
           <div className="relative min-w-[140px]">
             <AssignDropdown
+              context="user"
               value={row.assignTo || 'Unassigned'}
               options={options.length ? options : ['Unassigned']}
               onChange={(nextUser) => {

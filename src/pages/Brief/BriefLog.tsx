@@ -545,6 +545,7 @@ const BriefLog: React.FC = () => {
             uploadPermissionSlug="brief.upload"
             planSubmissionPermissionSlug="brief.plan-submission"
             costSheetPermissionSlug="brief.cost-sheet"
+            briefCreationLabel="Plan Submission"
             onBriefCreation={(item: BriefLogItem) => navigate(`/brief/plan-submission/${item.brief_id || item.id}`)}
             onCostSheet={(item: BriefLogItem) => navigate(ROUTES.BRIEF.COST_SHEET(String(item.brief_id || item.id)))}
           />

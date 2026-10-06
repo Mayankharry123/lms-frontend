@@ -23,6 +23,7 @@ import { ROUTES } from '../../constants';
 import { listChildFinanceByBrief } from '../../api/lookups';
 import {
   listCostSheets,
+  updateCostSheetAssignUser,
   updateCostSheetFinanceStatus,
   type CostSheetRow,
   type FinanceStatus,
@@ -148,7 +149,9 @@ const CostSheets: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewItem, setViewItem] = useState<CostSheetRow | null>(null);
   const [previewSource, setPreviewSource] = useState<PreviewSource>(null);
-  const [assignOptionsByBriefId, setAssignOptionsByBriefId] = useState<Record<string, string[]>>({});
+  const [assignUsersByBriefId, setAssignUsersByBriefId] = useState<
+    Record<string, Array<{ id: number | string; name: string }>>
+  >({});
 
   useEffect(() => {
     let mounted = true;
@@ -179,29 +182,28 @@ const CostSheets: React.FC = () => {
     );
 
     if (!briefIds.length) {
-      setAssignOptionsByBriefId({});
+      setAssignUsersByBriefId({});
       return;
     }
 
     let mounted = true;
     (async () => {
       try {
-        const nextOptions: Record<string, string[]> = {};
+        const nextUsers: Record<string, Array<{ id: number | string; name: string }>> = {};
         await Promise.all(
           briefIds.map(async (briefId) => {
             try {
-              const users = await listChildFinanceByBrief(briefId);
-              nextOptions[briefId] = Array.from(new Set(users.map((user) => user.name).filter(Boolean)));
+              nextUsers[briefId] = await listChildFinanceByBrief(briefId);
             } catch (err) {
               console.error(`Failed to load finance users for brief ${briefId}`, err);
-              nextOptions[briefId] = [];
+              nextUsers[briefId] = [];
             }
           })
         );
-        if (mounted) setAssignOptionsByBriefId(nextOptions);
+        if (mounted) setAssignUsersByBriefId(nextUsers);
       } catch (err) {
         console.error('Failed to load finance users for cost sheets', err);
-        if (mounted) setAssignOptionsByBriefId({});
+        if (mounted) setAssignUsersByBriefId({});
       }
     })();
 
@@ -316,21 +318,28 @@ const CostSheets: React.FC = () => {
       allowOverflow: true,
       render: (row) => {
         const briefKey = normalizeBriefId(row.briefId);
-        const optionsFromBrief = briefKey ? assignOptionsByBriefId[briefKey] ?? [] : [];
-        const options = optionsFromBrief.length
-          ? optionsFromBrief.includes(row.assignTo)
-            ? optionsFromBrief
-            : [row.assignTo, ...optionsFromBrief].filter(Boolean)
-          : [row.assignTo].filter(Boolean);
+        const users = briefKey ? assignUsersByBriefId[briefKey] ?? [] : [];
+        const options = Array.from(
+          new Set(
+            [...users.map((user) => user.name), row.assignTo].filter((name) => Boolean(name))
+          )
+        );
 
         return (
           <div className="relative min-w-[140px]">
             <AssignDropdown
+              context="user"
               value={row.assignTo || 'Unassigned'}
               options={options.length ? options : ['Unassigned']}
               onChange={(nextUser) => updateRow(row.id, { assignTo: nextUser === 'Unassigned' ? '' : nextUser })}
               onConfirm={async (nextUser) => {
-                updateRow(row.id, { assignTo: nextUser === 'Unassigned' ? '' : nextUser });
+                const nextValue = nextUser === 'Unassigned' ? '' : nextUser;
+                const selectedUser = users.find((user) => user.name === nextValue);
+                updateRow(row.id, { assignTo: nextValue });
+
+                if (nextValue && selectedUser) {
+                  await updateCostSheetAssignUser(row.id, selectedUser.id);
+                }
               }}
             />
           </div>

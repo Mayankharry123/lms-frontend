@@ -117,6 +117,7 @@ export const ENDPOINTS = {
     DETAIL: (id: string | number) => `/cost-sheets/${id}`,
     STATUS: (id: string | number) => `/cost-sheets/${id}/status`,
     FINANCE_STATUS: (id: string | number) => `/cost-sheets/${id}/finance-status`,
+    UPDATE_ASSIGN_USER: (id: string | number) => `/cost-sheets/${id}/update-assign-user`,
   },
   PURCHASE_ORDERS: {
     LIST: '/purchase-orders',

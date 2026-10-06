@@ -79,6 +79,17 @@ export async function listCostSheets(): Promise<CostSheetRow[]> {
   return data.map((item) => mapCostSheet((item ?? {}) as Record<string, unknown>));
 }
 
+export async function updateCostSheetAssignUser(
+  costSheetId: string | number,
+  assignUserId: string | number
+): Promise<unknown> {
+  const formData = new FormData();
+  formData.append('assign_to', String(assignUserId));
+
+  const res = await apiClient.post(ENDPOINTS.COST_SHEETS.UPDATE_ASSIGN_USER(costSheetId), formData);
+  return res.data;
+}
+
 export async function updateCostSheetFinanceStatus(
   costSheetId: string | number,
   financeStatus: FinanceStatus

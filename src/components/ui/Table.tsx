@@ -42,6 +42,7 @@ interface TableProps<T> {
   onChat?: (item: T) => void;
   onCreateMeeting?: (item: T) => void;
   onBriefCreation?: (item: T) => void;
+  briefCreationLabel?: string;
   onCostSheet?: (item: T) => void;
   onDownload?: (item: T) => void;
   onApprove?: (item: T) => void;
@@ -72,7 +73,7 @@ interface TableProps<T> {
 }
 
 const Table = <T,>(props: TableProps<T>) => {
-  const { data, columns, startIndex = 0, loading = false, onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, onCostSheet, onDownload, onApprove, onDecline, onCreatePo, canApprove, canDecline, showViewWithoutPermission = false, emptyMessage = 'No records found', editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, createPoPermissionSlug, keyExtractor, compact = false, desktopOnMobile = true } = props;
+  const { data, columns, startIndex = 0, loading = false, onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, briefCreationLabel, onCostSheet, onDownload, onApprove, onDecline, onCreatePo, canApprove, canDecline, showViewWithoutPermission = false, emptyMessage = 'No records found', editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, createPoPermissionSlug, keyExtractor, compact = false, desktopOnMobile = true } = props;
   const { show: showCellTooltip, hide: hideCellTooltip, TooltipLayer } = useTableCellTooltip();
 
   // responsive padding classes used for cells/headers; compact mode reduces padding further
@@ -244,6 +245,7 @@ const Table = <T,>(props: TableProps<T>) => {
                           {...(onChat && { onChat: () => onChat(item) })}
                           {...(onCreateMeeting && { onCreateMeeting: () => onCreateMeeting(item) })}
                           {...(onBriefCreation && { onBriefCreation: () => onBriefCreation(item) })}
+                          briefCreationLabel={briefCreationLabel}
                           {...(onCostSheet && { onCostSheet: () => onCostSheet(item) })}
                           {...(onDownload && { onDownload: () => onDownload(item) })}
                           {...(onCreatePo && { onCreatePo: () => onCreatePo(item) })}
@@ -321,6 +323,7 @@ const Table = <T,>(props: TableProps<T>) => {
                   {...(onChat && { onChat: () => onChat(item) })}
                   {...(onCreateMeeting && { onCreateMeeting: () => onCreateMeeting(item) })}
                   {...(onBriefCreation && { onBriefCreation: () => onBriefCreation(item) })}
+                  briefCreationLabel={briefCreationLabel}
                   {...(onCostSheet && { onCostSheet: () => onCostSheet(item) })}
                   {...(onDownload && { onDownload: () => onDownload(item) })}
                   {...(onCreatePo && { onCreatePo: () => onCreatePo(item) })}

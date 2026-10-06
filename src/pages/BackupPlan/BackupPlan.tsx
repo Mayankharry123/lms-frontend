@@ -23,6 +23,7 @@ import {
   downloadOperationBackupPlan,
   listOperations,
   type OperationRow,
+  updateOperationAssignUser,
   updateOperationStatus,
 } from '../../services/Operations';
 import { defaultDatedXlsxFilename, downloadBlobFile } from '../../utils/downloadFile';
@@ -36,6 +37,13 @@ type PreviewSource =
   | null;
 
 const ITEMS_PER_PAGE = 10;
+
+const normalizeBriefId = (value?: string | null) => {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  const digits = text.replace(/\D+/g, '');
+  return digits || text;
+};
 
 const matchesQuery = (row: BackupPlanRow, query: string) => {
   const haystack = [
@@ -108,7 +116,9 @@ const BackupPlan: React.FC = () => {
   const [previewSource, setPreviewSource] = useState<PreviewSource>(null);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [statusOptionMap, setStatusOptionMap] = useState<Record<string, string | number>>({});
-  const [assignUserOptionsByBriefId, setAssignUserOptionsByBriefId] = useState<Record<string, string[]>>({});
+  const [assignUserOptionsByBriefId, setAssignUserOptionsByBriefId] = useState<
+    Record<string, Array<{ id: number | string; name: string }>>
+  >({});
 
   const handleStatusChange = (id: string, status: string) => {
     const nextStatus = status.trim();
@@ -192,7 +202,13 @@ const BackupPlan: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
-    const briefIds = Array.from(new Set(plans.map((row) => row.briefId).filter(Boolean)));
+    const briefIds = Array.from(
+      new Set(
+        plans
+          .map((row) => normalizeBriefId(row.briefId))
+          .filter((briefId) => Boolean(briefId))
+      )
+    );
 
     if (!briefIds.length) {
       setAssignUserOptionsByBriefId({});
@@ -201,12 +217,11 @@ const BackupPlan: React.FC = () => {
 
     (async () => {
       try {
-        const nextOptions: Record<string, string[]> = {};
+        const nextOptions: Record<string, Array<{ id: number | string; name: string }>> = {};
         await Promise.all(
           briefIds.map(async (briefId) => {
             try {
-              const users = await listChildOpsByBrief(briefId);
-              nextOptions[briefId] = Array.from(new Set(users.map((user) => user.name).filter(Boolean)));
+              nextOptions[briefId] = await listChildOpsByBrief(briefId);
             } catch (err) {
               console.error(`Failed to load assign user options for brief ${briefId}`, err);
               nextOptions[briefId] = [];
@@ -299,19 +314,32 @@ const BackupPlan: React.FC = () => {
       className: 'min-w-[140px]',
       allowOverflow: true,
       render: (row) => {
-        const optionsFromBrief = row.briefId ? assignUserOptionsByBriefId[row.briefId] ?? [] : [];
-        const options = optionsFromBrief.length
-          ? optionsFromBrief.includes(row.assignUser)
-            ? optionsFromBrief
-            : [row.assignUser, ...optionsFromBrief].filter(Boolean)
-          : [row.assignUser].filter(Boolean);
+        const briefKey = normalizeBriefId(row.briefId);
+        const users = briefKey ? assignUserOptionsByBriefId[briefKey] ?? [] : [];
+        const options = Array.from(
+          new Set([...users.map((user) => user.name), row.assignUser].filter((name) => Boolean(name)))
+        );
+
         return (
           <div className="relative min-w-[140px]">
             <AssignDropdown
-              value={row.assignUser}
-              options={options}
-              onChange={(nextUser) => handleAssignUserChange(row.id, nextUser)}
-              onConfirm={async () => undefined}
+              context="user"
+              value={row.assignUser || 'Unassigned'}
+              options={options.length ? options : ['Unassigned']}
+              onChange={(nextUser) => handleAssignUserChange(row.id, nextUser === 'Unassigned' ? '' : nextUser)}
+              onConfirm={async (nextUser) => {
+                const nextValue = nextUser === 'Unassigned' ? '' : nextUser;
+                const selectedUser = users.find((user) => user.name === nextValue);
+                const statusId =
+                  row.operationStatusId ?? statusOptionMap[row.status];
+
+                if (nextValue && selectedUser) {
+                  if (statusId === undefined) {
+                    throw new Error('Unable to determine the current campaign status ID');
+                  }
+                  await updateOperationAssignUser(row.id, selectedUser.id, statusId);
+                }
+              }}
             />
           </div>
         );
@@ -376,7 +404,7 @@ const BackupPlan: React.FC = () => {
         { label: 'Planner Name', value: viewItem.plannerName },
         { label: 'Assign User', value: viewItem.assignUser || '-' },
         {
-          label: 'Status',
+          label: 'Campaign Status',
           value: <Badge status={viewItem.status}>{viewItem.status}</Badge>,
         },
         {

@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 dayjs.extend(customParseFormat);
@@ -21,6 +22,7 @@ import Swal from 'sweetalert2';
 import FilePreviewModal from '../../components/ui/FilePreviewModal';
 import { IoIosArrowBack } from 'react-icons/io';
 import type { SubmittedPlansListProps } from '../../types/pages/brief-pages.types';
+import type { RootState } from '../../redux/store';
 
 // No mock data, will fetch from API
 
@@ -138,6 +140,11 @@ const PlanHistory: React.FC = () => {
 
 
 const SubmittedPlansList: React.FC<SubmittedPlansListProps> = ({ plans = [], loading }) => {
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+  const canViewBackupPlan = (currentUser?.roles ?? []).some((role) => {
+    const roleName = String(role?.name ?? '').trim().toLowerCase();
+    return ['super admin', 'planner', 'planing admin', 'planning admin'].includes(roleName);
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewSource, setPreviewSource] = useState<any>(null);
@@ -196,19 +203,21 @@ const SubmittedPlansList: React.FC<SubmittedPlansListProps> = ({ plans = [], loa
           const dateObj = dayjs(plan.created_at, 'YYYY-MM-DD hh:mm:ss A');
           const formattedDateTime = dateObj.isValid() ? dateObj.format('DD MMM YYYY, hh:mm A') : '-';
 
-          // Attachments: submitted_plan (array), backup_plan (object)
+          const backupPlan = plan.planner?.backup_plan ?? plan.backup_plan;
           const attachments = [
-            ...(Array.isArray(plan.planner?.submitted_plan) ? plan.planner.submitted_plan.map((file: { name: string; url: string }, i: number) => ({
+            ...(Array.isArray(plan.planner?.submitted_plan)
+            ? plan.planner.submitted_plan.map((file: { name: string; url: string }, i: number) => ({
               type: file.name.toLowerCase().endsWith('.xlsx') ? 'xls' : file.name.toLowerCase().endsWith('.pptx') ? 'ppt' : 'file',
               label: (i + 1).toString(),
               url: file.url,
               name: file.name
-            })) : []),
-            ...(plan.planner?.backup_plan ? [{
-              type: plan.planner.backup_plan.name.toLowerCase().endsWith('.xlsx') ? 'xls' : plan.planner.backup_plan.name.toLowerCase().endsWith('.pptx') ? 'ppt' : 'file',
+            }))
+            : []),
+            ...(canViewBackupPlan && backupPlan ? [{
+              type: backupPlan.name.toLowerCase().endsWith('.xlsx') ? 'xls' : backupPlan.name.toLowerCase().endsWith('.pptx') ? 'ppt' : 'file',
               label: 'Back-Up',
-              url: plan.planner.backup_plan.url,
-              name: plan.planner.backup_plan.name
+              url: backupPlan.url,
+              name: backupPlan.name
             }] : [])
           ];
 
