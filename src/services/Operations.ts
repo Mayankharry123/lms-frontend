@@ -136,12 +136,14 @@ export async function updateOperationStatus(
 export async function updateOperationAssignUser(
   operationId: string | number,
   assignUserId: string | number,
-  statusId: string | number
+  statusId?: string | number
 ): Promise<unknown> {
   const formData = new FormData();
   formData.append('assign_to', String(assignUserId));
-  formData.append('status', String(statusId));
-  const res = await apiClient.post(ENDPOINTS.OPERATIONS.DETAIL(operationId), formData);
+  if (statusId !== undefined && statusId !== null && statusId !== '') {
+    formData.append('status', String(statusId));
+  }
+  const res = await apiClient.post(ENDPOINTS.OPERATIONS.UPDATE_ASSIGN_USER(operationId), formData);
   return res.data;
 }
 

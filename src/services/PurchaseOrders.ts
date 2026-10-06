@@ -16,6 +16,17 @@ export type PurchaseOrderResult = {
   finance_record_id?: number | string;
   po_number?: string;
   pdf_url?: string;
+  pdf_path?: string;
+  subtotal?: number | string | null;
+  sgst_rate?: number | string | null;
+  sgst_amount?: number | string | null;
+  cgst_rate?: number | string | null;
+  cgst_amount?: number | string | null;
+  igst_rate?: number | string | null;
+  igst_amount?: number | string | null;
+  tax_amount?: number | string | null;
+  total_amount?: number | string | null;
+  amount_in_words?: string | null;
 };
 
 export type CreatePurchaseOrderPayload = {
@@ -23,6 +34,14 @@ export type CreatePurchaseOrderPayload = {
   publisherId: string;
   publisherAddressId?: string;
   orders: PurchaseOrderLine[];
+  sgst?: number;
+  cgst?: number;
+  igst?: number;
+};
+
+const toFiniteNumber = (value: number | undefined): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  return value;
 };
 
 /** POST /purchase-orders as multipart form data. Order rows are 1-based, matching the API. */
@@ -33,6 +52,10 @@ export async function createPurchaseOrder(payload: CreatePurchaseOrderPayload): 
     formData.append('publisher_address_id', payload.publisherAddressId);
   }
   formData.append('finance_record_id', payload.financeRecordId);
+
+  formData.append('sgst', String(toFiniteNumber(payload.sgst)));
+  formData.append('cgst', String(toFiniteNumber(payload.cgst)));
+  formData.append('igst', String(toFiniteNumber(payload.igst)));
 
   payload.orders.forEach((order, index) => {
     const row = index + 1;

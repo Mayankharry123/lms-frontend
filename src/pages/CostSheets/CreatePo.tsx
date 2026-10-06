@@ -26,6 +26,12 @@ type OrderLine = {
   amount: string;
 };
 
+type TaxDetails = {
+  sgst: string;
+  cgst: string;
+  igst: string;
+};
+
 const inputClass =
   'h-10 w-full min-w-[88px] rounded-md border border-[#DDE1E7] bg-white px-3 text-sm text-gray-800 outline-none transition-colors focus:border-[#f26222] focus:ring-2 focus:ring-orange-100';
 const readOnlyClass =
@@ -72,6 +78,7 @@ const CreatePo: React.FC = () => {
   const [publisher, setPublisher] = useState<PublisherDetail | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [lines, setLines] = useState<OrderLine[]>([blankLine()]);
+  const [taxDetails, setTaxDetails] = useState<TaxDetails>({ sgst: '', cgst: '', igst: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const submitLock = useRef(false);
@@ -138,6 +145,11 @@ const CreatePo: React.FC = () => {
     setLines((current) => (current.length <= 1 ? current : current.filter((line) => line.key !== key)));
   };
 
+  const updateTaxDetail = (field: keyof TaxDetails, value: string) => {
+    if (value.startsWith('-')) return;
+    setTaxDetails((current) => ({ ...current, [field]: value }));
+  };
+
   const addresses = publisher?.addresses ?? [];
   const selectedAddress = addresses.find((item) => item.id === selectedAddressId) ?? null;
 
@@ -148,20 +160,36 @@ const CreatePo: React.FC = () => {
     for (let i = 0; i < lines.length; i += 1) {
       const line = lines[i];
       const rowLabel = `Row ${i + 1}`;
-      if (!line.order.trim()) return `${rowLabel}: Order is required.`;
-      if (!line.hsnSac.trim()) return `${rowLabel}: HSN/SAC is required.`;
-      if (!line.city.trim()) return `${rowLabel}: City is required.`;
       for (const [label, value] of [
-        ['Qty', line.qty],
+        ['Slot', line.qty],
         ['Rate', line.rate],
-        ['Amount', line.amount],
       ] as const) {
+        if (!value.trim()) continue;
         const number = toNumber(value);
-        if (!value.trim() || !Number.isFinite(number) || number <= 0) {
-          return `${rowLabel}: ${label} must be a number greater than 0.`;
+        if (!Number.isFinite(number) || number < 0) {
+          return `${rowLabel}: ${label} must be a non-negative number.`;
         }
       }
+      const amount = toNumber(line.amount);
+      if (!line.amount.trim() || !Number.isFinite(amount) || amount <= 0) {
+        return `${rowLabel}: Amount must be a number greater than 0.`;
+      }
     }
+
+    const labelMap: Record<keyof TaxDetails, string> = {
+      sgst: 'SGST (%)',
+      cgst: 'CGST (%)',
+      igst: 'IGST (%)',
+    };
+
+    for (const [field, rawValue] of Object.entries(taxDetails) as Array<[keyof TaxDetails, string]>) {
+      if (!rawValue.trim()) continue;
+      const numericValue = Number(rawValue);
+      if (!Number.isFinite(numericValue) || numericValue < 0 || numericValue > 100) {
+        return `${labelMap[field]} must be between 0 and 100.`;
+      }
+    }
+
     return null;
   };
 
@@ -173,6 +201,12 @@ const CreatePo: React.FC = () => {
       return;
     }
 
+    const parsedTax = {
+      sgst: Number(taxDetails.sgst || 0),
+      cgst: Number(taxDetails.cgst || 0),
+      igst: Number(taxDetails.igst || 0),
+    };
+
     submitLock.current = true;
     setSubmitting(true);
     setSubmitError(null);
@@ -183,12 +217,13 @@ const CreatePo: React.FC = () => {
         ...(selectedAddress && !selectedAddress.id.startsWith('address-')
           ? { publisherAddressId: selectedAddress.id }
           : {}),
+        ...parsedTax,
         orders: lines.map((line) => ({
           description: line.order.trim(),
           hsnSac: line.hsnSac.trim(),
           city: line.city.trim(),
-          qty: toNumber(line.qty),
-          rate: toNumber(line.rate),
+          qty: line.qty.trim() ? toNumber(line.qty) : 0,
+          rate: line.rate.trim() ? toNumber(line.rate) : 0,
           amount: toNumber(line.amount),
         })),
       });
@@ -348,7 +383,7 @@ const CreatePo: React.FC = () => {
               <table className="w-full min-w-[980px] border-collapse">
                 <thead>
                   <tr className="bg-slate-50">
-                    {['Order', 'HSN/SAC', 'City', 'Qty', 'Rate (Rs.)', 'Amount (Rs.)', 'Action'].map((header) => (
+                    {['Order', 'HSN/SAC', 'City', 'Slot', 'Rate (Rs.)', 'Amount (Rs.)', 'Action'].map((header) => (
                       <th
                         key={header}
                         className={`border-b border-gray-200 px-3 py-3 text-xs font-semibold uppercase tracking-wide text-[#007b83] ${
@@ -430,6 +465,36 @@ const CreatePo: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-200 bg-gray-50 px-5 py-4">
+            <h3 className="text-sm font-semibold text-gray-900">Tax Details</h3>
+          </div>
+
+          <div className="p-4 sm:p-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {[
+                { key: 'sgst', label: 'SGST (%)', placeholder: 'Enter SGST %' },
+                { key: 'cgst', label: 'CGST (%)', placeholder: 'Enter CGST %' },
+                { key: 'igst', label: 'IGST (%)', placeholder: 'Enter IGST %' },
+              ].map((field) => (
+                <div key={field.key}>
+                  <FieldLabel>{field.label}</FieldLabel>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    className={inputClass}
+                    placeholder={field.placeholder}
+                    value={taxDetails[field.key as keyof TaxDetails]}
+                    onChange={(event) => updateTaxDetail(field.key as keyof TaxDetails, event.target.value)}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </section>

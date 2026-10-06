@@ -210,6 +210,7 @@ export const ENDPOINTS = {
   OPERATIONS: {
     LIST: '/operations',
     DETAIL: (id: string | number) => `/operations/${id}`,
+    UPDATE_ASSIGN_USER: (id: string | number) => `/operations/${id}/update-assign-user`,
     BACKUP_PLAN: (id: string | number) => `/operations/${id}/backup-plan`,
   },
   GEO: {
