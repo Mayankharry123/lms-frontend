@@ -17,8 +17,14 @@ import StatusDropdown from '../../components/ui/StatusDropdown';
 import AssignDropdown from '../../components/ui/AssignDropdown';
 import PageBackHeader from '../../components/ui/PageBackHeader';
 import Badge from '../../components/ui/Badge';
+import { listChildOpsByBrief } from '../../api/lookups';
 import { fetchOperationStatuses } from '../../services/OperationStatus';
-import { downloadOperationBackupPlan, listOperations, type OperationRow } from '../../services/Operations';
+import {
+  downloadOperationBackupPlan,
+  listOperations,
+  type OperationRow,
+  updateOperationStatus,
+} from '../../services/Operations';
 import { defaultDatedXlsxFilename, downloadBlobFile } from '../../utils/downloadFile';
 import SweetAlert from '../../utils/SweetAlert';
 
@@ -30,15 +36,6 @@ type PreviewSource =
   | null;
 
 const ITEMS_PER_PAGE = 10;
-const ASSIGN_USER_OPTIONS = [
-  'Mayank Sharma',
-  'Aryan Sharma',
-  'Neha Verma',
-  'Riya Kapoor',
-  'Priyanka',
-  'Atul',
-  'Achal Sharma',
-];
 
 const matchesQuery = (row: BackupPlanRow, query: string) => {
   const haystack = [
@@ -110,6 +107,8 @@ const BackupPlan: React.FC = () => {
   const [viewItem, setViewItem] = useState<BackupPlanRow | null>(null);
   const [previewSource, setPreviewSource] = useState<PreviewSource>(null);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
+  const [statusOptionMap, setStatusOptionMap] = useState<Record<string, string | number>>({});
+  const [assignUserOptionsByBriefId, setAssignUserOptionsByBriefId] = useState<Record<string, string[]>>({});
 
   const handleStatusChange = (id: string, status: string) => {
     const nextStatus = status.trim();
@@ -120,6 +119,19 @@ const BackupPlan: React.FC = () => {
     setViewItem((current) =>
       current && current.id === id ? { ...current, status: nextStatus } : current
     );
+  };
+
+  const handleStatusConfirm = async (id: string, status: string) => {
+    const statusId = statusOptionMap[status];
+    if (statusId === undefined) return;
+
+    try {
+      await updateOperationStatus(id, statusId);
+    } catch (err) {
+      console.error('Failed to update campaign status', err);
+      SweetAlert.showError(err instanceof Error ? err.message : 'Failed to update campaign status');
+      throw err;
+    }
   };
 
   const handleAssignUserChange = (id: string, assignUser: string) => {
@@ -158,16 +170,61 @@ const BackupPlan: React.FC = () => {
       try {
         const statuses = await fetchOperationStatuses();
         if (!mounted) return;
-        setStatusOptions(statuses.map((item) => item.name));
+        const nextNames = statuses.map((item) => item.name);
+        const nextMap = statuses.reduce<Record<string, string | number>>((acc, item) => {
+          if (item.name) acc[item.name] = item.id;
+          return acc;
+        }, {});
+        setStatusOptions(nextNames);
+        setStatusOptionMap(nextMap);
       } catch (err) {
         console.error('Failed to load operation statuses', err);
-        if (mounted) setStatusOptions([]);
+        if (mounted) {
+          setStatusOptions([]);
+          setStatusOptionMap({});
+        }
       }
     })();
     return () => {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const briefIds = Array.from(new Set(plans.map((row) => row.briefId).filter(Boolean)));
+
+    if (!briefIds.length) {
+      setAssignUserOptionsByBriefId({});
+      return;
+    }
+
+    (async () => {
+      try {
+        const nextOptions: Record<string, string[]> = {};
+        await Promise.all(
+          briefIds.map(async (briefId) => {
+            try {
+              const users = await listChildOpsByBrief(briefId);
+              nextOptions[briefId] = Array.from(new Set(users.map((user) => user.name).filter(Boolean)));
+            } catch (err) {
+              console.error(`Failed to load assign user options for brief ${briefId}`, err);
+              nextOptions[briefId] = [];
+            }
+          })
+        );
+
+        if (mounted) setAssignUserOptionsByBriefId(nextOptions);
+      } catch (err) {
+        console.error('Failed to load assign user options', err);
+        if (mounted) setAssignUserOptionsByBriefId({});
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [plans]);
 
   const filtered = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -242,9 +299,12 @@ const BackupPlan: React.FC = () => {
       className: 'min-w-[140px]',
       allowOverflow: true,
       render: (row) => {
-        const options = ASSIGN_USER_OPTIONS.includes(row.assignUser)
-          ? ASSIGN_USER_OPTIONS
-          : [row.assignUser, ...ASSIGN_USER_OPTIONS].filter(Boolean);
+        const optionsFromBrief = row.briefId ? assignUserOptionsByBriefId[row.briefId] ?? [] : [];
+        const options = optionsFromBrief.length
+          ? optionsFromBrief.includes(row.assignUser)
+            ? optionsFromBrief
+            : [row.assignUser, ...optionsFromBrief].filter(Boolean)
+          : [row.assignUser].filter(Boolean);
         return (
           <div className="relative min-w-[140px]">
             <AssignDropdown
@@ -259,7 +319,7 @@ const BackupPlan: React.FC = () => {
     },
     {
       key: 'status',
-      header: 'Status',
+      header: 'Campaign Status',
       minWidth: 140,
       headerClassName: 'text-left',
       className: 'min-w-[140px] align-middle',
@@ -275,7 +335,7 @@ const BackupPlan: React.FC = () => {
                 : [row.status, ...statusOptions]
             }
             onChange={(nextStatus) => handleStatusChange(row.id, nextStatus)}
-            onConfirm={async () => undefined}
+            onConfirm={(nextStatus) => handleStatusConfirm(row.id, nextStatus)}
           />
         </div>
       ),

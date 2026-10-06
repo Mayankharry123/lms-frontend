@@ -540,7 +540,7 @@ const AllLeads: React.FC = () => {
     { key: 'dateTime', header: 'Date & Time', render: (it: AllLeadtype) => it.dateTime || '-', className: 'whitespace-nowrap' },
     {
       key: 'status',
-      header: 'Status',
+      header: 'Lead Status',
       render: (it: AllLeadtype) => {
         const statusColors = {
           'Active': '#22c55e',

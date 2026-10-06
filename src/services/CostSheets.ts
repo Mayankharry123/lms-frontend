@@ -78,3 +78,18 @@ export async function listCostSheets(): Promise<CostSheetRow[]> {
   const data = Array.isArray(res.data) ? res.data : [];
   return data.map((item) => mapCostSheet((item ?? {}) as Record<string, unknown>));
 }
+
+export async function updateCostSheetFinanceStatus(
+  costSheetId: string | number,
+  financeStatus: FinanceStatus
+): Promise<unknown> {
+  if (!financeStatus) return null;
+
+  const financeStatusId = financeStatus === 'Approved' ? 1 : 2;
+  const formData = new FormData();
+  formData.append('finance_status_id', String(financeStatusId));
+  formData.append('method', 'Put');
+
+  const res = await apiClient.post(ENDPOINTS.COST_SHEETS.DETAIL(costSheetId), formData);
+  return res.data;
+}

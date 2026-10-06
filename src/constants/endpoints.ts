@@ -31,6 +31,10 @@ export const ENDPOINTS = {
     CHILD_PLANNERS_BY_BRIEF: (id: string | number) => `/profile/child-planners-by-brief/${id}`,
     CHILD_USERS_FOR_BRIEF_CREATION: (id: string | number) =>
       `/profile/child-users-for-brief-creation/${id}`,
+    CHILD_OPS_BY_BRIEF: (briefId: string | number) =>
+      `/profile/child-ops-by-brief/${encodeURIComponent(String(briefId))}`,
+    CHILD_FINANCE_BY_BRIEF: (briefId: string | number) =>
+      `/profile/child-finance-by-brief/${encodeURIComponent(String(briefId))}`,
   },
   ROLES: {
     LIST: '/roles',

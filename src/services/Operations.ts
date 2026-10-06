@@ -5,6 +5,7 @@ import { downloadBlobFile, fileBaseName, parseContentDispositionFilename } from 
 export type OperationRow = {
   id: string;
   planId: string;
+  briefId: string;
   briefName: string;
   productName: string;
   campaignStartDate: string;
@@ -58,10 +59,13 @@ export function mapOperation(raw: Record<string, unknown>): OperationRow {
     (fileUrl ? fileNameFromUrl(fileUrl) : '');
   const fileName = storedName ? fileNameFromUrl(storedName) || storedName : '';
   const planId = asText(raw.plan_id ?? raw.brief_id ?? raw.id);
+  const briefObject = raw.brief && typeof raw.brief === 'object' ? (raw.brief as Record<string, unknown>) : null;
+  const briefId = asText(raw.brief_id ?? raw.briefId ?? briefObject?.id ?? '');
 
   return {
     id,
     planId: planId ? `#${planId.replace(/^#/, '')}` : '',
+    briefId,
     briefName: asText(raw.brief_name),
     productName: asText(raw.product_name),
     campaignStartDate: formatApiDate(raw.campaign_start_date),
@@ -117,6 +121,18 @@ export async function downloadOperationBackupPlan(row: Pick<OperationRow, 'id' |
 }
 
 /** GET /operations — loads every page so search and export cover all rows. */
+export async function updateOperationStatus(
+  operationId: string | number,
+  statusId: string | number
+): Promise<unknown> {
+  const payload = {
+    status: typeof statusId === 'string' && /^\d+$/.test(statusId) ? Number(statusId) : statusId,
+  };
+
+  const res = await apiClient.post(ENDPOINTS.OPERATIONS.DETAIL(operationId), payload);
+  return res.data;
+}
+
 export async function listOperations(): Promise<OperationRow[]> {
   const rows: OperationRow[] = [];
   let page = 1;

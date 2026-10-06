@@ -678,7 +678,7 @@ const BriefPipeline: React.FC = () => {
                     </div>
                   );
                 }, className: 'min-w-[140px]', allowOverflow: true },
-                { key: 'status', header: 'Status', render: (it: Brief) => {
+                { key: 'status', header: 'Brief Status', render: (it: Brief) => {
                   // Show status name from brief_status object, fallback to '-' or 'No Status'
                   const statusName = it.brief_status && typeof it.brief_status === 'object' && 'name' in it.brief_status
                     ? (it.brief_status as any).name

@@ -14,7 +14,9 @@ import Table, { type Column } from '../../components/ui/Table';
 import Pagination from '../../components/ui/Pagination';
 import PageBackHeader from '../../components/ui/PageBackHeader';
 import Badge from '../../components/ui/Badge';
+import AssignDropdown from '../../components/ui/AssignDropdown';
 import { defaultDatedXlsxFilename, downloadBlobFile, downloadFileFromUrl } from '../../utils/downloadFile';
+import { listChildFinanceByBrief } from '../../api/lookups';
 import { listPurchaseOrders, type PurchaseOrderRow } from '../../services/PurchaseOrders';
 import SweetAlert from '../../utils/SweetAlert';
 
@@ -48,7 +50,7 @@ const SHEET_HEADERS = [
   'Planner Name',
   'Submitted Date',
   'Assign By',
-  'Assign To',
+  'Finance User',
   'Cost Sheet Status',
   'Finance Status',
   'File',
@@ -80,12 +82,20 @@ const exportPurchaseOrdersExcel = (rows: PurchaseOrderRow[]) => {
 const statusBadge = (status: string) =>
   status && status !== '-' ? <Badge status={status}>{status}</Badge> : '-';
 
+const normalizeBriefId = (value?: string | null) => {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  const digits = text.replace(/\D+/g, '');
+  return digits || text;
+};
+
 const PurchaseOrder: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<PurchaseOrderRow[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewItem, setViewItem] = useState<PurchaseOrderRow | null>(null);
+  const [assignOptionsByBriefId, setAssignOptionsByBriefId] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     let mounted = true;
@@ -107,6 +117,52 @@ const PurchaseOrder: React.FC = () => {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const briefIds = Array.from(
+      new Set(
+        rows
+          .map((row) => normalizeBriefId(row.briefId))
+          .filter((briefId) => Boolean(briefId))
+      )
+    );
+
+    if (!briefIds.length) {
+      setAssignOptionsByBriefId({});
+      return;
+    }
+
+    let mounted = true;
+    (async () => {
+      try {
+        const nextOptions: Record<string, string[]> = {};
+        await Promise.all(
+          briefIds.map(async (briefId) => {
+            try {
+              const users = await listChildFinanceByBrief(briefId);
+              nextOptions[briefId] = Array.from(new Set(users.map((user) => user.name).filter(Boolean)));
+            } catch (err) {
+              console.error(`Failed to load finance users for brief ${briefId}`, err);
+              nextOptions[briefId] = [];
+            }
+          })
+        );
+        if (mounted) setAssignOptionsByBriefId(nextOptions);
+      } catch (err) {
+        console.error('Failed to load finance users for purchase orders', err);
+        if (mounted) setAssignOptionsByBriefId({});
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [rows]);
+
+  const updateRow = (id: string, patch: Partial<PurchaseOrderRow>) => {
+    setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+    setViewItem((current) => (current && current.id === id ? { ...current, ...patch } : current));
+  };
 
   const filtered = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -189,9 +245,35 @@ const PurchaseOrder: React.FC = () => {
     },
     {
       key: 'assignTo',
-      header: 'Assign To',
-      className: 'whitespace-nowrap overflow-hidden truncate',
-      render: (row) => row.assignTo,
+      header: 'Finance User',
+      className: 'min-w-[140px]',
+      allowOverflow: true,
+      render: (row) => {
+        const briefKey = normalizeBriefId(row.briefId);
+        const optionsFromBrief = briefKey ? assignOptionsByBriefId[briefKey] ?? [] : [];
+        const options = optionsFromBrief.length
+          ? optionsFromBrief.includes(row.assignTo)
+            ? optionsFromBrief
+            : [row.assignTo, ...optionsFromBrief].filter(Boolean)
+          : [row.assignTo].filter(Boolean);
+
+        return (
+          <div className="relative min-w-[140px]">
+            <AssignDropdown
+              value={row.assignTo || 'Unassigned'}
+              options={options.length ? options : ['Unassigned']}
+              onChange={(nextUser) => {
+                const nextValue = nextUser === 'Unassigned' ? '' : nextUser;
+                updateRow(row.id, { assignTo: nextValue });
+              }}
+              onConfirm={async (nextUser) => {
+                const nextValue = nextUser === 'Unassigned' ? '' : nextUser;
+                updateRow(row.id, { assignTo: nextValue });
+              }}
+            />
+          </div>
+        );
+      },
     },
     {
       key: 'costSheetStatus',
@@ -224,7 +306,7 @@ const PurchaseOrder: React.FC = () => {
         { label: 'Planner Name', value: viewItem.plannerName },
         { label: 'Submitted Date', value: viewItem.submittedDate },
         { label: 'Assign By', value: viewItem.assignBy },
-        { label: 'Assign To', value: viewItem.assignTo },
+        { label: 'Finance User', value: viewItem.assignTo || '-' },
         { label: 'Cost Sheet Status', value: statusBadge(viewItem.costSheetStatus) },
         { label: 'Finance Status', value: statusBadge(viewItem.financeStatus) },
         { label: 'File', value: fileCell(viewItem) },

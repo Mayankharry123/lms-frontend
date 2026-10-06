@@ -660,7 +660,7 @@ const LeadList: React.FC<LeadListPageProps> = ({
     { key: 'dateTime', header: 'Date & Time', minWidth: 130, maxWidth: 170, render: (it: Lead) => it.dateTime || '-' },
     {
       key: 'status',
-      header: 'Status',
+      header: 'Lead Status',
       minWidth: 120,
       maxWidth: 160,
       allowOverflow: true,

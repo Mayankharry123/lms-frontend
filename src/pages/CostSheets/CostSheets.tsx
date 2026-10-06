@@ -15,13 +15,19 @@ import Table, { type Column } from '../../components/ui/Table';
 import Pagination from '../../components/ui/Pagination';
 import FilePreviewModal from '../../components/ui/FilePreviewModal';
 import StatusDropdown from '../../components/ui/StatusDropdown';
+import AssignDropdown from '../../components/ui/AssignDropdown';
 import PageBackHeader from '../../components/ui/PageBackHeader';
 import Badge from '../../components/ui/Badge';
 import { defaultDatedXlsxFilename, downloadBlobFile } from '../../utils/downloadFile';
 import { ROUTES } from '../../constants';
-import { listCostSheets, type CostSheetRow, type CostSheetStatus, type FinanceStatus } from '../../services/CostSheets';
+import { listChildFinanceByBrief } from '../../api/lookups';
+import {
+  listCostSheets,
+  updateCostSheetFinanceStatus,
+  type CostSheetRow,
+  type FinanceStatus,
+} from '../../services/CostSheets';
 
-const COST_SHEET_STATUSES: CostSheetStatus[] = ['Pending', 'Submitted'];
 const FINANCE_STATUSES: Array<Exclude<FinanceStatus, null>> = ['Approved', 'Denied'];
 const EXCEL_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const ITEMS_PER_PAGE = 10;
@@ -66,6 +72,13 @@ type PreviewSource =
 
 const displayFinanceStatus = (status: FinanceStatus) => status ?? '-';
 
+const normalizeBriefId = (value?: string | null) => {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  const digits = text.replace(/\D+/g, '');
+  return digits || text;
+};
+
 const matchesQuery = (row: CostSheetRow, query: string) => {
   const haystack = [
     row.costSheetId,
@@ -76,7 +89,6 @@ const matchesQuery = (row: CostSheetRow, query: string) => {
     row.submittedDate,
     row.assignBy,
     row.assignTo,
-    row.costSheetStatus,
     displayFinanceStatus(row.financeStatus),
     row.fileName ?? '',
   ]
@@ -94,7 +106,6 @@ const sheetRows = (row: CostSheetRow) => [
   row.submittedDate,
   row.assignBy,
   row.assignTo,
-  row.costSheetStatus,
   displayFinanceStatus(row.financeStatus),
   row.fileName ?? '',
 ];
@@ -107,8 +118,7 @@ const SHEET_HEADERS = [
   'Planner Name',
   'Submitted Date',
   'Assign By',
-  'Assign To',
-  'Cost Sheet Status',
+  'Finance User',
   'Finance Status',
   'File',
 ];
@@ -138,6 +148,7 @@ const CostSheets: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewItem, setViewItem] = useState<CostSheetRow | null>(null);
   const [previewSource, setPreviewSource] = useState<PreviewSource>(null);
+  const [assignOptionsByBriefId, setAssignOptionsByBriefId] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     let mounted = true;
@@ -157,6 +168,47 @@ const CostSheets: React.FC = () => {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const briefIds = Array.from(
+      new Set(
+        rows
+          .map((row) => normalizeBriefId(row.briefId))
+          .filter((briefId) => Boolean(briefId))
+      )
+    );
+
+    if (!briefIds.length) {
+      setAssignOptionsByBriefId({});
+      return;
+    }
+
+    let mounted = true;
+    (async () => {
+      try {
+        const nextOptions: Record<string, string[]> = {};
+        await Promise.all(
+          briefIds.map(async (briefId) => {
+            try {
+              const users = await listChildFinanceByBrief(briefId);
+              nextOptions[briefId] = Array.from(new Set(users.map((user) => user.name).filter(Boolean)));
+            } catch (err) {
+              console.error(`Failed to load finance users for brief ${briefId}`, err);
+              nextOptions[briefId] = [];
+            }
+          })
+        );
+        if (mounted) setAssignOptionsByBriefId(nextOptions);
+      } catch (err) {
+        console.error('Failed to load finance users for cost sheets', err);
+        if (mounted) setAssignOptionsByBriefId({});
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [rows]);
 
   const updateRow = (id: string, patch: Partial<CostSheetRow>) => {
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
@@ -259,30 +311,31 @@ const CostSheets: React.FC = () => {
     },
     {
       key: 'assignTo',
-      header: 'Assign To',
-      className: 'whitespace-nowrap overflow-hidden truncate',
-      render: (row) => row.assignTo,
-    },
-    {
-      key: 'costSheetStatus',
-      header: 'Cost Sheet Status',
-      minWidth: 160,
-      headerClassName: 'text-left',
-      className: 'min-w-[160px] align-middle',
+      header: 'Finance User',
+      className: 'min-w-[140px]',
       allowOverflow: true,
-      render: (row) => (
-        <div className="relative min-w-[140px]">
-          <StatusDropdown
-            value={row.costSheetStatus}
-            appearance="link"
-            options={COST_SHEET_STATUSES}
-            onChange={(nextStatus) =>
-              updateRow(row.id, { costSheetStatus: nextStatus === 'Submitted' ? 'Submitted' : 'Pending' })
-            }
-            onConfirm={async () => undefined}
-          />
-        </div>
-      ),
+      render: (row) => {
+        const briefKey = normalizeBriefId(row.briefId);
+        const optionsFromBrief = briefKey ? assignOptionsByBriefId[briefKey] ?? [] : [];
+        const options = optionsFromBrief.length
+          ? optionsFromBrief.includes(row.assignTo)
+            ? optionsFromBrief
+            : [row.assignTo, ...optionsFromBrief].filter(Boolean)
+          : [row.assignTo].filter(Boolean);
+
+        return (
+          <div className="relative min-w-[140px]">
+            <AssignDropdown
+              value={row.assignTo || 'Unassigned'}
+              options={options.length ? options : ['Unassigned']}
+              onChange={(nextUser) => updateRow(row.id, { assignTo: nextUser === 'Unassigned' ? '' : nextUser })}
+              onConfirm={async (nextUser) => {
+                updateRow(row.id, { assignTo: nextUser === 'Unassigned' ? '' : nextUser });
+              }}
+            />
+          </div>
+        );
+      },
     },
     {
       key: 'financeStatus',
@@ -300,7 +353,11 @@ const CostSheets: React.FC = () => {
             onChange={(nextStatus) =>
               updateRow(row.id, { financeStatus: nextStatus === 'Denied' ? 'Denied' : 'Approved' })
             }
-            onConfirm={async () => undefined}
+            onConfirm={async (nextStatus) => {
+              const finalStatus = nextStatus === 'Denied' ? 'Denied' : 'Approved';
+              updateRow(row.id, { financeStatus: finalStatus });
+              await updateCostSheetFinanceStatus(row.id, finalStatus);
+            }}
           />
         </div>
       ),
@@ -324,11 +381,7 @@ const CostSheets: React.FC = () => {
         { label: 'Planner Name', value: viewItem.plannerName },
         { label: 'Submitted Date', value: viewItem.submittedDate },
         { label: 'Assign By', value: viewItem.assignBy || '-' },
-        { label: 'Assign To', value: viewItem.assignTo || '-' },
-        {
-          label: 'Cost Sheet Status',
-          value: <Badge status={viewItem.costSheetStatus}>{viewItem.costSheetStatus}</Badge>,
-        },
+        { label: 'Finance User', value: viewItem.assignTo || '-' },
         {
           label: 'Finance Status',
           value: viewItem.financeStatus ? (
