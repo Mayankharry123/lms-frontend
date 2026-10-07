@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Download, Plus } from 'lucide-react';
+import { Download, FileText, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import * as XLSX from 'xlsx';
 import MasterHeader from '../../components/ui/MasterHeader';
 import ModalPopup from '../../components/ui/ModalPopup';
 import Pagination from '../../components/ui/Pagination';
@@ -9,24 +8,24 @@ import SearchBar from '../../components/ui/SearchBar';
 import Table, { type Column } from '../../components/ui/Table';
 import TableHeader from '../../components/ui/TableHeader';
 import { ROUTES } from '../../constants';
-import { listVouchers, type VoucherRow } from '../../services/Vouchers';
-import { defaultDatedXlsxFilename, downloadBlobFile } from '../../utils/downloadFile';
+import {
+  getVoucher,
+  getVoucherSampleDownload,
+  listVoucherTypes,
+  listVouchers,
+  type VoucherRow,
+} from '../../services/Vouchers';
+import { downloadFileFromUrl } from '../../utils/downloadFile';
+import SweetAlert from '../../utils/SweetAlert';
 
 const ITEMS_PER_PAGE = 10;
-const EXCEL_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-
-const VOUCHER_TYPES = [
-  'Staff Welfare Expenses',
-  'Tour & Travelling Expenses',
-  'Office Expenses',
-  'Site Repair & Maintenance',
-  'Refreshment Expenses',
-  'Printing & Stationery Expenses',
-  'Business Promotion Expenses',
-  'Transportation Expenses',
-  'Telephone Expenses',
-  'Hotel Accommodation Expenses',
-];
+const CURRENCY_FORMATTER = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 2,
+});
+const formatAmount = (amount: number | null) => (amount === null ? '-' : CURRENCY_FORMATTER.format(amount));
+const formatRate = (rate: number | null) => (rate === null ? '-' : `${rate}%`);
 
 const Voucher: React.FC = () => {
   const navigate = useNavigate();
@@ -36,7 +35,11 @@ const Voucher: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
-  const [selectedVoucherType, setSelectedVoucherType] = useState('');
+  const [selectedVoucherTypeId, setSelectedVoucherTypeId] = useState('');
+  const [voucherTypes, setVoucherTypes] = useState<{ id: string; name: string }[]>([]);
+  const [voucherTypeError, setVoucherTypeError] = useState('');
+  const [downloadingVoucherId, setDownloadingVoucherId] = useState<string | null>(null);
+  const [downloadingSample, setDownloadingSample] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -57,6 +60,22 @@ const Voucher: React.FC = () => {
       .finally(() => {
         if (mounted) setLoading(false);
       });
+
+    listVoucherTypes()
+      .then((data) => {
+        if (mounted) {
+          setVoucherTypes(data);
+          setVoucherTypeError('');
+        }
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to load voucher types:', error);
+        if (mounted) {
+          setVoucherTypes([]);
+          setVoucherTypeError('Failed to load voucher types.');
+        }
+      });
+
     return () => {
       mounted = false;
     };
@@ -66,7 +85,17 @@ const Voucher: React.FC = () => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return rows;
     return rows.filter((row) =>
-      [row.voucherId, row.voucherType, row.personName, row.expenseFileName]
+      [
+        row.voucherId,
+        row.voucherType,
+        row.personName,
+        row.subtotal,
+        row.sgstRate,
+        row.cgstRate,
+        row.totalTax,
+        row.totalAmount,
+        row.expenseFileName,
+      ]
         .join(' ')
         .toLowerCase()
         .includes(query)
@@ -75,6 +104,45 @@ const Voucher: React.FC = () => {
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const pageRows = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const selectedVoucherType = voucherTypes.find((type) => type.id === selectedVoucherTypeId);
+
+  const downloadVoucher = async (row: VoucherRow) => {
+    if (downloadingVoucherId) return;
+    setDownloadingVoucherId(row.id);
+    try {
+      const voucher = await getVoucher(row.id);
+      if (!voucher.fileUrl) {
+        throw new Error('No downloadable file is available for this voucher.');
+      }
+      await downloadFileFromUrl(
+        voucher.fileUrl,
+        voucher.expenseFileName || row.expenseFileName || 'voucher'
+      );
+    } catch (error) {
+      SweetAlert.showError(error instanceof Error ? error.message : 'Failed to download voucher.');
+    } finally {
+      setDownloadingVoucherId(null);
+    }
+  };
+
+  const expenseFileButton = (row: VoucherRow) => {
+    if (!row.expenseFileName) {
+      return <span className="inline-flex h-7 items-center text-sm leading-none text-gray-400">-</span>;
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={() => void downloadVoucher(row)}
+        disabled={downloadingVoucherId !== null}
+        title={`Download ${row.expenseFileName}`}
+        className="inline-flex h-7 items-center gap-1.5 text-left text-sm leading-none text-gray-800 hover:text-orange-600 disabled:cursor-wait disabled:opacity-60"
+      >
+        <FileText className="h-4 w-4 shrink-0 text-orange-600" aria-hidden />
+        <span className="whitespace-nowrap">{row.expenseFileName}</span>
+      </button>
+    );
+  };
 
   const columns: Column<VoucherRow>[] = [
     {
@@ -94,30 +162,60 @@ const Voucher: React.FC = () => {
       render: (row) => row.personName,
     },
     {
+      key: 'subtotal',
+      header: 'Subtotal',
+      className: 'whitespace-nowrap text-right',
+      render: (row) => formatAmount(row.subtotal),
+    },
+    {
+      key: 'sgstRate',
+      header: 'SGST Rate',
+      className: 'whitespace-nowrap text-right',
+      render: (row) => formatRate(row.sgstRate),
+    },
+    {
+      key: 'cgstRate',
+      header: 'CGST Rate',
+      className: 'whitespace-nowrap text-right',
+      render: (row) => formatRate(row.cgstRate),
+    },
+    {
+      key: 'totalTax',
+      header: 'Total Tax',
+      className: 'whitespace-nowrap text-right',
+      render: (row) => formatAmount(row.totalTax),
+    },
+    {
+      key: 'totalAmount',
+      header: 'Total Amount',
+      className: 'whitespace-nowrap text-right font-semibold',
+      render: (row) => formatAmount(row.totalAmount),
+    },
+    {
       key: 'expenseFileName',
       header: 'Expense File Name',
+      minWidth: 220,
+      headerClassName: 'text-left',
       className: 'whitespace-nowrap',
-      render: (row) => row.expenseFileName || '-',
+      render: (row) => expenseFileButton(row),
     },
   ];
 
-  const downloadDemoVoucher = () => {
-    if (!selectedVoucherType) return;
-
-    const worksheet = XLSX.utils.aoa_to_sheet([
-      ['Voucher Id', 'Voucher Type', 'Person Name', 'Expense File Name'],
-      ['', selectedVoucherType, '', ''],
-    ]);
-    worksheet['!cols'] = [{ wch: 18 }, { wch: 34 }, { wch: 24 }, { wch: 34 }];
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Voucher');
-    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
-    const typeSlug = selectedVoucherType.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    downloadBlobFile(
-      defaultDatedXlsxFilename(`demo-voucher-${typeSlug}`),
-      new Blob([buffer], { type: EXCEL_MIME })
-    );
-    setTypeDialogOpen(false);
+  const downloadDemoVoucher = async () => {
+    if (!selectedVoucherType || downloadingSample) return;
+    setDownloadingSample(true);
+    try {
+      const sample = await getVoucherSampleDownload(selectedVoucherType.id);
+      await downloadFileFromUrl(
+        sample.downloadUrl,
+        sample.fileName || `${selectedVoucherType.name}-sample.xlsx`
+      );
+      setTypeDialogOpen(false);
+    } catch (error) {
+      SweetAlert.showError(error instanceof Error ? error.message : 'Failed to download sample voucher.');
+    } finally {
+      setDownloadingSample(false);
+    }
   };
 
   return (
@@ -190,17 +288,19 @@ const Voucher: React.FC = () => {
           </label>
           <select
             id="voucher-type"
-            value={selectedVoucherType}
-            onChange={(event) => setSelectedVoucherType(event.target.value)}
+            value={selectedVoucherTypeId}
+            onChange={(event) => setSelectedVoucherTypeId(event.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+            disabled={voucherTypes.length === 0}
           >
-            <option value="">Select Voucher Type</option>
-            {VOUCHER_TYPES.map((voucherType) => (
-              <option key={voucherType} value={voucherType}>
-                {voucherType}
+            <option value="">{voucherTypeError ? 'Voucher types unavailable' : 'Select Voucher Type'}</option>
+            {voucherTypes.map((voucherType) => (
+              <option key={voucherType.id} value={voucherType.id}>
+                {voucherType.name}
               </option>
             ))}
           </select>
+          {voucherTypeError ? <p className="mt-2 text-xs text-red-600">{voucherTypeError}</p> : null}
           <div className="flex justify-end gap-2">
             <button type="button" className="btn-secondary" onClick={() => setTypeDialogOpen(false)}>
               Cancel
@@ -208,11 +308,11 @@ const Voucher: React.FC = () => {
             <button
               type="button"
               className="btn-primary !bg-gray-800"
-              onClick={downloadDemoVoucher}
-              disabled={!selectedVoucherType}
+              onClick={() => void downloadDemoVoucher()}
+              disabled={!selectedVoucherTypeId || downloadingSample}
             >
               <Download className="h-4 w-4" aria-hidden />
-              Download Voucher
+              {downloadingSample ? 'Downloading...' : 'Download Voucher'}
             </button>
           </div>
         </div>

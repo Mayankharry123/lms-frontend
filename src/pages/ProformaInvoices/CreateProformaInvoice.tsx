@@ -7,7 +7,7 @@ import SelectDropdown from '../../components/ui/SelectDropdown';
 import { ROUTES } from '../../constants';
 import { getBrand, listBrands } from '../../services/BrandMaster';
 import type { BrandItem } from '../../services/BrandMaster';
-import { createMockProformaInvoice } from '../../services/ProformaInvoices';
+import { createProformaInvoice } from '../../services/ProformaInvoices';
 import SweetAlert from '../../utils/SweetAlert';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
@@ -232,14 +232,6 @@ const CreateProformaInvoice: React.FC = () => {
       }, 0),
     [lines]
   );
-  const taxAmounts = useMemo(
-    () => ({
-      sgst: (subtotal * Number(taxDetails.sgst || 0)) / 100,
-      cgst: (subtotal * Number(taxDetails.cgst || 0)) / 100,
-      igst: (subtotal * Number(taxDetails.igst || 0)) / 100,
-    }),
-    [subtotal, taxDetails]
-  );
   const selectedBrand = brands.find((brand) => brand.id === selectedBrandId) ?? null;
 
   const validate = (): string | null => {
@@ -294,7 +286,7 @@ const CreateProformaInvoice: React.FC = () => {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      createMockProformaInvoice({
+      await createProformaInvoice({
         brandId: selectedBrand!.id,
         brandName: selectedBrand!.name,
         gstNumber: brandDetails!.gstNumber,
@@ -308,7 +300,9 @@ const CreateProformaInvoice: React.FC = () => {
           amount: toNumber(line.amount),
         })),
         subTotalAmount: subtotal,
-        ...taxAmounts,
+        igstRate: Number(taxDetails.igst || 0),
+        cgstRate: Number(taxDetails.cgst || 0),
+        sgstRate: Number(taxDetails.sgst || 0),
       });
       await SweetAlert.showSubmitSuccess({
         text: 'Proforma Invoice created successfully',

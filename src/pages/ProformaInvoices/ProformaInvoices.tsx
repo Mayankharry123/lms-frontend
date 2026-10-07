@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FileText, Plus } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
@@ -13,9 +13,8 @@ import Table, { type Column } from '../../components/ui/Table';
 import TableHeader from '../../components/ui/TableHeader';
 import { ROUTES } from '../../constants';
 import {
-  createMockProformaInvoiceFile,
-  MOCK_PROFORMA_INVOICES,
-  removeMockProformaInvoice,
+  deleteProformaInvoice,
+  listProformaInvoices,
   type ProformaInvoiceRow,
 } from '../../services/ProformaInvoices';
 import SweetAlert from '../../utils/SweetAlert';
@@ -33,7 +32,10 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat('en-IN', {
   maximumFractionDigits: 2,
 });
 
-type PreviewSource = { kind: 'file'; file: File } | null;
+type PreviewSource =
+  | { kind: 'file'; file: File }
+  | { kind: 'remote'; url: string; name?: string }
+  | null;
 
 const formatCurrency = (amount: number) => CURRENCY_FORMATTER.format(amount);
 
@@ -94,13 +96,39 @@ const exportProformaInvoices = (rows: ProformaInvoiceRow[]) => {
 
 const ProformaInvoices: React.FC = () => {
   const navigate = useNavigate();
-  const loading = false;
-  const [rows, setRows] = useState<ProformaInvoiceRow[]>(MOCK_PROFORMA_INVOICES);
+  const [rows, setRows] = useState<ProformaInvoiceRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewItem, setViewItem] = useState<ProformaInvoiceRow | null>(null);
   const [previewSource, setPreviewSource] = useState<PreviewSource>(null);
   const [deleteItem, setDeleteItem] = useState<ProformaInvoiceRow | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    listProformaInvoices()
+      .then((data) => {
+        if (!mounted) return;
+        setRows(data);
+        setLoadError('');
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to load Proforma Invoices:', error);
+        if (mounted) {
+          setRows([]);
+          setLoadError(error instanceof Error ? error.message : 'Failed to load Proforma Invoices.');
+        }
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const filtered = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return query ? rows.filter((row) => matchesQuery(row, query)) : rows;
@@ -110,12 +138,19 @@ const ProformaInvoices: React.FC = () => {
   const pageRows = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const viewFile = (row: ProformaInvoiceRow) => {
-    setPreviewSource({ kind: 'file', file: createMockProformaInvoiceFile(row) });
+    if (row.fileUrl) {
+      setPreviewSource({ kind: 'remote', url: row.fileUrl, name: row.fileName || undefined });
+    }
   };
 
   const downloadFile = (row: ProformaInvoiceRow) => {
-    const file = createMockProformaInvoiceFile(row);
-    downloadBlobFile(file.name, file);
+    if (!row.fileUrl) return;
+    const link = document.createElement('a');
+    link.href = row.fileUrl;
+    link.download = row.fileName || '';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.click();
   };
 
   const fileCell = (row: ProformaInvoiceRow) => {
@@ -202,15 +237,23 @@ const ProformaInvoices: React.FC = () => {
     : [];
 
   const confirmDelete = () => {
-    if (!deleteItem) return;
-    removeMockProformaInvoice(deleteItem.id);
-    const remainingCount = rows.filter((row) => row.id !== deleteItem.id).length;
-    setRows((current) => current.filter((row) => row.id !== deleteItem.id));
-    setCurrentPage((current) =>
-      Math.min(current, Math.max(1, Math.ceil(remainingCount / ITEMS_PER_PAGE)))
-    );
-    setDeleteItem(null);
-    SweetAlert.showDeleteSuccess({ text: 'The mock Proforma Invoice was removed.' });
+    if (!deleteItem || deleteLoading) return;
+    setDeleteLoading(true);
+    deleteProformaInvoice(deleteItem.id)
+      .then(() => {
+        const remainingCount = rows.filter((row) => row.id !== deleteItem.id).length;
+        setRows((current) => current.filter((row) => row.id !== deleteItem.id));
+        setCurrentPage((current) =>
+          Math.min(current, Math.max(1, Math.ceil(remainingCount / ITEMS_PER_PAGE)))
+        );
+        setDeleteItem(null);
+        SweetAlert.showDeleteSuccess();
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to delete Proforma Invoice:', error);
+        SweetAlert.showError(error instanceof Error ? error.message : 'Failed to delete Proforma Invoice.');
+      })
+      .finally(() => setDeleteLoading(false));
   };
 
   const previewModal = (
@@ -256,6 +299,7 @@ const ProformaInvoices: React.FC = () => {
         message="This action will permanently remove the Proforma Invoice. This cannot be undone."
         confirmLabel="Delete"
         cancelLabel="Cancel"
+        loading={deleteLoading}
         onCancel={() => setDeleteItem(null)}
         onConfirm={confirmDelete}
       />
@@ -295,6 +339,7 @@ const ProformaInvoices: React.FC = () => {
           />
         </TableHeader>
 
+        {loadError ? <p role="alert" className="px-5 py-3 text-sm text-red-600">{loadError}</p> : null}
         <div className="pt-0 overflow-visible">
           <Table
             data={pageRows}

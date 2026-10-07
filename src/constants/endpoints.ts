@@ -119,6 +119,12 @@ export const ENDPOINTS = {
     FINANCE_STATUS: (id: string | number) => `/cost-sheets/${id}/finance-status`,
     UPDATE_ASSIGN_USER: (id: string | number) => `/cost-sheets/${id}/update-assign-user`,
   },
+  PROFORMA_INVOICES: {
+    LIST: '/proforma-invoices',
+    CREATE: '/proforma-invoices',
+    DETAIL: (id: string | number) => `/proforma-invoices/${encodeURIComponent(String(id))}`,
+    DELETE: (id: string | number) => `/proforma-invoices/${encodeURIComponent(String(id))}`,
+  },
   PURCHASE_ORDERS: {
     LIST: '/purchase-orders',
     CREATE: '/purchase-orders',
@@ -130,6 +136,7 @@ export const ENDPOINTS = {
   PLANNERS: {
     UPDATE_STATUS: (plannerId: string | number) => `/planners/${plannerId}/update-status`,
     UPLOAD_COST_SHEET: (plannerId: string | number) => `/planners/${plannerId}/upload-cost-sheet`,
+    SUBMITTED_PLANS_LATEST_FIVE: '/planners/submitted-plans/latest-five',
     STATUSES: '/planner-statuses',
   },
   MISS_CAMPAIGNS: {
@@ -246,6 +253,16 @@ export const ENDPOINTS = {
     MARK_READ: '/notifications/mark-read',
     READ_ALL: '/notifications/read-all',
     CLEAR_ALL: '/notifications/clear-all',
+  },
+  VOUCHERS: {
+    TYPES: '/voucher-types',
+    SAMPLE_DOWNLOAD: (voucherTypeId: string | number) =>
+      `/voucher-types/${encodeURIComponent(String(voucherTypeId))}/download-sample`,
+    LIST: '/vouchers',
+    DETAIL: (id: string | number) => `/vouchers/${encodeURIComponent(String(id))}`,
+    CREATE: '/vouchers',
+    UPDATE: (id: string | number) => `/vouchers/${encodeURIComponent(String(id))}`,
+    DELETE: (id: string | number) => `/vouchers/${encodeURIComponent(String(id))}`,
   },
   INVENTORY: '/inventory',
   COURSES: {

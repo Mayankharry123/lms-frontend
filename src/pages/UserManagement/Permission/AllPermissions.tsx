@@ -17,8 +17,6 @@ import SweetAlert from '../../../utils/SweetAlert';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import TableHeader from '../../../components/ui/TableHeader';
 import type { PermissionTableRow } from '../../../types/user/rbac.types';
-import { usePermissions } from '../../../hooks/SidebarMenuHooks';
-import { ensureFinancePagePermissions } from '../../../services/FinancePermissions';
 
 const AllPermissions: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -30,8 +28,6 @@ const AllPermissions: React.FC = () => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmDeleteLabel, setConfirmDeleteLabel] = useState<string>('');
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [financePermissionsLoading, setFinancePermissionsLoading] = useState(false);
-  const { hasPermission } = usePermissions();
 
   // Fetch permissions from API
   const fetchPermissions = async () => {
@@ -65,24 +61,6 @@ const AllPermissions: React.FC = () => {
   const navigate = useNavigate();
 
   const handleCreatePermission = () => navigate(ROUTES.PERMISSION.CREATE);
-
-  const handleEnsureFinancePermissions = async () => {
-    setFinancePermissionsLoading(true);
-    try {
-      const created = await ensureFinancePagePermissions();
-      await fetchPermissions();
-      if (created.length) {
-        SweetAlert.showCreateSuccess();
-      } else {
-        SweetAlert.showSuccess?.('Finance permissions are already set up.');
-      }
-    } catch (error) {
-      console.error('Failed to set up Finance permissions:', error);
-      SweetAlert.showError(error instanceof Error ? error.message : 'Failed to set up Finance permissions.');
-    } finally {
-      setFinancePermissionsLoading(false);
-    }
-  };
 
   const extractNumericId = (id: string) => {
     if (!id) return id;
@@ -157,18 +135,6 @@ const AllPermissions: React.FC = () => {
         onCreateClick={handleCreatePermission}
         createButtonLabel="Create Permission"
         createPermissionSlug="permission.create"
-        extraActions={
-          hasPermission('permission.create') ? (
-            <button
-              type="button"
-              className="btn-secondary whitespace-nowrap"
-              onClick={handleEnsureFinancePermissions}
-              disabled={financePermissionsLoading}
-            >
-              {financePermissionsLoading ? 'Setting Up...' : 'Set Up Finance Permissions'}
-            </button>
-          ) : null
-        }
       />
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-3">
         {/* Table Header */}

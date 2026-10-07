@@ -12,6 +12,7 @@ import SearchBar from '../../components/ui/SearchBar';
 import ExportExcelButton from '../../components/ui/ExportExcelButton';
 import Table, { type Column } from '../../components/ui/Table';
 import Pagination from '../../components/ui/Pagination';
+import FilePreviewModal from '../../components/ui/FilePreviewModal';
 import PageBackHeader from '../../components/ui/PageBackHeader';
 import Badge from '../../components/ui/Badge';
 import AssignDropdown from '../../components/ui/AssignDropdown';
@@ -22,6 +23,8 @@ import SweetAlert from '../../utils/SweetAlert';
 
 const EXCEL_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const ITEMS_PER_PAGE = 10;
+
+type PreviewSource = { kind: 'remote'; url: string; name?: string } | null;
 
 const matchesQuery = (row: PurchaseOrderRow, query: string) => {
   const haystack = [
@@ -95,6 +98,7 @@ const PurchaseOrder: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewItem, setViewItem] = useState<PurchaseOrderRow | null>(null);
+  const [previewSource, setPreviewSource] = useState<PreviewSource>(null);
   const [assignOptionsByBriefId, setAssignOptionsByBriefId] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
@@ -183,6 +187,11 @@ const PurchaseOrder: React.FC = () => {
     }
   };
 
+  const viewFile = (row: PurchaseOrderRow) => {
+    if (!row.fileUrl) return;
+    setPreviewSource({ kind: 'remote', url: row.fileUrl, name: row.fileName ?? undefined });
+  };
+
   const fileCell = (row: PurchaseOrderRow) => {
     if (!row.fileName || !row.fileUrl) {
       return <span className="inline-flex h-7 items-center text-sm leading-none text-gray-400">-</span>;
@@ -190,8 +199,8 @@ const PurchaseOrder: React.FC = () => {
     return (
       <button
         type="button"
-        onClick={() => downloadFile(row)}
-        title={row.fileName}
+        onClick={() => viewFile(row)}
+        title={`View ${row.fileName}`}
         className="inline-flex h-7 items-center gap-1.5 text-left text-sm leading-none text-gray-800 hover:text-orange-600"
       >
         <FileText className="h-4 w-4 shrink-0 text-orange-600" aria-hidden />
@@ -314,6 +323,16 @@ const PurchaseOrder: React.FC = () => {
       ]
     : [];
 
+  const previewModal = (
+    <FilePreviewModal
+      isOpen={Boolean(previewSource)}
+      source={previewSource}
+      onClose={() => setPreviewSource(null)}
+      panelClassName="!w-[95%] md:!w-[600px]"
+      closeButtonClassName="btn-secondary"
+    />
+  );
+
   if (viewItem) {
     return (
       <div className="flex-1 w-full max-w-full overflow-x-hidden">
@@ -334,6 +353,7 @@ const PurchaseOrder: React.FC = () => {
             ))}
           </div>
         </div>
+        {previewModal}
       </div>
     );
   }
@@ -392,6 +412,7 @@ const PurchaseOrder: React.FC = () => {
         itemsPerPage={ITEMS_PER_PAGE}
         onPageChange={setCurrentPage}
       />
+      {previewModal}
     </div>
   );
 };

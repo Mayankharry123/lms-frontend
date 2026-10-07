@@ -1,19 +1,17 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Plus, Trash2, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../components/ui/Button';
 import PageBackHeader from '../../components/ui/PageBackHeader';
 import { ROUTES } from '../../constants';
-import { createVoucher, type VoucherOrderLine } from '../../services/Vouchers';
+import {
+  createVoucher,
+  listVoucherTypes,
+  type VoucherOrderLine,
+  type VoucherTypeOption,
+} from '../../services/Vouchers';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 import SweetAlert from '../../utils/SweetAlert';
-
-const VOUCHER_TYPES = [
-  'Staff Welfare Expenses',
-  'Tour & Travelling Expenses',
-  'Office Expenses',
-  'Site Repair',
-];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_FILE_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx', 'csv'];
 const FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv';
@@ -68,7 +66,9 @@ const UploadVoucher: React.FC = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const submitLock = useRef(false);
-  const [voucherType, setVoucherType] = useState('');
+  const [voucherTypeId, setVoucherTypeId] = useState('');
+  const [voucherTypes, setVoucherTypes] = useState<VoucherTypeOption[]>([]);
+  const [voucherTypeError, setVoucherTypeError] = useState('');
   const [personName, setPersonName] = useState('');
   const [expenseFile, setExpenseFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState('');
@@ -76,6 +76,29 @@ const UploadVoucher: React.FC = () => {
   const [taxes, setTaxes] = useState<TaxDetails>({ sgst: '', cgst: '', igst: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+
+    listVoucherTypes()
+      .then((types) => {
+        if (mounted) {
+          setVoucherTypes(types);
+          setVoucherTypeError('');
+        }
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to load voucher types:', error);
+        if (mounted) {
+          setVoucherTypes([]);
+          setVoucherTypeError('Failed to load voucher types.');
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const updateLine = (key: string, field: keyof Omit<OrderLineForm, 'key'>, value: string) => {
     setLines((current) => current.map((line) => (line.key === key ? { ...line, [field]: value } : line)));
@@ -92,7 +115,7 @@ const UploadVoucher: React.FC = () => {
   };
 
   const validate = (): string | null => {
-    if (!voucherType) return 'Please select a voucher type.';
+    if (!voucherTypeId) return 'Please select a voucher type.';
     if (!personName.trim()) return 'Please enter the person name.';
     if (!expenseFile) return 'Please upload an expense supporting file.';
     const fileError = validateFile(expenseFile);
@@ -138,7 +161,7 @@ const UploadVoucher: React.FC = () => {
     setSubmitError('');
     try {
       const created = await createVoucher({
-        voucherType,
+        voucherTypeId,
         personName: personName.trim(),
         expenseFile: expenseFile!,
         orders: lines.map((line) => ({
@@ -180,13 +203,15 @@ const UploadVoucher: React.FC = () => {
               <FieldLabel htmlFor="voucher-type" required>Voucher Type</FieldLabel>
               <VoucherSelect
                 id="voucher-type"
-                value={voucherType}
-                onChange={(event) => setVoucherType(event.target.value)}
+                value={voucherTypeId}
+                onChange={(event) => setVoucherTypeId(event.target.value)}
                 required
+                disabled={voucherTypes.length === 0}
               >
-                <option value="">Select Voucher Type</option>
-                {VOUCHER_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                <option value="">{voucherTypeError ? 'Voucher types unavailable' : 'Select Voucher Type'}</option>
+                {voucherTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
               </VoucherSelect>
+              {voucherTypeError ? <p className="mt-2 text-xs text-red-600">{voucherTypeError}</p> : null}
             </div>
             <div>
               <FieldLabel htmlFor="person-name" required>Person Name</FieldLabel>
@@ -309,8 +334,12 @@ const UploadVoucher: React.FC = () => {
                         required
                       >
                         <option value="">Select Mode</option>
-                        {['Cash', 'Bank', 'UPI'].map((mode) => (
-                          <option key={mode} value={mode}>{mode}</option>
+                        {[
+                          { id: '1', name: 'Cash' },
+                          { id: '2', name: 'Bank' },
+                          { id: '3', name: 'UPI' },
+                        ].map((mode) => (
+                          <option key={mode.id} value={mode.id}>{mode.name}</option>
                         ))}
                       </VoucherSelect>
                     </div>

@@ -1,7 +1,6 @@
 import { apiClient } from '../utils/apiClient';
 import { handleApiError } from '../utils/apiErrorHandler';
-import { listBriefLogs } from './BriefLog';
-import type { BriefLogItem } from './BriefLog';
+import { ENDPOINTS } from '../constants/endpoints';
 import {
   type DashboardFilterState,
   withDashboardFilters,
@@ -48,66 +47,57 @@ const asName = (value: unknown): string => {
   return value == null ? '' : String(value).trim();
 };
 
-const hasSubmittedPlan = (log: BriefLogItem): boolean => {
-  const planner = asRecord(log.planner);
-  const action = String(log.action ?? '').toLowerCase();
-  return (
-    (Array.isArray(log.submitted_plan) && log.submitted_plan.length > 0) ||
-    (Array.isArray(planner?.submitted_plan) && planner.submitted_plan.length > 0) ||
-    (action.includes('plan') && action.includes('submit')) ||
-    Boolean(asName(log.planner_status))
-  );
-};
-
-const mapRecentSubmittedPlan = (log: BriefLogItem): RecentSubmittedPlan | null => {
-  const raw = log as Record<string, unknown>;
+const mapRecentSubmittedPlan = (value: unknown): RecentSubmittedPlan | null => {
+  const raw = asRecord(value);
+  if (!raw) return null;
   const planner = asRecord(raw.planner);
-  const assignedPlanner = asRecord(log.assigned_user);
-  const creator = asRecord(log.created_by_user);
+  const plannerUser = asRecord(planner?.user);
+  const assignedPlanner = asRecord(raw.assigned_user);
+  const creator = asRecord(raw.created_by_user ?? raw.creator);
+  const brief = asRecord(raw.brief);
   const plannerStatus = raw.planner_status;
-  if (!hasSubmittedPlan(log)) return null;
-
-  const submittedAt = Date.parse(String(raw.submitted_at ?? log.created_at ?? log.updated_at ?? ''));
-  const briefId = raw.brief_id ?? log.id;
+  const plannerStatusName = asName(plannerStatus);
+  const statusLabel = asName(raw.status_label);
+  const rowId = raw.id ?? raw.planner_id ?? planner?.id;
+  const briefId = brief?.id ?? raw.brief_id;
+  if (rowId == null || briefId == null) return null;
 
   return {
-    id: String(log.id),
+    id: String(rowId),
     briefId: String(briefId),
-    briefName: String(raw.brief_name ?? log.name ?? `Brief #${briefId}`),
+    briefName: String(brief?.name ?? raw.brief_name ?? `Brief #${briefId}`),
     plannerId: String(raw.planner_id ?? planner?.id ?? '') || undefined,
     planStatus:
-      asName(raw.status_label) ||
-      asName(plannerStatus) ||
-      asName(raw.status) ||
+      plannerStatusName ||
+      (statusLabel.toLowerCase() === 'active' ? '' : statusLabel) ||
       'Submitted',
     plannerName:
       asName(planner?.name) ||
+      asName(plannerUser?.name) ||
       asName(assignedPlanner?.name) ||
-      String(raw.planner_name ?? log.user_name ?? creator?.name ?? '').trim() ||
+      String(raw.planner_name ?? raw.user_name ?? creator?.name ?? '').trim() ||
       '—',
-    submittedAt: Number.isFinite(submittedAt) ? submittedAt : 0,
+    submittedAt: Date.parse(
+      String(raw.submitted_at ?? raw.created_at ?? raw.updated_at ?? '')
+    ) || 0,
   };
 };
 
-/** Loads submitted plans from the paginated Brief Log API and sorts newest first. */
+/** Loads the latest five submitted plans from the planner dashboard endpoint. */
 export async function getRecentSubmittedPlans(): Promise<RecentSubmittedPlan[]> {
-  const logs: BriefLogItem[] = [];
-  let page = 1;
-  const perPage = 100;
-
-  while (true) {
-    const response = await listBriefLogs(page, perPage);
-    logs.push(...response.data);
-    const pagination = response.meta?.pagination;
-    const lastPage = Number(pagination?.last_page ?? pagination?.lastPage);
-    if (lastPage ? page >= lastPage : response.data.length < perPage) break;
-    page += 1;
+  try {
+    const response = await apiClient.get<unknown[]>(ENDPOINTS.PLANNERS.SUBMITTED_PLANS_LATEST_FIVE);
+    if (!response?.success || !Array.isArray(response.data)) {
+      throw new Error(response?.message || 'Failed to fetch latest submitted plans.');
+    }
+    return response.data
+      .map(mapRecentSubmittedPlan)
+      .filter((plan): plan is RecentSubmittedPlan => plan !== null)
+      .sort((left, right) => right.submittedAt - left.submittedAt);
+  } catch (error) {
+    handleApiError(error);
+    throw error;
   }
-
-  return logs
-    .map(mapRecentSubmittedPlan)
-    .filter((plan): plan is RecentSubmittedPlan => plan !== null)
-    .sort((left, right) => right.submittedAt - left.submittedAt);
 }
 
 export async function getLatestFiveBriefs(

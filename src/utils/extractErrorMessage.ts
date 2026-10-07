@@ -2,16 +2,18 @@
  * Pure error message extraction — no store/UI imports (safe for auth bootstrap).
  */
 export function extractErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === 'string') {
-    return error;
-  }
-
   if (error && typeof error === 'object') {
     const err = error as Record<string, unknown>;
+    const responseData =
+      err.responseData && typeof err.responseData === 'object'
+        ? (err.responseData as Record<string, unknown>)
+        : null;
+    if (responseData) {
+      const responseErrors = extractErrorMessage(responseData);
+      if (responseErrors !== 'An unexpected error occurred. Please try again.') {
+        return responseErrors;
+      }
+    }
 
     if (err.errors) {
       if (Array.isArray(err.errors)) {
@@ -39,6 +41,14 @@ export function extractErrorMessage(error: unknown): string {
         return details.map(String).join(', ');
       }
     }
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
   }
 
   return 'An unexpected error occurred. Please try again.';

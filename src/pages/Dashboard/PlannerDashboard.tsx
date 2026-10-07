@@ -47,13 +47,13 @@ const SUBMITTED_PLANS_PER_PAGE = 5;
 
 const submittedPlanStatusClass = (status: string) => {
   const normalized = status.toLowerCase();
-  if (['approve', 'approved', 'complete', 'completed'].includes(normalized)) {
+  if (/\b(approve|approved|complete|completed)\b/.test(normalized)) {
     return 'dashboard-badge dashboard-badge--success';
   }
-  if (['denied', 'declined', 'rejected'].includes(normalized)) {
+  if (/\b(denied|declined|rejected)\b/.test(normalized)) {
     return 'dashboard-badge dashboard-badge--danger';
   }
-  if (['pending', 'submission', 'submitted', 'in progress'].includes(normalized)) {
+  if (/\b(pending|submission|submitted|in progress)\b/.test(normalized)) {
     return 'dashboard-badge dashboard-badge--warning';
   }
   return 'dashboard-badge dashboard-badge--info';
