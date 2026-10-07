@@ -32,6 +32,12 @@ export function extractAllPaths(apiItems: ApiSidebarItem[]): string[] {
   if (paths.includes(DEVICE_INVENTORY_PATH)) {
     paths.push(DEVICE_INVENTORY_CLONE_PATH);
   }
+  if (paths.includes(ROUTES.COST_SHEETS)) {
+    paths.push(ROUTES.PROFORMA_INVOICES);
+  }
+  if (paths.includes(ROUTES.PROFORMA_INVOICES)) {
+    paths.push(ROUTES.PROFORMA_INVOICES_CREATE);
+  }
   // Remove duplicates
   return [...new Set(paths)];
 }
@@ -201,6 +207,27 @@ export function mapMenu(apiItems: ApiSidebarItem[]): NavigationItem[] {
       children: children && children.length > 0 ? children : undefined,
     };
   });
+
+  const financeMenu = mapped.find((item) =>
+    item.name.toLowerCase().includes('finance')
+  );
+  const costSheetsIndex = financeMenu?.children?.findIndex(
+    (child) => child.path === ROUTES.COST_SHEETS
+  ) ?? -1;
+  if (financeMenu?.children && costSheetsIndex >= 0) {
+    const hasProformaInvoices = financeMenu.children.some(
+      (child) =>
+        child.path === ROUTES.PROFORMA_INVOICES ||
+        child.name.toLowerCase() === 'proforma invoice'
+    );
+    if (!hasProformaInvoices) {
+      financeMenu.children.splice(costSheetsIndex + 1, 0, {
+        name: 'Proforma Invoice',
+        path: ROUTES.PROFORMA_INVOICES,
+        icon: null,
+      });
+    }
+  }
 
   return mapped;
 }

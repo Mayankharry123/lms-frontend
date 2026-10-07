@@ -73,7 +73,7 @@ export async function listBriefLogs(
     return { data: items, meta: res.meta };
   } catch (err) {
     console.error('Failed to fetch brief logs:', err);
-    return { data: [], meta: undefined };
+    throw err;
   }
 }
 

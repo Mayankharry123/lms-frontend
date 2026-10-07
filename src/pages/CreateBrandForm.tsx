@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Plus, Trash2 } from 'lucide-react';
 import { MasterFormHeader, SelectField, MultiSelectDropdown } from '../components/ui';
 import { listZones, listStates, listCountries, listBrandTypes, listCities } from '../services/CreateBrandForm';
 import type { Zone, State, Country, BrandType } from '../services/CreateBrandForm';
@@ -92,6 +93,8 @@ const CreateBrandForm: React.FC<MasterInlineFormProps> = ({ onClose, initialData
     brandName: '',
     brandType: '',
     website: '',
+    address: '',
+    gstNumbers: [''],
     agency: [] as string[],
     industry: '',
     country: 'Please Select Country',
@@ -173,6 +176,8 @@ const CreateBrandForm: React.FC<MasterInlineFormProps> = ({ onClose, initialData
       const payload = {
         name: form.brandName,
         website: form.website,
+        address: form.address,
+        gst_numbers: form.gstNumbers.map((gstNumber) => gstNumber.trim()).filter(Boolean),
         // Ensure we send the brand type id when possible. The SelectField shows the name
         // as label but the form value may be either an id or a free-text name. Try to
         // resolve to an id using the loaded `brandTypes` list.
@@ -236,6 +241,9 @@ const CreateBrandForm: React.FC<MasterInlineFormProps> = ({ onClose, initialData
           'agency_id': 'agency',
           'agency_ids': 'agency',
           'website': 'website',
+          'gst_numbers': 'gstNumbers',
+          'gst_number': 'gstNumbers',
+          'gst_no': 'gstNumbers',
         };
 
         const newErrors: Record<string, string> = {};
@@ -366,6 +374,21 @@ const CreateBrandForm: React.FC<MasterInlineFormProps> = ({ onClose, initialData
         brandName: initialData.name ?? initialData.brandName ?? prev.brandName,
         brandType: String(initialData.brand_type?.id ?? initialData.brand_type_id ?? initialData.brandType ?? initialData.brand_type ?? ''),
         website: initialData.website ?? prev.website,
+        address: initialData.address ?? prev.address,
+        gstNumbers: (() => {
+          const gstNumbers =
+            initialData.gst_numbers ??
+            initialData.gstNumbers ??
+            initialData.gst_number ??
+            initialData.gst_no ??
+            initialData.gstNumber ??
+            initialData.gstNo;
+          const values = Array.isArray(gstNumbers) ? gstNumbers : [gstNumbers];
+          const normalized = values
+            .filter((value) => value !== undefined && value !== null)
+            .map((value) => String(value));
+          return normalized.length ? normalized : prev.gstNumbers;
+        })(),
         // agency will be set after agencies are loaded
         industry: String(initialData.industry?.id ?? initialData.industry_id ?? initialData.industry ?? ''),
         country: String(initialData.country?.id ?? initialData.country_id ?? initialData.country ?? ''),
@@ -588,6 +611,72 @@ const CreateBrandForm: React.FC<MasterInlineFormProps> = ({ onClose, initialData
             <div className="text-xs text-red-500 mt-1">
               {errors.website}
             </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-800 mb-1">Address</label>
+          <input
+            name="address"
+            value={form.address}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-black"
+            placeholder="Please Enter Address"
+          />
+          {errors.address && (
+            <div className="text-xs text-red-500 mt-1">{errors.address}</div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-800 mb-1">GST No.</label>
+          <div className="space-y-2">
+            {form.gstNumbers.map((gstNumber, index) => (
+              <div key={index} className="flex gap-2">
+                <input
+                  value={gstNumber}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setForm((prev) => ({
+                      ...prev,
+                      gstNumbers: prev.gstNumbers.map((current, currentIndex) =>
+                        currentIndex === index ? value : current
+                      ),
+                    }));
+                    setErrors((prev) => ({ ...prev, gstNumbers: '' }));
+                  }}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-black"
+                  placeholder="Please Enter GST No."
+                />
+                {index === form.gstNumbers.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, gstNumbers: [...prev.gstNumbers, ''] }))}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    aria-label="Add GST number"
+                    title="Add GST number"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setForm((prev) => ({
+                      ...prev,
+                      gstNumbers: prev.gstNumbers.filter((_, currentIndex) => currentIndex !== index),
+                    }))}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    aria-label={`Remove GST number ${index + 1}`}
+                    title="Remove GST number"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {errors.gstNumbers && (
+            <div className="text-xs text-red-500 mt-1">{errors.gstNumbers}</div>
           )}
         </div>
 

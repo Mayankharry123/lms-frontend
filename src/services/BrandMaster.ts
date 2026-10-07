@@ -15,6 +15,8 @@ export interface BrandItem {
   name: string;
   agencyName?: string;
   brandType?: string;
+  address?: string;
+  gstNumbers?: string[];
   contactPerson?: string;
   industry?: string;
   country?: string;
@@ -279,6 +281,14 @@ export async function listBrands(page = 1, perPage = 10, search?: string): Promi
     const cityVal = (raw['city'] as any)?.name ?? '';
     const zoneVal = (raw['zone'] as any)?.name ?? '';
     const pinCodeVal = raw['pin_code'] ?? raw['postal_code'] ?? raw['postalCode'] ?? '';
+    const addressVal = raw['address'] ?? '';
+    const gstNumbersRaw =
+      raw['gst_numbers'] ?? raw['gstNumbers'] ?? raw['gst_number'] ?? raw['gst_no'] ?? raw['gstNumber'] ?? raw['gstNo'];
+    const gstNumbersVal = Array.isArray(gstNumbersRaw)
+      ? gstNumbersRaw.map(String)
+      : gstNumbersRaw == null || gstNumbersRaw === ''
+        ? []
+        : [String(gstNumbersRaw)];
     const dateTimeVal = raw['created_at'] ?? raw['date_time'] ?? raw['dateTime'] ?? '';
 
     return {
@@ -286,6 +296,8 @@ export async function listBrands(page = 1, perPage = 10, search?: string): Promi
       name: String(nameVal ?? ''),
       agencyName: String(agencyNameVal ?? ''),
       brandType: String(brandTypeVal ?? ''),
+      address: String(addressVal ?? ''),
+      gstNumbers: gstNumbersVal,
       contactPerson: String(contactPersonVal ?? ''),
       industry: String(industryVal ?? ''),
       country: String(countryVal ?? ''),

@@ -13,6 +13,7 @@ import { userManagementRoutes } from './user-management.routes';
 import { miscRoutes } from './misc.routes';
 import { backupPlanRoutes } from './backup-plan.routes';
 import { costSheetsRoutes } from './cost-sheets.routes';
+import { proformaInvoicesRoutes } from './proforma-invoices.routes';
 import { purchaseOrderRoutes } from './purchase-order.routes';
 
 export const protectedRoutes = (
@@ -34,6 +35,7 @@ export const protectedRoutes = (
     {briefRoutes}
     {backupPlanRoutes}
     {costSheetsRoutes}
+    {proformaInvoicesRoutes}
     {purchaseOrderRoutes}
     {meetingRoutes}
     {userManagementRoutes}
