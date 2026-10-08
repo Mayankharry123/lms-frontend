@@ -245,6 +245,7 @@ export const ENDPOINTS = {
     PLANNER_CHARTS: '/dashboard/planner-charts',
     OPERATIONS_CHARTS: '/dashboard/operations-charts',
     FINANCE_CHARTS: '/dashboard/finance-charts',
+    FINANCE_SUMMARY: '/dashboard/finance-summary',
   },
   NOTIFICATIONS: {
     LIST: '/notifications',
@@ -256,6 +257,7 @@ export const ENDPOINTS = {
   },
   VOUCHERS: {
     TYPES: '/voucher-types',
+    PAYMENT_MODES: '/payment-mode-types',
     SAMPLE_DOWNLOAD: (voucherTypeId: string | number) =>
       `/voucher-types/${encodeURIComponent(String(voucherTypeId))}/download-sample`,
     LIST: '/vouchers',

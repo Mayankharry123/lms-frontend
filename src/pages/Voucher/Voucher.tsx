@@ -92,6 +92,7 @@ const Voucher: React.FC = () => {
         row.subtotal,
         row.sgstRate,
         row.cgstRate,
+        row.igstRate,
         row.totalTax,
         row.totalAmount,
         row.expenseFileName,
@@ -178,6 +179,12 @@ const Voucher: React.FC = () => {
       header: 'CGST Rate',
       className: 'whitespace-nowrap text-right',
       render: (row) => formatRate(row.cgstRate),
+    },
+    {
+      key: 'igstRate',
+      header: 'IGST Rate',
+      className: 'whitespace-nowrap text-right',
+      render: (row) => formatRate(row.igstRate),
     },
     {
       key: 'totalTax',

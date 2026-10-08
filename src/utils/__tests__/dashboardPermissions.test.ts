@@ -34,6 +34,8 @@ describe('canShowDashboardCard', () => {
     expect(canShowDashboardCard(operations, 'operations', 'operations.operations-analytics')).toBe(true);
     expect(canShowDashboardCard(operations, 'finance', 'finance.cost-sheets')).toBe(false);
     expect(canShowDashboardCard(finance, 'finance', 'finance.purchase-orders')).toBe(true);
+    expect(canShowDashboardCard(finance, 'finance', 'finance.voucher-total')).toBe(true);
+    expect(canShowDashboardCard(finance, 'finance', 'finance.proforma-invoice-total')).toBe(true);
     expect(canShowDashboardCard(finance, 'finance', 'finance.purchase-order-analytics')).toBe(true);
     expect(canShowDashboardCard(finance, 'operations', 'operations.live')).toBe(false);
   });

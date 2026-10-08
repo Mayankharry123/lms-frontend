@@ -708,6 +708,11 @@ export type FinanceChartMetrics = {
   recent: FinanceDashboardItem[];
 };
 
+export type FinanceSummary = {
+  voucherTotalAmount: number;
+  proformaInvoiceTotalAmount: number;
+};
+
 function organisationRows(data: unknown): unknown[] {
   const payload = (data ?? {}) as Record<string, unknown>;
   return Array.isArray(payload.by_organisation) ? payload.by_organisation : [];
@@ -858,4 +863,23 @@ export function getFinanceChartMetrics(filters?: DashboardFilterState): Promise<
     normalizeFinanceMetrics,
     'Failed to fetch finance chart metrics',
   );
+}
+
+export async function getFinanceSummary(): Promise<FinanceSummary> {
+  try {
+    const res = await apiClient.get<{
+      voucher_total_amount?: unknown;
+      proforma_invoice_total_amount?: unknown;
+    }>(ENDPOINTS.DASHBOARD.FINANCE_SUMMARY);
+    if (!res || !res.success) {
+      throw new Error(res?.message || 'Failed to fetch finance summary');
+    }
+    return {
+      voucherTotalAmount: toNumber(res.data?.voucher_total_amount),
+      proformaInvoiceTotalAmount: toNumber(res.data?.proforma_invoice_total_amount),
+    };
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
 }

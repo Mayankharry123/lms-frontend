@@ -333,7 +333,7 @@ const Dashboard: React.FC = () => {
           {activeView === 'finance' && dashboardPermissions.canViewFinanceTab() && appliedFilters && (
             <DashboardSection
               title="Finance Workspace"
-              description="Cost sheets, approvals, and purchase order amounts."
+              description="Cost sheets, approvals, voucher and proforma invoice totals, and purchase orders."
             >
               <FinanceDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
             </DashboardSection>

@@ -63,6 +63,8 @@ export const DASHBOARD_CARD_DEFINITIONS: Record<DashboardView, DashboardCardDefi
     { id: 'finance.pending', label: 'Pending Review' },
     { id: 'finance.approved', label: 'Approved' },
     { id: 'finance.purchase-orders', label: 'Purchase Order Amount' },
+    { id: 'finance.voucher-total', label: 'Voucher Total Amount' },
+    { id: 'finance.proforma-invoice-total', label: 'Proforma Invoice Total Amount' },
     { id: 'finance.cost-sheets-analytics', label: 'Cost Sheets Analytics' },
     { id: 'finance.approved-analytics', label: 'Approved Analytics' },
     { id: 'finance.denied-analytics', label: 'Denied Analytics' },

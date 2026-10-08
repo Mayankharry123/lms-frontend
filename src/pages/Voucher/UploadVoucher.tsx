@@ -6,7 +6,9 @@ import PageBackHeader from '../../components/ui/PageBackHeader';
 import { ROUTES } from '../../constants';
 import {
   createVoucher,
+  listPaymentModes,
   listVoucherTypes,
+  type PaymentModeOption,
   type VoucherOrderLine,
   type VoucherTypeOption,
 } from '../../services/Vouchers';
@@ -68,7 +70,9 @@ const UploadVoucher: React.FC = () => {
   const submitLock = useRef(false);
   const [voucherTypeId, setVoucherTypeId] = useState('');
   const [voucherTypes, setVoucherTypes] = useState<VoucherTypeOption[]>([]);
+  const [paymentModes, setPaymentModes] = useState<PaymentModeOption[]>([]);
   const [voucherTypeError, setVoucherTypeError] = useState('');
+  const [paymentModeError, setPaymentModeError] = useState('');
   const [personName, setPersonName] = useState('');
   const [expenseFile, setExpenseFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState('');
@@ -80,19 +84,24 @@ const UploadVoucher: React.FC = () => {
   useEffect(() => {
     let mounted = true;
 
-    listVoucherTypes()
-      .then((types) => {
-        if (mounted) {
-          setVoucherTypes(types);
-          setVoucherTypeError('');
-        }
+    Promise.all([
+      listVoucherTypes(),
+      listPaymentModes(),
+    ])
+      .then(([types, modes]) => {
+        if (!mounted) return;
+        setVoucherTypes(types);
+        setPaymentModes(modes);
+        setVoucherTypeError('');
+        setPaymentModeError('');
       })
       .catch((error: unknown) => {
-        console.error('Failed to load voucher types:', error);
-        if (mounted) {
-          setVoucherTypes([]);
-          setVoucherTypeError('Failed to load voucher types.');
-        }
+        console.error('Failed to load voucher lookups:', error);
+        if (!mounted) return;
+        setVoucherTypes([]);
+        setPaymentModes([]);
+        setVoucherTypeError('Failed to load voucher types.');
+        setPaymentModeError('Failed to load payment modes.');
       });
 
     return () => {
@@ -332,16 +341,14 @@ const UploadVoucher: React.FC = () => {
                         value={line.mode}
                         onChange={(event) => updateLine(line.key, 'mode', event.target.value)}
                         required
+                        disabled={paymentModes.length === 0}
                       >
-                        <option value="">Select Mode</option>
-                        {[
-                          { id: '1', name: 'Cash' },
-                          { id: '2', name: 'Bank' },
-                          { id: '3', name: 'UPI' },
-                        ].map((mode) => (
+                        <option value="">{paymentModeError ? 'Payment modes unavailable' : 'Select Mode'}</option>
+                        {paymentModes.map((mode) => (
                           <option key={mode.id} value={mode.id}>{mode.name}</option>
                         ))}
                       </VoucherSelect>
+                      {paymentModeError ? <p className="mt-2 text-xs text-red-600">{paymentModeError}</p> : null}
                     </div>
                     <div>
                       <FieldLabel htmlFor={`voucher-order-amount-${line.key}`} required>Amount</FieldLabel>

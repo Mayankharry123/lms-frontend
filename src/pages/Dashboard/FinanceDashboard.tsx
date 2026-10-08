@@ -5,11 +5,11 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, FileSpreadsheet, Hourglass, Wallet } from 'lucide-react';
+import { BadgeCheck, FileSpreadsheet, FileText, Hourglass, Receipt, Wallet } from 'lucide-react';
 import DashboardChartsSection from '../../components/dashboard/DashboardChartsSection';
 import DashboardMetricCard from '../../components/dashboard/DashboardMetricCard';
 import { useApiQuery } from '../../hooks/useApiQuery';
-import { getFinanceChartMetrics } from '../../services/DashboardCharts';
+import { getFinanceChartMetrics, getFinanceSummary } from '../../services/DashboardCharts';
 import type { FinanceDashboardItem } from '../../services/DashboardCharts';
 import { ROUTES } from '../../constants';
 import {
@@ -46,6 +46,11 @@ const FinanceDashboard: React.FC<FinanceDashboardProps> = ({
     () => getFinanceChartMetrics(filters),
     [filterKey],
   );
+  const {
+    data: summary,
+    loading: summaryLoading,
+    error: summaryError,
+  } = useApiQuery(getFinanceSummary);
 
   const recent = data?.recent ?? [];
 
@@ -80,51 +85,69 @@ const FinanceDashboard: React.FC<FinanceDashboardProps> = ({
 
   return (
     <div className="dashboard-content">
-      {error ? (
-        <div className="dashboard-error-state">{error}</div>
-      ) : (
-        <div className="dashboard-stat-grid">
-          {isCardVisible('finance', 'finance.cost-sheets') ? (
-            <DashboardMetricCard
-              title="Cost Sheets"
-              value={data?.totals.costSheets ?? 0}
-              icon={<FileSpreadsheet />}
-              embedded={embedded}
-              loading={loading}
-              className="dashboard-metric-card--tone-blue"
-            />
-          ) : null}
-          {isCardVisible('finance', 'finance.pending') ? (
-            <DashboardMetricCard
-              title="Pending Review"
-              value={data?.totals.pending ?? 0}
-              icon={<Hourglass />}
-              embedded={embedded}
-              loading={loading}
-              className="dashboard-metric-card--tone-amber"
-            />
-          ) : null}
-          {isCardVisible('finance', 'finance.approved') ? (
-            <DashboardMetricCard
-              title="Approved"
-              value={data?.totals.approved ?? 0}
-              icon={<BadgeCheck />}
-              embedded={embedded}
-              loading={loading}
-              className="dashboard-metric-card--tone-teal"
-            />
-          ) : null}
-          {isCardVisible('finance', 'finance.purchase-orders') ? (
-            <DashboardMetricCard
-              title="Purchase Order Amount"
-              value={formatDashboardCurrency(data?.totals.purchaseOrderAmount ?? 0)}
-              icon={<Wallet />}
-              embedded={embedded}
-              loading={loading}
-            />
-          ) : null}
-        </div>
-      )}
+      {error ? <div className="dashboard-error-state">{error}</div> : null}
+      {summaryError ? <div className="dashboard-error-state">{summaryError}</div> : null}
+      <div className="dashboard-stat-grid">
+        {!error && isCardVisible('finance', 'finance.cost-sheets') ? (
+          <DashboardMetricCard
+            title="Cost Sheets"
+            value={data?.totals.costSheets ?? 0}
+            icon={<FileSpreadsheet />}
+            embedded={embedded}
+            loading={loading}
+            className="dashboard-metric-card--tone-blue"
+          />
+        ) : null}
+        {!error && isCardVisible('finance', 'finance.pending') ? (
+          <DashboardMetricCard
+            title="Pending Review"
+            value={data?.totals.pending ?? 0}
+            icon={<Hourglass />}
+            embedded={embedded}
+            loading={loading}
+            className="dashboard-metric-card--tone-amber"
+          />
+        ) : null}
+        {!error && isCardVisible('finance', 'finance.approved') ? (
+          <DashboardMetricCard
+            title="Approved"
+            value={data?.totals.approved ?? 0}
+            icon={<BadgeCheck />}
+            embedded={embedded}
+            loading={loading}
+            className="dashboard-metric-card--tone-teal"
+          />
+        ) : null}
+        {!error && isCardVisible('finance', 'finance.purchase-orders') ? (
+          <DashboardMetricCard
+            title="Purchase Order Amount"
+            value={formatDashboardCurrency(data?.totals.purchaseOrderAmount ?? 0)}
+            icon={<Wallet />}
+            embedded={embedded}
+            loading={loading}
+          />
+        ) : null}
+        {isCardVisible('finance', 'finance.voucher-total') ? (
+          <DashboardMetricCard
+            title="Voucher Total Amount"
+            value={summaryError ? '--' : formatDashboardCurrency(summary?.voucherTotalAmount ?? 0)}
+            icon={<Receipt />}
+            embedded={embedded}
+            loading={summaryLoading}
+            className="dashboard-metric-card--tone-violet"
+          />
+        ) : null}
+        {isCardVisible('finance', 'finance.proforma-invoice-total') ? (
+          <DashboardMetricCard
+            title="Proforma Invoice Total Amount"
+            value={summaryError ? '--' : formatDashboardCurrency(summary?.proformaInvoiceTotalAmount ?? 0)}
+            icon={<FileText />}
+            embedded={embedded}
+            loading={summaryLoading}
+            className="dashboard-metric-card--tone-rose"
+          />
+        ) : null}
+      </div>
 
       <DashboardChartsSection variant="finance" filters={filters} isCardVisible={isCardVisible} />
 
