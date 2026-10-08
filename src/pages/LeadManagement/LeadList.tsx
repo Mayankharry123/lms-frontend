@@ -208,6 +208,7 @@ const LeadList: React.FC<LeadListPageProps> = ({
   const [confirmDeleteLabel, setConfirmDeleteLabel] = useState<string>('');
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [chatLead, setChatLead] = useState<Lead | null>(null);
+  const [scheduleMeetingLeadId, setScheduleMeetingLeadId] = useState<string | null>(null);
 
   // Fetch leads from API
   // Wrap fetchLeads in useCallback
@@ -560,6 +561,26 @@ const LeadList: React.FC<LeadListPageProps> = ({
     // The actual API call happens after confirmation in handleCallStatusChange
   };
 
+  const interceptMeetingSchedule = (leadId: string, option: string) => {
+    if (option.trim().toLowerCase() !== 'meeting schedule') return false;
+    setScheduleMeetingLeadId(leadId);
+    return true;
+  };
+
+  const openMeetingScheduleForLead = () => {
+    if (!scheduleMeetingLeadId) return;
+    const leadId = scheduleMeetingLeadId.replace(/^#/, '');
+    const callStatus = callStatusOptions.find(
+      (option) => option.name.trim().toLowerCase() === 'meeting schedule'
+    );
+    const params = new URLSearchParams({ lead_id: leadId });
+    if (callStatus?.id != null) params.set('call_status_id', String(callStatus.id));
+    setScheduleMeetingLeadId(null);
+    navigate(`${ROUTES.LEAD.MEETING_SCHEDULE}?${params.toString()}`, {
+      state: { prefillLeadId: leadId, updateCallStatusId: callStatus?.id },
+    });
+  };
+
 
 
   // Status is rendered as a non-clickable pill (same as AllLeads)
@@ -612,7 +633,7 @@ const LeadList: React.FC<LeadListPageProps> = ({
     { key: 'assignBy', header: 'Created By', minWidth: 110, maxWidth: 150, render: (it: Lead) => it.assignBy || '-' },
     ...(hasPermission(assignPermissionMap[permissionKey] || assignPermissionMap.All) ? [{
       key: 'assignTo',
-      header: 'Assign To',
+      header: 'Sales User',
       minWidth: 160,
       maxWidth: 200,
       allowOverflow: true,
@@ -639,7 +660,7 @@ const LeadList: React.FC<LeadListPageProps> = ({
     { key: 'dateTime', header: 'Date & Time', minWidth: 130, maxWidth: 170, render: (it: Lead) => it.dateTime || '-' },
     {
       key: 'status',
-      header: 'Status',
+      header: 'Lead Status',
       minWidth: 120,
       maxWidth: 160,
       allowOverflow: true,
@@ -663,6 +684,7 @@ const LeadList: React.FC<LeadListPageProps> = ({
             options={callStatusOptions.map((opt) => opt.name)}
             onChange={(newStatus) => handleCallStatusChange(it.id, newStatus)}
             onConfirm={handleCallStatusConfirm}
+            onIntercept={(option) => interceptMeetingSchedule(it.id, option)}
           />
         ) : (
           <span className="block truncate">{it.callStatus || 'N/A'}</span>
@@ -708,7 +730,7 @@ const LeadList: React.FC<LeadListPageProps> = ({
         },
         {
           key: 'current_assign_user',
-          label: 'Assign To',
+          label: 'Sales User',
           options: userFilterOptions,
           isMulti: true,
         },
@@ -790,6 +812,17 @@ const LeadList: React.FC<LeadListPageProps> = ({
       />
 
       {/* Confirmation dialog for delete */}
+      <ConfirmDialog
+        isOpen={scheduleMeetingLeadId !== null}
+        type="warning"
+        title="Schedule Meeting Before Change Status"
+        message="Please schedule a meeting for this Lead before changing the Lead status."
+        confirmLabel="Schedule Meeting"
+        cancelLabel="Cancel"
+        onCancel={() => setScheduleMeetingLeadId(null)}
+        onConfirm={openMeetingScheduleForLead}
+      />
+
       <ConfirmDialog
         isOpen={confirmDeleteId !== null}
         title="Delete Lead"

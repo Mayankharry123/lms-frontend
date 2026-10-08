@@ -52,6 +52,14 @@ function isInsideIndia(marker: DeviceMapMarker): boolean {
   );
 }
 
+function escapePopupText(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function mapStatus(status?: string): MapStatus {
   const key = status?.trim().toLowerCase() || '';
   if (['pending', 'upcoming', 'scheduled', 'in progress', 'in-progress'].includes(key)) {
@@ -228,15 +236,21 @@ function InventoryMarkerCluster({
         { sticky: true, direction: 'top', opacity: 0.95 }
       );
       const actionColor = pointColor || '#007b83';
+      const imageUrl = item.imageUrl ? escapePopupText(item.imageUrl) : '';
+      const imageMarkup = imageUrl
+        ? `<img src="${imageUrl}" alt="Device ${escapePopupText(item.id)}" style="display:block;width:220px;height:124px;object-fit:cover;border-radius:8px;margin:0 0 8px;background:#f1f5f9" onerror="this.style.display='none'" />`
+        : '';
       layer.bindPopup(
-        `<div style="min-width:160px">
-          <p style="margin:0 0 6px;font-weight:600">Device ${item.id}</p>
-          <p style="margin:0 0 4px;font-size:12px">Status: ${status}</p>
-          <p style="margin:0 0 8px;font-size:12px">Category: ${item.category || '-'}</p>
-          <button type="button" data-device-id="${item.id}" style="
+        `<div style="min-width:220px">
+          ${imageMarkup}
+          <p style="margin:0 0 6px;font-weight:600">Device ${escapePopupText(item.id)}</p>
+          <p style="margin:0 0 4px;font-size:12px">Status: ${escapePopupText(status)}</p>
+          <p style="margin:0 0 8px;font-size:12px">Category: ${escapePopupText(item.category || '-')}</p>
+          <button type="button" data-device-id="${escapePopupText(item.id)}" style="
             border:0;background:${actionColor};color:#fff;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;font-weight:600;
           ">View Details</button>
-        </div>`
+        </div>`,
+        { maxWidth: 260, minWidth: 220 }
       );
       layer.on('popupopen', (event) => {
         const popupElement = event.popup.getElement();

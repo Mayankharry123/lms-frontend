@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import AssignButton from './AssignButton';
 import ConfirmDialog from './ConfirmDialog';
 
@@ -10,7 +11,7 @@ interface AssignDropdownProps {
   options: string[];
   onChange: (newValue: string) => void;
   onConfirm?: (newValue: string) => Promise<void>;
-  context?: 'brief' | 'lead';
+  context?: 'brief' | 'lead' | 'user';
 }
 
 const AssignDropdown: React.FC<AssignDropdownProps> = ({
@@ -21,11 +22,12 @@ const AssignDropdown: React.FC<AssignDropdownProps> = ({
   context = 'brief',
 }) => {
   const [open, setOpen] = useState(false);
-  const [openAbove, setOpenAbove] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const computePlacement = () => {
     const el = ref.current;
@@ -34,7 +36,19 @@ const AssignDropdown: React.FC<AssignDropdownProps> = ({
     const rect = el.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
-    setOpenAbove(spaceBelow < DROPDOWN_EST_HEIGHT && spaceAbove > spaceBelow);
+    const openAbove = spaceBelow < DROPDOWN_EST_HEIGHT && spaceAbove > spaceBelow;
+    const width = Math.max(rect.width, DROPDOWN_MIN_WIDTH);
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+
+    setMenuStyle({
+      position: 'fixed',
+      left,
+      width,
+      zIndex: 1000,
+      ...(openAbove
+        ? { bottom: window.innerHeight - rect.top + 4, top: 'auto' }
+        : { top: rect.bottom + 4, bottom: 'auto' }),
+    });
   };
 
   useLayoutEffect(() => {
@@ -44,9 +58,9 @@ const AssignDropdown: React.FC<AssignDropdownProps> = ({
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     if (open) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -108,6 +122,9 @@ const AssignDropdown: React.FC<AssignDropdownProps> = ({
     setSelectedOption(null);
   };
 
+  const contextLabel = context === 'lead' ? 'Lead' : context === 'user' ? 'User' : 'Brief';
+  const contextItem = context === 'lead' ? 'lead' : context === 'user' ? 'user' : 'brief';
+
   return (
     <div ref={ref} className="relative w-full min-w-0">
       <AssignButton
@@ -115,12 +132,11 @@ const AssignDropdown: React.FC<AssignDropdownProps> = ({
         onClick={handleToggle}
         isActive={open}
       />
-      {open && (
+      {open && typeof document !== 'undefined' && createPortal(
         <div
-          className={`absolute left-0 z-[200] w-max max-w-[min(100vw-1rem,240px)] rounded-xl border border-gray-200 bg-white shadow-lg ${
-            openAbove ? 'bottom-full mb-1' : 'top-full mt-1'
-          }`}
-          style={{ minWidth: `${DROPDOWN_MIN_WIDTH}px` }}
+          ref={menuRef}
+          className="max-h-56 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg"
+          style={menuStyle}
         >
           <ul
             tabIndex={-1}
@@ -145,24 +161,13 @@ const AssignDropdown: React.FC<AssignDropdownProps> = ({
               </li>
             ))}
           </ul>
-          <style>{`
-            ul::-webkit-scrollbar {
-              width: 6px;
-            }
-            ul::-webkit-scrollbar-thumb {
-              background: #e5e7eb;
-              border-radius: 4px;
-            }
-            ul::-webkit-scrollbar-track {
-              background: #fff;
-            }
-          `}</style>
-        </div>
+        </div>,
+        document.body
       )}
       <ConfirmDialog
         isOpen={confirmDialogOpen}
-        title={`Assign ${context === 'lead' ? 'Lead' : 'Brief'}`}
-        message={`Assign this ${context === 'lead' ? 'lead' : 'brief'} to ${selectedOption ? `"${selectedOption}"` : 'this user'}?`}
+        title={`Assign ${contextLabel}`}
+        message={`Assign this ${contextItem} to ${selectedOption ? `"${selectedOption}"` : 'this user'}?`}
         confirmLabel="Confirm"
         cancelLabel="Cancel"
         loading={confirmLoading}

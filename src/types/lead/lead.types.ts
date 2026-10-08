@@ -114,6 +114,7 @@ export interface EditLeadFormData {
     type: string;
     designation: string;
     agencyBrand: string;
+    source: string;
     subSource: string;
     department: string;
     country: string;

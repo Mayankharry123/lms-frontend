@@ -10,9 +10,11 @@ interface CallStatusDropdownProps {
   options: string[];
   onChange: (newStatus: string) => void;
   onConfirm?: (newStatus: string) => Promise<void>;
+  /** Return true to handle the option outside this dropdown, without changing status. */
+  onIntercept?: (option: string) => boolean;
 }
 
-const CallStatusDropdown: React.FC<CallStatusDropdownProps> = ({ value, options, onChange, onConfirm }) => {
+const CallStatusDropdown: React.FC<CallStatusDropdownProps> = ({ value, options, onChange, onConfirm, onIntercept }) => {
   const [open, setOpen] = useState(false);
   const [openAbove, setOpenAbove] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -69,6 +71,10 @@ const CallStatusDropdown: React.FC<CallStatusDropdownProps> = ({ value, options,
   };
 
   const handleOptionSelect = (opt: string) => {
+    if (onIntercept?.(opt)) {
+      setOpen(false);
+      return;
+    }
     if (onConfirm) {
       setSelectedOption(opt);
       setConfirmDialogOpen(true);

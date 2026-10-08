@@ -5,6 +5,7 @@ import {
   type DashboardCardPreferences,
   type DashboardView,
 } from '../../utils/dashboardCardVisibility';
+import { canShowDashboardCard, useDashboardPermissions } from '../../utils/dashboardPermissions';
 
 type DashboardCardVisibilityDropdownProps = {
   activeView: DashboardView;
@@ -17,6 +18,8 @@ const VIEW_LABELS: Record<DashboardView, string> = {
   overview: 'Overview',
   sales: 'Sales',
   planner: 'Planner',
+  operations: 'Operations',
+  finance: 'Finance',
 };
 
 const DashboardCardVisibilityDropdown: React.FC<DashboardCardVisibilityDropdownProps> = ({
@@ -27,15 +30,27 @@ const DashboardCardVisibilityDropdown: React.FC<DashboardCardVisibilityDropdownP
 }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
-  const activeCards = DASHBOARD_CARD_DEFINITIONS[activeView];
+  const dashboardPermissions = useDashboardPermissions();
+  const groupedCards = useMemo(
+    () =>
+      (Object.keys(DASHBOARD_CARD_DEFINITIONS) as DashboardView[])
+        .map((view) => ({
+          view,
+          cards: DASHBOARD_CARD_DEFINITIONS[view].filter((card) =>
+            canShowDashboardCard(dashboardPermissions, view, card.id),
+          ),
+        }))
+        .filter((group) => group.cards.length > 0),
+    [dashboardPermissions],
+  );
+  const activeCards = groupedCards.find((group) => group.view === activeView)?.cards ?? [];
   const selectedCount = activeCards.filter((card) => preferences[activeView][card.id] !== false).length;
   const allCount = activeCards.length;
-  const summary = selectedCount === allCount ? 'All Cards' : `${selectedCount} of ${allCount} selected`;
-
-  const groupedCards = useMemo(
-    () => (Object.keys(DASHBOARD_CARD_DEFINITIONS) as DashboardView[]),
-    [],
-  );
+  const summary = allCount === 0
+    ? 'No Cards'
+    : selectedCount === allCount
+      ? 'All Cards'
+      : `${selectedCount} of ${allCount} selected`;
 
   useEffect(() => {
     const handleDocumentClick = (event: MouseEvent) => {
@@ -72,10 +87,10 @@ const DashboardCardVisibilityDropdown: React.FC<DashboardCardVisibilityDropdownP
             </button>
           </div>
 
-          {groupedCards.map((view) => (
+          {groupedCards.map(({ view, cards }) => (
             <fieldset key={view} className="dashboard-card-filter__group">
               <legend>{VIEW_LABELS[view]}</legend>
-              {DASHBOARD_CARD_DEFINITIONS[view].map((card) => {
+              {cards.map((card) => {
                 const checked = preferences[view][card.id] !== false;
                 return (
                   <label key={card.id} className="dashboard-card-filter__option">

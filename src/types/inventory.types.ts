@@ -138,4 +138,5 @@ export type DeviceMapMarker = {
   longitude: number;
   status?: string;
   category?: string;
+  imageUrl?: string;
 };

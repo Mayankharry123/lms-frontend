@@ -1,6 +1,6 @@
 /**
  * @file Dashboard.tsx
- * @description Unified dashboard with overview, sales, and planner views.
+ * @description Unified dashboard with overview, sales, planner, operations, and finance views.
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -15,6 +15,8 @@ import DashboardTabNav from '../components/dashboard/DashboardTabNav';
 import OverviewPanels from '../components/dashboard/OverviewPanels';
 import SalesDashboard from './Dashboard/SalesDashboard';
 import PlannerDashboard from './Dashboard/PlannerDashboard';
+import OperationsDashboard from './Dashboard/OperationsDashboard';
+import FinanceDashboard from './Dashboard/FinanceDashboard';
 import {
   getPendingAssignments,
   getDashboardStats,
@@ -41,6 +43,8 @@ const ALL_DASHBOARD_TABS: { id: DashboardView; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'sales', label: 'Sales' },
   { id: 'planner', label: 'Planner' },
+  { id: 'operations', label: 'Operations' },
+  { id: 'finance', label: 'Finance' },
 ];
 
 const Dashboard: React.FC = () => {
@@ -72,6 +76,8 @@ const Dashboard: React.FC = () => {
         if (tab.id === 'overview') return dashboardPermissions.canViewOverviewTab();
         if (tab.id === 'sales') return dashboardPermissions.canViewSalesTab();
         if (tab.id === 'planner') return dashboardPermissions.canViewPlannerTab();
+        if (tab.id === 'operations') return dashboardPermissions.canViewOperationsTab();
+        if (tab.id === 'finance') return dashboardPermissions.canViewFinanceTab();
         return false;
       }),
     [dashboardPermissions],
@@ -312,6 +318,24 @@ const Dashboard: React.FC = () => {
               description="Active briefs, planning metrics, and assigned submissions."
             >
               <PlannerDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
+            </DashboardSection>
+          )}
+
+          {activeView === 'operations' && dashboardPermissions.canViewOperationsTab() && appliedFilters && (
+            <DashboardSection
+              title="Operations Workspace"
+              description="Campaign operations, live and pending status, and assignments."
+            >
+              <OperationsDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
+            </DashboardSection>
+          )}
+
+          {activeView === 'finance' && dashboardPermissions.canViewFinanceTab() && appliedFilters && (
+            <DashboardSection
+              title="Finance Workspace"
+              description="Cost sheets, approvals, and purchase order amounts."
+            >
+              <FinanceDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
             </DashboardSection>
           )}
         </div>

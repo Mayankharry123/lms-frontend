@@ -3,6 +3,8 @@ export interface BrandItem {
   name: string;
   agencyName?: string;
   brandType?: string;
+  address?: string;
+  gstNumbers?: string[];
   contactPerson?: string;
   industry?: string;
   country?: string;

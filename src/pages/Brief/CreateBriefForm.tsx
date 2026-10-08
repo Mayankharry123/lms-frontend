@@ -6,6 +6,8 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../redux/store';
 import Table from '../../components/ui/Table';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -16,16 +18,35 @@ import { listLeadContacts } from '../../services/AllLeads';
 import { fetchBriefStatuses } from '../../services/BriefStatus';
 import { getPriorities } from '../../services/Priority';
 import { motion } from 'framer-motion';
-import { MasterFormHeader, SelectField } from '../../components/ui';
+import { Button, MasterCreateHeader, MasterFormHeader, SelectField } from '../../components/ui';
+import CollapsibleFormCard from '../../components/ui/CollapsibleFormCard';
 import SweetAlert from '../../utils/SweetAlert';
 import { apiClient } from '../../utils/apiClient';
 import FilePreviewModal from '../../components/ui/FilePreviewModal';
-import { Eye } from 'lucide-react';
+import { CalendarRange, Eye, FileText, History } from 'lucide-react';
 import type { MasterFormWithSaveProps } from '../../types/pages/forms.types';
 
 const MAX_ATTACHMENT_SIZE_BYTES = 7 * 1024 * 1024;
 
+const EditSection: React.FC<{
+  edit: boolean;
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ edit, title, icon, children }) => {
+  if (!edit) return <>{children}</>;
+  return (
+    <CollapsibleFormCard title={title} collapsible icon={icon}>
+      {children}
+    </CollapsibleFormCard>
+  );
+};
+
 const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, initialData, mode = 'create' }) => {
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+  const canAssignTo = (currentUser?.roles ?? []).some(
+    (role) => String(role?.name ?? '').trim() === 'Super Admin'
+  );
   useEffect(() => {
     
   }, [initialData]);
@@ -1111,21 +1132,31 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
     return today;
   };
 
+  const isEdit = mode === 'edit';
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.22 }}
-      className="space-y-6"
+      className={isEdit ? 'space-y-3 sm:space-y-4' : 'space-y-6'}
     >
-      <MasterFormHeader onBack={onClose} title={mode === 'edit' ? 'Edit Brief' : 'Create Brief'} />
+      {isEdit ? (
+        <MasterCreateHeader onClose={onClose} />
+      ) : (
+        <MasterFormHeader onBack={onClose} title="Create Brief" />
+      )}
 
-      <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-4 py-5 sm:p-6 bg-gray-50">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Left column */}
+      <div className={isEdit ? '' : 'w-full bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden'}>
+        <div className={isEdit ? '' : 'px-4 py-5 sm:p-6 bg-gray-50'}>
+          <form onSubmit={handleSubmit} className={isEdit ? 'space-y-3 sm:space-y-4' : 'space-y-6'}>
+            <div className={isEdit ? 'space-y-3 sm:space-y-4' : 'grid grid-cols-1 md:grid-cols-2 gap-4'}>
+              <EditSection
+                edit={isEdit}
+                title="Brief Information"
+                icon={<FileText className="h-5 w-5" strokeWidth={2} />}
+              >
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm text-gray-800 mb-1">Brief Name <span className="text-[#FF0000]">*</span></label>
@@ -1175,6 +1206,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                     </div>
                   )}
                 </div>
+                {canAssignTo && (
                 <div>
                   <label className="block text-sm text-gray-800 mb-1">Assign To</label>
                   <SelectField
@@ -1201,6 +1233,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                   )}
                   {usersError && <div className="text-xs text-red-600 mt-1">{usersError}</div>}
                 </div>
+                )}
                 <div>
                   <label className="block text-sm text-gray-800 mb-1">Brief Status</label>
                   <SelectField
@@ -1343,7 +1376,12 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                 </div>
 
               </div>
-              {/* Right column */}
+              </EditSection>
+              <EditSection
+                edit={isEdit}
+                title="Campaign Details"
+                icon={<CalendarRange className="h-5 w-5" strokeWidth={2} />}
+              >
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm text-gray-800 mb-1">Contact Person Name <span className="text-[#FF0000]">*</span></label>
@@ -1633,12 +1671,24 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
 
                 {/* Brief Detail moved to pair with Select Type for aligned row */}
               </div>
+              </EditSection>
             </div>
 
-            <div className="flex items-center justify-end">
-              <button type="submit" className="px-4 py-2 rounded-lg btn-primary text-white shadow-sm disabled:opacity-60" disabled={saving}>
-                {saving ? 'Saving...' : (mode === 'edit' ? 'Update' : 'Save')}
-              </button>
+            <div className={isEdit ? 'flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:space-x-4 pt-1' : 'flex items-center justify-end'}>
+              {isEdit ? (
+                <>
+                  <Button type="button" onClick={onClose}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={saving}>
+                    {saving ? 'Saving...' : 'Update'}
+                  </Button>
+                </>
+              ) : (
+                <button type="submit" className="px-4 py-2 rounded-lg btn-primary text-white shadow-sm disabled:opacity-60" disabled={saving}>
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+              )}
             </div>
           </form>
         </div>
@@ -1653,11 +1703,17 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
         }}
       />
       {/* When editing a brief, show call history / pipeline table similar to design */}
-      {mode === 'edit' && (
-        <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mt-6">
-          <div className="p-4">
-            <h3 className="text-base font-semibold text-gray-900 mb-3">History</h3>
-            <div className="overflow-x-auto">
+      {isEdit && (
+        <CollapsibleFormCard
+          title="History"
+          collapsible
+          defaultOpen={false}
+          scrollable
+          innerClassName="bg-white p-0"
+          titleWrapperClassName="mb-3"
+          icon={<History className="h-5 w-5" strokeWidth={2} />}
+        >
+            <div className="min-w-0 overflow-x-auto">
               {/* Use the Table component for consistent design */}
               <Table
                 data={
@@ -1707,8 +1763,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                 keyExtractor={(row: any, idx: number) => `history-row-${row.assignedTo || idx}-${idx}`}
               />
             </div>
-          </div>
-        </div>
+        </CollapsibleFormCard>
       )}
     </motion.div>
   );

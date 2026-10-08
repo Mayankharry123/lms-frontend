@@ -120,6 +120,24 @@ export async function listChildUsers(
   );
   return (res.data || []) as Array<{ id: number | string; name: string }>;
 }
+
+export async function listChildOpsByBrief(
+  briefId: string | number
+): Promise<Array<{ id: number | string; name: string }>> {
+  const res = await apiClient.get<ChildUserHierarchyNode[]>(
+    ENDPOINTS.USERS.CHILD_OPS_BY_BRIEF(briefId)
+  );
+  return flattenChildUserHierarchy(res.data);
+}
+
+export async function listChildFinanceByBrief(
+  briefId: string | number
+): Promise<Array<{ id: number | string; name: string }>> {
+  const res = await apiClient.get<ChildUserHierarchyNode[]>(
+    ENDPOINTS.USERS.CHILD_FINANCE_BY_BRIEF(briefId)
+  );
+  return flattenChildUserHierarchy(res.data);
+}
 /**
  * Planning users for a brief and contact person.
  * GET /profile/child-planing-users?brief_id={briefId}&contact_person_id={contactPersonId}

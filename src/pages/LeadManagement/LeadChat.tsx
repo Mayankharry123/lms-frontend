@@ -4,10 +4,11 @@
  */
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Bell, BellOff, MessageCircle, Send, X } from 'lucide-react';
 import { MasterCreateHeader } from '../../components/ui/MasterCreateHeader';
+import type { BreadcrumbItem } from '../../components/ui/Breadcrumb';
 import SelectField from '../../components/ui/SelectField';
 import Input from '../../components/ui/Input';
 import { ROUTES } from '../../constants';
@@ -141,10 +142,22 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isCurrentUser }) => 
 
 const LeadChat: React.FC<{ chatType?: 'lead' | 'brief' }> = ({ chatType = 'lead' }) => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const leadId = String(id || '').replace(/^#/, '');
   const isBriefChat = chatType === 'brief';
+  const chatOrigin = (location.state as { from?: string } | null)?.from;
+  const briefLogOrigin = isBriefChat && chatOrigin === 'brief-log';
+  const chatBreadcrumbItems: BreadcrumbItem[] | undefined = isBriefChat
+    ? [
+        { label: 'Brief', path: ROUTES.BRIEF.ROOT },
+        briefLogOrigin
+          ? { label: 'Brief Log', path: ROUTES.BRIEF.LOG }
+          : { label: 'Brief Pipeline', path: ROUTES.BRIEF.PIPELINE },
+        { label: `Brief Chat #${leadId}`, isActive: true },
+      ]
+    : undefined;
   const {
     messages,
     loading,
@@ -433,7 +446,16 @@ const LeadChat: React.FC<{ chatType?: 'lead' | 'brief' }> = ({ chatType = 'lead'
     <div className="lead-chat-page flex min-h-0 w-full flex-1 flex-col overflow-hidden">
       <div className="shrink-0">
         <MasterCreateHeader
-          onClose={() => navigate(isBriefChat ? ROUTES.BRIEF.PIPELINE : ROUTES.LEAD.ALL)}
+          breadcrumbItems={chatBreadcrumbItems}
+          onClose={() =>
+            navigate(
+              isBriefChat
+                ? briefLogOrigin
+                  ? ROUTES.BRIEF.LOG
+                  : ROUTES.BRIEF.PIPELINE
+                : ROUTES.LEAD.ALL
+            )
+          }
         />
       </div>
 

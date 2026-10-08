@@ -14,7 +14,8 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import SelectField from '../../components/ui/SelectField';
 import { createMeeting } from '../../services/MeetingSchedule';
 import { listAttendees } from '../../services/AllUsers';
-import { listLeads } from '../../services/AllLeads';
+import { getLeadById, listLeads } from '../../services/AllLeads';
+import { getCallStatuses, updateCallStatus } from '../../services/CallStatus';
 import MultiSelectDropdown from '../../components/ui/MultiSelectDropdown';
 import { IoIosArrowBack } from 'react-icons/io';
 
@@ -22,9 +23,17 @@ const MeetingSchedule: React.FC = () => {
   const navigate = useNavigate();
   const routerLocation = useLocation();
   const [searchParams] = useSearchParams();
+  const routeState = routerLocation.state as {
+    prefillLeadId?: string;
+    updateCallStatusId?: string | number;
+  } | null;
   const prefillLeadId =
+    searchParams.get('lead_id')?.replace(/^#/, '') ||
     searchParams.get('leadId')?.replace(/^#/, '') ||
-    (routerLocation.state as { prefillLeadId?: string } | null)?.prefillLeadId;
+    routeState?.prefillLeadId;
+  const pendingCallStatusId =
+    searchParams.get('call_status_id') ||
+    (routeState?.updateCallStatusId != null ? String(routeState.updateCallStatusId) : '');
 
   // Disable datepicker animations on component mount
   useEffect(() => {
@@ -62,6 +71,7 @@ const MeetingSchedule: React.FC = () => {
   const [leadOptions, setLeadOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [attendeesOptions, setAttendeesOptions] = useState<Array<{ value: string; label: string }>>([]);
   // Error states for each required field
+  const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<{
     lead?: string;
     meetingType?: string;
@@ -92,6 +102,18 @@ const MeetingSchedule: React.FC = () => {
           value: String(leadItem.id),
           label: `${leadItem.name || leadItem.contact_person || `Lead ${leadItem.id}`} #${leadItem.id}`,
         }));
+        if (prefillLeadId && !leadOpts.some((option) => option.value === prefillLeadId)) {
+          try {
+            const detail = await getLeadById(prefillLeadId);
+            const leadName = detail.name || detail.contact_person || detail.brand_name || `Lead ${prefillLeadId}`;
+            leadOpts.unshift({
+              value: String(detail.id ?? prefillLeadId),
+              label: `${leadName} #${detail.id ?? prefillLeadId}`,
+            });
+          } catch {
+            leadOpts.unshift({ value: prefillLeadId, label: `Lead #${prefillLeadId}` });
+          }
+        }
         setLeadOptions(leadOpts);
 
         if (prefillLeadId) {
@@ -107,7 +129,12 @@ const MeetingSchedule: React.FC = () => {
         setAttendeesOptions(attendeeOpts);
       } catch (error) {
         console.error('Error fetching data:', error);
-        setLeadOptions([]);
+        if (prefillLeadId) {
+          setLead(prefillLeadId);
+          setLeadOptions([{ value: prefillLeadId, label: `Lead #${prefillLeadId}` }]);
+        } else {
+          setLeadOptions([]);
+        }
         setAttendeesOptions([]);
       }
     };
@@ -138,6 +165,7 @@ const MeetingSchedule: React.FC = () => {
       return;
     }
 
+    setSaving(true);
     try {
       // Parse attendees - convert all to integers
       const attendeeIds = attendees
@@ -184,9 +212,23 @@ const MeetingSchedule: React.FC = () => {
       // Call the API service
       const response = await createMeeting(payload);
       console.log('Meeting created successfully', response);
-      // Show success message
+
+      if (pendingCallStatusId) {
+        try {
+          let callStatusId: string | number = pendingCallStatusId;
+          const statuses = await getCallStatuses();
+          const matched = statuses.find((status) => String(status.id) === String(pendingCallStatusId))
+            || statuses.find((status) => status.name.trim().toLowerCase() === 'meeting schedule');
+          if (matched?.id != null) callStatusId = matched.id;
+          await updateCallStatus(String(lead), callStatusId);
+        } catch (statusError) {
+          console.error('Meeting was created, but call status was not updated', statusError);
+          SweetAlert.showError('Meeting was scheduled, but the lead status could not be updated.');
+          return;
+        }
+      }
+
       SweetAlert.showCreateSuccess();
-      // Navigate back to lead management list
       setTimeout(() => {
         navigate('/lead-management/all-leads');
       }, 1800);
@@ -195,6 +237,8 @@ const MeetingSchedule: React.FC = () => {
       try { SweetAlert.showError(error?.message || 'Failed to save meeting'); } catch {
         //  no need to action
       }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -363,10 +407,11 @@ const MeetingSchedule: React.FC = () => {
             <div className="flex justify-end pt-6">
               <button
                 type="submit"
-                className="px-6 py-2 btn-primary text-white rounded-lg shadow-sm"
+                disabled={saving}
+                className="px-6 py-2 btn-primary text-white rounded-lg shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 data-btn-label="Save"
               >
-                Save
+                {saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </form>

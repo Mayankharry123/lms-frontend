@@ -72,7 +72,7 @@ const BriefPipeline: React.FC = () => {
   const currentData = briefs;
 
   const handleOpenChat = (brief: Brief) => {
-    navigate(ROUTES.BRIEF.CHAT(brief.id));
+    navigate(ROUTES.BRIEF.CHAT(brief.id), { state: { from: 'brief-pipeline' } });
   };
 
   const navigate = useNavigate();
@@ -539,10 +539,6 @@ const BriefPipeline: React.FC = () => {
               onCreateClick={handleCreate}
               createButtonLabel="Create Brief"
               showBreadcrumb={true}
-              breadcrumbItems={[
-                { label: 'Brief', path: ROUTES.BRIEF.ROOT },
-                { label: 'Brief Pipeline', isActive: true }
-              ]}
               createPermissionSlug="brief.create"
             />
           )}
@@ -653,7 +649,7 @@ const BriefPipeline: React.FC = () => {
                   }
                   return String(createdByVal ?? '');
                 }, className: 'whitespace-nowrap overflow-hidden truncate' },
-                { key: 'assignTo', header: 'Assign To', render: (it: Brief) => {
+                { key: 'assignTo', header: 'Planner', render: (it: Brief) => {
                   const assignToVal = it.assignTo;
                   let displayName = '';
                   if (typeof assignToVal === 'object' && assignToVal !== null && 'name' in assignToVal) {
@@ -682,7 +678,7 @@ const BriefPipeline: React.FC = () => {
                     </div>
                   );
                 }, className: 'min-w-[140px]', allowOverflow: true },
-                { key: 'status', header: 'Status', render: (it: Brief) => {
+                { key: 'status', header: 'Brief Status', render: (it: Brief) => {
                   // Show status name from brief_status object, fallback to '-' or 'No Status'
                   const statusName = it.brief_status && typeof it.brief_status === 'object' && 'name' in it.brief_status
                     ? (it.brief_status as any).name

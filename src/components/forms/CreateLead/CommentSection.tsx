@@ -6,9 +6,15 @@ interface Props {
   value?: string;
   onChange?: (value: string) => void;
   collapsible?: boolean;
+  defaultOpen?: boolean;
 }
 
-const CommentSection: React.FC<Props> = ({ value = '', onChange = () => {}, collapsible = false }) => {
+const CommentSection: React.FC<Props> = ({
+  value = '',
+  onChange = () => {},
+  collapsible = false,
+  defaultOpen = false,
+}) => {
   const textarea = (
     <>
       <label className="block text-sm text-gray-600 mb-1">Comment</label>
@@ -33,7 +39,7 @@ const CommentSection: React.FC<Props> = ({ value = '', onChange = () => {}, coll
     <CollapsibleFormCard
       title="Comment"
       collapsible
-      defaultOpen={false}
+      defaultOpen={defaultOpen}
       innerClassName="px-4 py-5 p-5 bg-gray-50"
       titleWrapperClassName="mb-4"
       icon={<MessageSquareText className="h-5 w-5" strokeWidth={2} />}

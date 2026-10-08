@@ -39,6 +39,15 @@ export const rolePermissionsData: Module[] = [
         },
       },
       {
+        name: 'Operations Dash',
+        permissions: {
+          read: false,
+          create: false,
+          update: false,
+          delete: false,
+        },
+      },
+      {
         name: 'Sales Dash',
         permissions: {
           read: false,

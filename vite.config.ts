@@ -29,15 +29,19 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiBaseUrl = String(env.VITE_API_BASE_URL || 'https://www.api.dev.lms.dgtoohl.com/api/v1').trim()
   const sspApiBaseUrl = String(env.VITE_SSP_API_BASE_URL || 'https://www.staging.dgtoohl.com/api').trim()
+  const dgplayApiBaseUrl = String(env.VITE_DGPLAY_API_BASE_URL || 'http://localhost:8080/api').trim()
   const remoteImagesBaseUrl = String(env.VITE_REMOTE_IMAGES_BASE_URL || 'https://d2nljoxssb7y4b.cloudfront.net').trim()
 
   const apiProxy = parseProxyUrl(apiBaseUrl, 'https://www.api.dev.lms.dgtoohl.com/api/v1')
   const sspApiProxy = parseProxyUrl(sspApiBaseUrl, 'https://www.staging.dgtoohl.com/api')
+  const dgplayApiProxy = parseProxyUrl(dgplayApiBaseUrl, 'http://localhost:8080/api')
   const remoteImagesProxy = parseProxyUrl(remoteImagesBaseUrl, 'https://d2nljoxssb7y4b.cloudfront.net')
 
   return {
     plugins: [react(), tailwind()],
     server: {
+      host: '0.0.0.0',
+      port: 5173,
       proxy: {
         '/api': {
           target: apiProxy.target,
@@ -51,7 +55,18 @@ export default defineConfig(({ mode }) => {
           secure: true,
           rewrite: (path) => path.replace(/^\/ssp-api/, sspApiProxy.basePath || ''),
         },
+        '/dgplay-api': {
+          target: dgplayApiProxy.target,
+          changeOrigin: true,
+          secure: dgplayApiProxy.target.startsWith('https://'),
+          rewrite: (path) => path.replace(/^\/dgplay-api/, dgplayApiProxy.basePath || ''),
+        },
         '/exports': {
+          target: apiProxy.target,
+          changeOrigin: true,
+          secure: apiProxy.target.startsWith('https://'),
+        },
+        '/storage': {
           target: apiProxy.target,
           changeOrigin: true,
           secure: apiProxy.target.startsWith('https://'),

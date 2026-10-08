@@ -31,6 +31,10 @@ export const ENDPOINTS = {
     CHILD_PLANNERS_BY_BRIEF: (id: string | number) => `/profile/child-planners-by-brief/${id}`,
     CHILD_USERS_FOR_BRIEF_CREATION: (id: string | number) =>
       `/profile/child-users-for-brief-creation/${id}`,
+    CHILD_OPS_BY_BRIEF: (briefId: string | number) =>
+      `/profile/child-ops-by-brief/${encodeURIComponent(String(briefId))}`,
+    CHILD_FINANCE_BY_BRIEF: (briefId: string | number) =>
+      `/profile/child-finance-by-brief/${encodeURIComponent(String(briefId))}`,
   },
   ROLES: {
     LIST: '/roles',
@@ -108,8 +112,31 @@ export const ENDPOINTS = {
     RECENT: '/briefs/recent',
     STATUSES: '/brief-statuses',
   },
+  COST_SHEETS: {
+    LIST: '/cost-sheets',
+    DETAIL: (id: string | number) => `/cost-sheets/${id}`,
+    STATUS: (id: string | number) => `/cost-sheets/${id}/status`,
+    FINANCE_STATUS: (id: string | number) => `/cost-sheets/${id}/finance-status`,
+    UPDATE_ASSIGN_USER: (id: string | number) => `/cost-sheets/${id}/update-assign-user`,
+  },
+  PROFORMA_INVOICES: {
+    LIST: '/proforma-invoices',
+    CREATE: '/proforma-invoices',
+    DETAIL: (id: string | number) => `/proforma-invoices/${encodeURIComponent(String(id))}`,
+    DELETE: (id: string | number) => `/proforma-invoices/${encodeURIComponent(String(id))}`,
+  },
+  PURCHASE_ORDERS: {
+    LIST: '/purchase-orders',
+    CREATE: '/purchase-orders',
+  },
+  PUBLISHERS: {
+    LIST: '/publisher/list',
+    DETAIL: (id: string | number) => `/publisher/details/${id}`,
+  },
   PLANNERS: {
     UPDATE_STATUS: (plannerId: string | number) => `/planners/${plannerId}/update-status`,
+    UPLOAD_COST_SHEET: (plannerId: string | number) => `/planners/${plannerId}/upload-cost-sheet`,
+    SUBMITTED_PLANS_LATEST_FIVE: '/planners/submitted-plans/latest-five',
     STATUSES: '/planner-statuses',
   },
   MISS_CAMPAIGNS: {
@@ -184,6 +211,15 @@ export const ENDPOINTS = {
   MEDIA_TYPES: {
     LIST: '/media-types',
   },
+  OPERATION_STATUSES: {
+    LIST: '/operation-statuses',
+  },
+  OPERATIONS: {
+    LIST: '/operations',
+    DETAIL: (id: string | number) => `/operations/${id}`,
+    UPDATE_ASSIGN_USER: (id: string | number) => `/operations/${id}/update-assign-user`,
+    BACKUP_PLAN: (id: string | number) => `/operations/${id}/backup-plan`,
+  },
   GEO: {
     ZONES: {
       LIST: '/zones',
@@ -207,6 +243,8 @@ export const ENDPOINTS = {
     CHARTS: '/dashboard/charts',
     SALES_CHARTS: '/dashboard/sales-charts',
     PLANNER_CHARTS: '/dashboard/planner-charts',
+    OPERATIONS_CHARTS: '/dashboard/operations-charts',
+    FINANCE_CHARTS: '/dashboard/finance-charts',
   },
   NOTIFICATIONS: {
     LIST: '/notifications',
@@ -215,6 +253,16 @@ export const ENDPOINTS = {
     MARK_READ: '/notifications/mark-read',
     READ_ALL: '/notifications/read-all',
     CLEAR_ALL: '/notifications/clear-all',
+  },
+  VOUCHERS: {
+    TYPES: '/voucher-types',
+    SAMPLE_DOWNLOAD: (voucherTypeId: string | number) =>
+      `/voucher-types/${encodeURIComponent(String(voucherTypeId))}/download-sample`,
+    LIST: '/vouchers',
+    DETAIL: (id: string | number) => `/vouchers/${encodeURIComponent(String(id))}`,
+    CREATE: '/vouchers',
+    UPDATE: (id: string | number) => `/vouchers/${encodeURIComponent(String(id))}`,
+    DELETE: (id: string | number) => `/vouchers/${encodeURIComponent(String(id))}`,
   },
   INVENTORY: '/inventory',
   COURSES: {

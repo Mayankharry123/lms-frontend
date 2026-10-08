@@ -36,16 +36,16 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           bgColor: 'bg-blue-50',
           borderColor: 'border-blue-100',
           iconColor: 'text-blue-600',
-          buttonColor: 'bg-blue-600 hover:bg-blue-700',
+          buttonColor: '!bg-blue-600 hover:!bg-blue-700',
           loadingText: 'Assigning...',
         };
       case 'warning':
         return {
           icon: AlertCircle,
-          bgColor: 'bg-yellow-50',
-          borderColor: 'border-yellow-100',
-          iconColor: 'text-yellow-600',
-          buttonColor: 'bg-yellow-600 hover:bg-yellow-700',
+          bgColor: 'bg-orange-50',
+          borderColor: 'border-orange-100',
+          iconColor: 'text-[#f26222]',
+          buttonColor: '!bg-[#f26222] hover:!bg-[#d9551b]',
           loadingText: 'Processing...',
         };
       case 'delete':
@@ -55,7 +55,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           bgColor: 'bg-red-50',
           borderColor: 'border-red-100',
           iconColor: 'text-red-600',
-          buttonColor: 'bg-red-600 hover:bg-red-700',
+          buttonColor: '!bg-red-600 hover:!bg-red-700',
           loadingText: 'Deleting...',
         };
     }
@@ -76,24 +76,26 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           if (!loading && e.target === e.currentTarget) onCancel();
         }}
       >
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all">
-          <div className="p-8">
-            <div className="flex flex-col items-center text-center gap-4">
-                <div className="flex-shrink-0">
-                <div className={`w-16 h-16 ${config.bgColor} rounded-full flex items-center justify-center border-2 ${config.borderColor} shadow-sm`}>
-                  <IconComponent className={`w-8 h-8 ${config.iconColor}`} />
+        <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all">
+          <div className="px-8 py-7">
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="flex-shrink-0">
+                <div className={`w-14 h-14 ${config.bgColor} rounded-full flex items-center justify-center border-2 ${config.borderColor} shadow-sm`}>
+                  <IconComponent className={`w-7 h-7 ${config.iconColor}`} />
                 </div>
               </div>
 
               <div className="flex-1 w-full">
-                <h3 className="text-xl font-bold text-gray-900">{title}</h3>
-                {message && <p className="text-sm text-gray-700 mt-3 leading-relaxed">{message}</p>}
+                <h3 className="text-xl font-bold text-gray-900 leading-snug text-balance">{title}</h3>
+                {message && (
+                  <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-gray-600 text-balance">{message}</p>
+                )}
 
-                <div className="mt-8 flex items-center justify-center gap-3 w-full">
+                <div className="mt-6 flex items-center justify-center gap-3 w-full">
                   <button
                     disabled={loading}
                     onClick={onCancel}
-                    className="cancel-btn flex-1 inline-flex items-center justify-center px-5 py-3 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    className="cancel-btn flex-1 inline-flex items-center justify-center px-5 py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                   >
                     {cancelLabel}
                   </button>
@@ -101,7 +103,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                   <button
                     disabled={loading}
                     onClick={onConfirm}
-                    className={`flex-1 inline-flex items-center justify-center px-5 py-3 rounded-lg text-sm font-semibold !bg-red-600 hover:!bg-red-700 text-white ${config.buttonColor} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg`}
+                    className={`flex-1 inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold text-white ${config.buttonColor} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg`}
                   >
                     {loading ? config.loadingText : confirmLabel}
                   </button>

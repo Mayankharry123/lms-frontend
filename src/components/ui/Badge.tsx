@@ -16,6 +16,11 @@ const statusMap: Record<string, string> = {
   'plan submitted': 'bg-yellow-100 text-yellow-800',
   'plan reviewed': 'bg-orange-100 text-orange-800',
   'plan approved': 'bg-green-100 text-green-800',
+  'pending': 'bg-yellow-100 text-yellow-800',
+  'submitted': 'bg-yellow-100 text-yellow-800',
+  'declined': 'bg-red-100 text-red-800',
+  'denied': 'bg-red-100 text-red-800',
+  'live': 'bg-green-100 text-green-800',
 };
 
 const Badge: React.FC<Props> = ({ status, children, className, onClick, tabIndex, ...rest }) => {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getDesignations, getZones, getCities, getStates, getCountries } from '../../../services/CreateLead';
 import { quickCreateApi } from '../../../services/QuickCreate';
-import { fetchLeadSubSources } from '../../../services/ContactPersonsCard';
 import { Trash2, X as XIcon, Plus, UserRound } from 'lucide-react';
 import SelectField from '../../ui/SelectField';
 import ModalPopup from '../../ui/ModalPopup';
@@ -10,24 +9,24 @@ import { Button } from '../../ui';
 import type { Contact, ContactPersonsCardProps } from '../../../types/LeadManagentForm';
 import SweetAlert from '../../../utils/SweetAlert';
 
-type QuickCreateKind = 'type' | 'department' | 'subSource';
+type QuickCreateKind = 'department' | 'source' | 'subSource';
 type OptionItem = { value: string; label: string };
 
 const QUICK_CREATE_LABELS: Record<
   QuickCreateKind,
   { title: string; fieldLabel: string; placeholder: string; cta: string }
 > = {
-  type: {
-    title: 'Create Type',
-    fieldLabel: 'Type name',
-    placeholder: 'Enter type name',
-    cta: 'Create Type',
-  },
   department: {
     title: 'Create Department',
     fieldLabel: 'Department name',
     placeholder: 'Enter department name',
     cta: 'Create Department',
+  },
+  source: {
+    title: 'Create Source',
+    fieldLabel: 'Source name',
+    placeholder: 'Enter source name',
+    cta: 'Create Source',
   },
   subSource: {
     title: 'Create Sub Source',
@@ -48,6 +47,7 @@ const emptyContact = (id = '1'): Contact => ({
   type: '',
   designation: '',
   agencyBrand: '',
+  source: '',
   subSource: '',
   department: '',
   country: '',
@@ -73,6 +73,7 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
   onChange
   , errors,
   collapsible = false,
+  defaultOpen,
 }) => {
   const [contacts, setContacts] = useState<Contact[]>(initialContacts || [emptyContact('1')]);
 
@@ -139,31 +140,38 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
         if (contactId) {
           updateContact(contactId, 'department', createdValue);
         }
-      } else if (quickModalKind === 'type') {
-        const createdType = await quickCreateApi.createLeadType(name);
-        const createdTypeValue = String(createdType?.id ?? '');
-        const createdTypeName = String(createdType?.name || name).trim();
+      } else if (quickModalKind === 'source') {
+        const createdSource = await quickCreateApi.createSource(name);
+        const createdSourceValue = String(createdSource?.id ?? '');
+        const createdSourceName = String(createdSource?.name || name).trim();
 
-        if (!createdTypeValue || !createdTypeName) {
-          setQuickError('Type created but required data was not returned.');
+        if (!createdSourceValue || !createdSourceName) {
+          setQuickError('Source created but required data was not returned.');
           return;
         }
 
-        setLeadTypeOptions((prev) => {
+        setSourceOptions((prev) => {
           const hasExisting = prev.some(
             (opt) =>
-              opt.value === createdTypeValue ||
-              opt.label.toLowerCase() === createdTypeName.toLowerCase()
+              opt.value === createdSourceValue ||
+              opt.label.toLowerCase() === createdSourceName.toLowerCase()
           );
           if (hasExisting) return prev;
-          return [...prev, { value: createdTypeValue, label: createdTypeName }];
+          return [...prev, { value: createdSourceValue, label: createdSourceName }].sort((a, b) =>
+            a.label.localeCompare(b.label)
+          );
         });
 
         if (contactId) {
-          updateContact(contactId, 'type', createdTypeValue);
+          updateContact(contactId, 'source', createdSourceValue);
         }
       } else if (quickModalKind === 'subSource') {
-        const createdSubSource = await quickCreateApi.createSubSourceStandalone(name);
+        const selectedSourceId = contacts.find((contact) => contact.id === contactId)?.source || '';
+        if (!selectedSourceId) {
+          setQuickError('Please select a source first.');
+          return;
+        }
+        const createdSubSource = await quickCreateApi.createSubSourceForPreLead(selectedSourceId, name);
         const createdSubSourceValue = String(createdSubSource?.id ?? '');
         const createdSubSourceName = String(createdSubSource?.name || name).trim();
 
@@ -172,15 +180,21 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
           return;
         }
 
-        setSubSourceOptions((prev) => {
-          const hasExisting = prev.some(
-            (opt) =>
-              opt.value === createdSubSourceValue ||
-              opt.label.toLowerCase() === createdSubSourceName.toLowerCase()
-          );
-          if (hasExisting) return prev;
-          return [...prev, { value: createdSubSourceValue, label: createdSubSourceName }];
-        });
+        if (contactId) {
+          setSubSourceOptionsByContact((prev) => {
+            const current = prev[contactId] || [];
+            const hasExisting = current.some(
+              (opt) =>
+                opt.value === createdSubSourceValue ||
+                opt.label.toLowerCase() === createdSubSourceName.toLowerCase()
+            );
+            if (hasExisting) return prev;
+            return {
+              ...prev,
+              [contactId]: [...current, { value: createdSubSourceValue, label: createdSubSourceName }],
+            };
+          });
+        }
 
         if (contactId) {
           updateContact(contactId, 'subSource', createdSubSourceValue);
@@ -220,10 +234,15 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
   const [zoneLoading, setZoneLoading] = useState(false);
   const [zoneError, setZoneError] = useState<string | null>(null);
 
-  // Sub-source dropdown state
-  const [subSourceOptions, setSubSourceOptions] = useState<{ value: string; label: string }[]>([]);
-  const [subSourceLoading, setSubSourceLoading] = useState(false);
-  const [subSourceError, setSubSourceError] = useState<string | null>(null);
+  // Source dropdown state
+  const [sourceOptions, setSourceOptions] = useState<{ value: string; label: string }[]>([]);
+  const [sourceLoading, setSourceLoading] = useState(false);
+  const [sourceError, setSourceError] = useState<string | null>(null);
+
+  // Sub-source dropdown state, filtered by the selected source
+  const [subSourceOptionsByContact, setSubSourceOptionsByContact] = useState<Record<string, OptionItem[]>>({});
+  const [subSourceLoadingByContact, setSubSourceLoadingByContact] = useState<Record<string, boolean>>({});
+  const [subSourceErrorByContact, setSubSourceErrorByContact] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -254,24 +273,61 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
 
   useEffect(() => {
     let isMounted = true;
-    setSubSourceLoading(true);
-    setSubSourceError(null);
-    fetchLeadSubSources().then(({ data, error }) => {
+    setSourceLoading(true);
+    setSourceError(null);
+    quickCreateApi.listSourcesForPreLead().then((data) => {
       if (!isMounted) return;
-      if (error) {
-        setSubSourceError(error);
-        setSubSourceOptions([]);
-      } else {
-        setSubSourceOptions(
-          Array.isArray(data)
-            ? data.map((item: any) => ({ value: String(item.id), label: item.name }))
-            : []
-        );
-      }
-      setSubSourceLoading(false);
+      setSourceOptions(
+        data.map((item) => ({ value: String(item.id), label: item.name }))
+      );
+      setSourceLoading(false);
+    }).catch((error: any) => {
+      if (!isMounted) return;
+      setSourceError(error?.message || 'Failed to load sources');
+      setSourceOptions([]);
+      setSourceLoading(false);
     });
     return () => { isMounted = false; };
   }, []);
+
+  const sourceSelectionKey = contacts.map((contact) => `${contact.id}:${contact.source || ''}`).join('|');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    contacts.forEach((contact) => {
+      const sourceId = contact.source;
+      if (!sourceId) {
+        setSubSourceOptionsByContact((prev) => ({ ...prev, [contact.id]: [] }));
+        setSubSourceLoadingByContact((prev) => ({ ...prev, [contact.id]: false }));
+        setSubSourceErrorByContact((prev) => ({ ...prev, [contact.id]: null }));
+        return;
+      }
+
+      setSubSourceLoadingByContact((prev) => ({ ...prev, [contact.id]: true }));
+      setSubSourceErrorByContact((prev) => ({ ...prev, [contact.id]: null }));
+      quickCreateApi.listSubSourcesBySourceForPreLead(sourceId).then((data) => {
+        if (cancelled) return;
+        setSubSourceOptionsByContact((prev) => ({
+          ...prev,
+          [contact.id]: data.map((item) => ({ value: String(item.id), label: item.name })),
+        }));
+        setSubSourceLoadingByContact((prev) => ({ ...prev, [contact.id]: false }));
+      }).catch((error: any) => {
+        if (cancelled) return;
+        setSubSourceOptionsByContact((prev) => ({ ...prev, [contact.id]: [] }));
+        setSubSourceErrorByContact((prev) => ({
+          ...prev,
+          [contact.id]: error?.message || 'Failed to load sub-sources',
+        }));
+        setSubSourceLoadingByContact((prev) => ({ ...prev, [contact.id]: false }));
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceSelectionKey]);
 
   useEffect(() => {
     let isMounted = true;
@@ -381,6 +437,9 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
         // Clear city when state changes
         if (field === 'state' && value !== c.state) {
           updated.city = '';
+        }
+        if (field === 'source' && value !== c.source) {
+          updated.subSource = '';
         }
         return c.id === id ? updated : c;
       })
@@ -646,7 +705,7 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
             key={c.id}
             title="Contact Person"
             collapsible={collapsible}
-            defaultOpen={!collapsible}
+            defaultOpen={defaultOpen ?? !collapsible}
             innerClassName="px-4 py-5 p-5 bg-gray-50"
             icon={<UserRound className="h-5 w-5" strokeWidth={2} />}
             headerRight={
@@ -776,18 +835,7 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
                 {/* Row 3: Type, Designation, Department */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-sm text-gray-800">Type <span className="text-[#FF0000]">*</span></label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="!text-sm !py-0 !px-0 underline !outline-none whitespace-nowrap hover:!text-orange-500 "
-                        onClick={() => openQuickCreate('type', c.id)}
-                      >
-                        Create Type
-                      </Button>
-                    </div>
+                    <label className="block text-sm text-gray-800 mb-1">Type <span className="text-[#FF0000]">*</span></label>
 
                     <SelectField
                       name="type"
@@ -911,8 +959,8 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
                   </div>
                 </div>
 
-                {/* Row 5: Zone, Sub-Source, Postal Code */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Row 5: Zone, Source, Sub-Source, Postal Code */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm text-gray-800 mb-1">Zone</label>
                     <SelectField
@@ -932,6 +980,35 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm text-gray-800">Source <span className="text-[#FF0000]">*</span></label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="!text-sm !py-0 !px-0 underline !outline-none whitespace-nowrap hover:!text-orange-500 "
+                        onClick={() => openQuickCreate('source', c.id)}
+                      >
+                        Create Source
+                      </Button>
+                    </div>
+                    <SelectField
+                      name="source"
+                      placeholder={sourceLoading ? 'Loading...' : 'Select source'}
+                      options={sourceOptions}
+                      value={c.source}
+                      onChange={(v) => updateContact(c.id, 'source', typeof v === 'string' ? v : v[0] ?? '')}
+                      inputClassName="border border-gray-200 focus:ring-blue-500"
+                      disabled={sourceLoading}
+                    />
+                    {errors?.[c.id]?.source && <div className="text-xs text-red-500 mt-1">{errors[c.id].source}</div>}
+                    {sourceLoading && <div className="text-xs text-gray-400 mt-1">Loading...</div>}
+                    {sourceError && <div className="text-xs text-red-500 mt-1">{sourceError}</div>}
+                    {!sourceLoading && !sourceError && sourceOptions.length === 0 && (
+                      <div className="text-xs text-gray-400 mt-1">No sources found.</div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
                       <label className="block text-sm text-gray-800">Sub-Source <span className="text-[#FF0000]">*</span></label>
                       <Button
                         type="button"
@@ -939,6 +1016,7 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
                         size="sm"
                         className="!text-sm !py-0 !px-0 underline !outline-none whitespace-nowrap hover:!text-orange-500 "
                         onClick={() => openQuickCreate('subSource', c.id)}
+                        disabled={!c.source}
                       >
                         Create Sub Source
                       </Button>
@@ -946,8 +1024,12 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
 
                     <SelectField
                       name="subSource"
-                      placeholder={subSourceLoading ? "Loading..." : "Select sub-source"}
-                      options={subSourceOptions}
+                      placeholder={
+                        subSourceLoadingByContact[c.id]
+                          ? 'Loading...'
+                          : (c.source ? 'Select sub-source' : 'Select a source first')
+                      }
+                      options={subSourceOptionsByContact[c.id] || []}
                       value={c.subSource}
                       onChange={(v) => {
                         if (typeof v === 'string') {
@@ -959,13 +1041,13 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
                         }
                       }}
                       inputClassName="border border-gray-200 focus:ring-blue-500"
-                      disabled={subSourceLoading}
+                      disabled={!!subSourceLoadingByContact[c.id] || !c.source}
                     />
 
                     {errors?.[c.id]?.subSource && <div className="text-xs text-red-500 mt-1">{errors[c.id].subSource}</div>}
-                    {subSourceLoading && <div className="text-xs text-gray-400 mt-1">Loading...</div>}
-                    {subSourceError && <div className="text-xs text-red-500 mt-1">{subSourceError}</div>}
-                    {!subSourceLoading && !subSourceError && subSourceOptions.length === 0 && (
+                    {!!subSourceLoadingByContact[c.id] && <div className="text-xs text-gray-400 mt-1">Loading...</div>}
+                    {!!subSourceErrorByContact[c.id] && <div className="text-xs text-red-500 mt-1">{subSourceErrorByContact[c.id]}</div>}
+                    {!!c.source && !subSourceLoadingByContact[c.id] && !subSourceErrorByContact[c.id] && (subSourceOptionsByContact[c.id] || []).length === 0 && (
                       <div className="text-xs text-gray-400 mt-1">No sub-sources found.</div>
                     )}
                   </div>

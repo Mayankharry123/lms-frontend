@@ -54,7 +54,26 @@ export async function uploadPlanSubmission(
   return response.data;
 }
 
+/**
+ * Uploads an Excel cost sheet for a plan.
+ * POST /planners/{plannerId}/upload-cost-sheet with form field cost_sheet.
+ */
+export async function uploadCostSheet(
+  plannerId: number,
+  file: File
+): Promise<PlanSubmissionResponse> {
+  const formData = new FormData();
+  formData.append('cost_sheet', file);
+
+  const response = await api.customRequest<PlanSubmissionResponse>(
+    ENDPOINTS.PLANNERS.UPLOAD_COST_SHEET(plannerId),
+    { method: 'POST', data: formData }
+  );
+  return response.data;
+}
+
 import api from './api';
+import { ENDPOINTS } from '../constants/endpoints';
 
 // TypeScript interfaces for API response
 export interface BriefDetail {
@@ -91,6 +110,18 @@ export interface BriefDetail {
     name: string;
     email: string;
   };
+  sales_user?: {
+    id?: number;
+    name?: string;
+    email?: string;
+  } | null;
+  sales_person?: {
+    id?: number;
+    name?: string;
+    email?: string;
+  } | string | null;
+  campaign_start_date?: string | null;
+  campaign_end_date?: string | null;
   brief_status?: {
     id: number;
     name: string;
@@ -100,7 +131,8 @@ export interface BriefDetail {
     // Removed duplicate import statement
     name: string;
   };
-  planner_status?: string | null;
+  planner_id?: number | string | null;
+  planner_status?: { id?: number; name?: string } | string | null;
   created_at?: string;
   updated_at?: string;
 }

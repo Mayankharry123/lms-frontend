@@ -10,7 +10,7 @@ import LeadManagementSection from '../../components/forms/CreateLead/LeadManagem
 import ContactPersonsCard from '../../components/forms/CreateLead/ContactPersonsCard';
 import AssignPriorityCard from '../../components/forms/CreateLead/AssignPriorityCard';
 import CommentSection from '../../components/forms/CreateLead/CommentSection';
-import { MasterFormHeader, Button } from '../../components/ui';
+import { MasterCreateHeader, Button } from '../../components/ui';
 import { useNavigate } from 'react-router-dom';
 import { createLead, getBrandLists, getAgenciesLists, getLeadTypes } from '../../services/CreateLead';
 import SweetAlert from '../../utils/SweetAlert';
@@ -78,7 +78,7 @@ const CreateLead: React.FC = () => {
   const [callFeedback, setCallFeedback] = useState<string | undefined>(undefined);
   const [organisation, setOrganisation] = useState<string | undefined>(undefined);
   const [organisationError, setOrganisationError] = useState<string | null>(null);
-  const [contacts, setContacts] = useState<any[]>([{ id: '1', fullName: '', profileUrl: '', email: '', mobileNo: '', mobileNo2: '', showSecondMobile: false, type: '', designation: '', agencyBrand: '', subSource: '', department: '', country: '', state: '', city: '', zone: '', postalCode: '' }]);
+  const [contacts, setContacts] = useState<any[]>([{ id: '1', fullName: '', profileUrl: '', email: '', mobileNo: '', mobileNo2: '', showSecondMobile: false, type: '', designation: '', agencyBrand: '', source: '', subSource: '', department: '', country: '', state: '', city: '', zone: '', postalCode: '' }]);
   const [contactErrors, setContactErrors] = useState<Record<string, Partial<Record<string, string>>>>({});
 
   // Helper to clear error for a field as soon as it is valid
@@ -283,6 +283,9 @@ const CreateLead: React.FC = () => {
       if (!lead.country) {
         newContactErrors[firstContactId] = { ...(newContactErrors[firstContactId] || {}), country: 'Please select country.' };
       }
+      if (!lead.source) {
+        newContactErrors[firstContactId] = { ...(newContactErrors[firstContactId] || {}), source: 'Please select source.' };
+      }
       if (!lead.subSource) {
         newContactErrors[firstContactId] = { ...(newContactErrors[firstContactId] || {}), subSource: 'Please select sub-source.' };
       }
@@ -359,6 +362,8 @@ const CreateLead: React.FC = () => {
         priority_id: priority ? Number(priority) : undefined,
         designation_id: lead.designation ? Number(lead.designation) : undefined,
         department_id: lead.department ? Number(lead.department) : undefined,
+        lead_source_id: lead.source ? Number(lead.source) : undefined,
+        source_id: lead.source ? Number(lead.source) : undefined,
         sub_source_id: lead.subSource ? Number(lead.subSource) : undefined,
         country_id: lead.country ? Number(lead.country) : undefined,
         state_id: lead.state ? Number(lead.state) : undefined,
@@ -405,6 +410,8 @@ const CreateLead: React.FC = () => {
                 lead_type_id: 'type',
                 designation_id: 'designation',
                 department_id: 'department',
+                lead_source_id: 'source',
+                source_id: 'source',
                 sub_source_id: 'subSource',
                 country_id: 'country',
               };
@@ -434,10 +441,12 @@ const CreateLead: React.FC = () => {
 
   // Custom render for LeadManagementSection to pass dropdown data
   return (
-    <div className="flex-1 w-full max-w-full">
-      <MasterFormHeader onBack={() => navigate(-1)} title="Create Lead" />
+    <div className="flex-1 w-full max-w-full overflow-x-hidden">
+      <MasterCreateHeader
+        onClose={() => navigate('/lead-management/all-leads')}
+      />
 
-      <div className="space-y-6">
+      <div className="space-y-3 sm:space-y-4">
         <LeadManagementSection
           selectedOption={selectedOption}
           onSelectOption={setSelectedOption}
@@ -449,12 +458,13 @@ const CreateLead: React.FC = () => {
           options={brandOptions}
           loading={loading}
           error={error}
+          collapsible
         />
 
         <ContactPersonsCard
           initialContacts={contacts}
           onChange={(c) => {
-            const updated = c && c.length > 0 ? c : [{ id: '1', fullName: '', profileUrl: '', email: '', mobileNo: '', mobileNo2: '', showSecondMobile: false, type: '', designation: '', agencyBrand: '', subSource: '', department: '', country: '', state: '', city: '', zone: '', postalCode: '' }];
+            const updated = c && c.length > 0 ? c : [{ id: '1', fullName: '', profileUrl: '', email: '', mobileNo: '', mobileNo2: '', showSecondMobile: false, type: '', designation: '', agencyBrand: '', source: '', subSource: '', department: '', country: '', state: '', city: '', zone: '', postalCode: '' }];
             setContacts(updated);
             const lead = updated[0];
             const id = lead.id || '1';
@@ -465,9 +475,12 @@ const CreateLead: React.FC = () => {
             clearContactFieldError(id, 'designation', lead.designation);
             clearContactFieldError(id, 'department', lead.department);
             clearContactFieldError(id, 'country', lead.country);
+            clearContactFieldError(id, 'source', lead.source);
             clearContactFieldError(id, 'subSource', lead.subSource);
           }}
           errors={contactErrors}
+          collapsible
+          defaultOpen
         />
 
         <AssignPriorityCard
@@ -485,11 +498,16 @@ const CreateLead: React.FC = () => {
             if (newPriority !== undefined) setPriority(newPriority);
             if (newCallFeedback !== undefined) setCallFeedback(newCallFeedback);
           }}
+          collapsible
+          defaultOpen
         />
 
-        <CommentSection value={comment} onChange={setComment} />
+        <CommentSection value={comment} onChange={setComment} collapsible defaultOpen />
 
-        <div className="flex justify-end">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:space-x-4 pt-1">
+          <Button onClick={() => navigate('/lead-management/all-leads')}>
+            Cancel
+          </Button>
           <Button variant="primary" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
           </Button>

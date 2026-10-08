@@ -1,20 +1,22 @@
 import React from 'react';
-import Breadcrumb from './Breadcrumb';
+import Breadcrumb, { type BreadcrumbItem } from './Breadcrumb';
 import { IoIosArrowBack } from 'react-icons/io';
 
 interface MasterCreateHeaderProps {
   title?: string;
   onClose?: () => void;
+  breadcrumbItems?: BreadcrumbItem[];
 }
 
 export const MasterCreateHeader: React.FC<MasterCreateHeaderProps> = ({
   title,
   onClose,
+  breadcrumbItems,
 }) => {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <Breadcrumb />
+        <Breadcrumb items={breadcrumbItems} preferItems={Boolean(breadcrumbItems)} />
         {onClose && (
           <button
             onClick={onClose}
