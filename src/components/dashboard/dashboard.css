@@ -818,6 +818,10 @@
   }
 }
 
+.dashboard-table-panel__header--plain {
+  padding-bottom: 1rem;
+}
+
 .dashboard-section-block {
   padding-top: 1rem;
   border-top: 1px solid #e5e7eb;

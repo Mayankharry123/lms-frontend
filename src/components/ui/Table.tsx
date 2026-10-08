@@ -48,6 +48,8 @@ interface TableProps<T> {
   onApprove?: (item: T) => void;
   onDecline?: (item: T) => void;
   onCreatePo?: (item: T) => void;
+  canEdit?: (item: T) => boolean;
+  canBriefCreation?: (item: T) => boolean;
   canApprove?: (item: T) => boolean;
   canDecline?: (item: T) => boolean;
   /** Show the View action without a permission slug. */
@@ -73,7 +75,7 @@ interface TableProps<T> {
 }
 
 const Table = <T,>(props: TableProps<T>) => {
-  const { data, columns, startIndex = 0, loading = false, onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, briefCreationLabel, onCostSheet, onDownload, onApprove, onDecline, onCreatePo, canApprove, canDecline, showViewWithoutPermission = false, emptyMessage = 'No records found', editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, createPoPermissionSlug, keyExtractor, compact = false, desktopOnMobile = true } = props;
+  const { data, columns, startIndex = 0, loading = false, onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, briefCreationLabel, onCostSheet, onDownload, onApprove, onDecline, onCreatePo, canEdit, canBriefCreation, canApprove, canDecline, showViewWithoutPermission = false, emptyMessage = 'No records found', editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, createPoPermissionSlug, keyExtractor, compact = false, desktopOnMobile = true } = props;
   const { show: showCellTooltip, hide: hideCellTooltip, TooltipLayer } = useTableCellTooltip();
 
   // responsive padding classes used for cells/headers; compact mode reduces padding further
@@ -238,13 +240,13 @@ const Table = <T,>(props: TableProps<T>) => {
                           isLast={index === data.length - 1}
                           rowIndex={index}
                           totalRows={data.length}
-                          onEdit={() => onEdit?.(item)}
+                          {...(onEdit && (!canEdit || canEdit(item)) && { onEdit: () => onEdit(item) })}
                           onView={() => onView?.(item)}
                           {...(onDelete && { onDelete: () => onDelete(item) })}
                           {...(onUpload && { onUpload: () => onUpload(item) })}
                           {...(onChat && { onChat: () => onChat(item) })}
                           {...(onCreateMeeting && { onCreateMeeting: () => onCreateMeeting(item) })}
-                          {...(onBriefCreation && { onBriefCreation: () => onBriefCreation(item) })}
+                          {...(onBriefCreation && (!canBriefCreation || canBriefCreation(item)) && { onBriefCreation: () => onBriefCreation(item) })}
                           briefCreationLabel={briefCreationLabel}
                           {...(onCostSheet && { onCostSheet: () => onCostSheet(item) })}
                           {...(onDownload && { onDownload: () => onDownload(item) })}
@@ -316,13 +318,13 @@ const Table = <T,>(props: TableProps<T>) => {
                   isLast={index === data.length - 1}
                   rowIndex={index}
                   totalRows={data.length}
-                  onEdit={() => onEdit?.(item)}
+                  {...(onEdit && (!canEdit || canEdit(item)) && { onEdit: () => onEdit(item) })}
                   onView={() => onView?.(item)}
                   {...(onDelete && { onDelete: () => onDelete(item) })}
                   {...(onUpload && { onUpload: () => onUpload(item) })}
                   {...(onChat && { onChat: () => onChat(item) })}
                   {...(onCreateMeeting && { onCreateMeeting: () => onCreateMeeting(item) })}
-                  {...(onBriefCreation && { onBriefCreation: () => onBriefCreation(item) })}
+                  {...(onBriefCreation && (!canBriefCreation || canBriefCreation(item)) && { onBriefCreation: () => onBriefCreation(item) })}
                   briefCreationLabel={briefCreationLabel}
                   {...(onCostSheet && { onCostSheet: () => onCostSheet(item) })}
                   {...(onDownload && { onDownload: () => onDownload(item) })}

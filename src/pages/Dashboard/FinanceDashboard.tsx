@@ -3,11 +3,13 @@
  * @description Finance dashboard for cost sheets, approvals, and purchase orders.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, FileSpreadsheet, FileText, Hourglass, Receipt, Wallet } from 'lucide-react';
+import { BadgeCheck, Eye, FileSpreadsheet, FileText, Hourglass, Receipt, Wallet } from 'lucide-react';
 import DashboardChartsSection from '../../components/dashboard/DashboardChartsSection';
 import DashboardMetricCard from '../../components/dashboard/DashboardMetricCard';
+import Badge from '../../components/ui/Badge';
+import Table, { type Column } from '../../components/ui/Table';
 import { useApiQuery } from '../../hooks/useApiQuery';
 import { getFinanceChartMetrics, getFinanceSummary } from '../../services/DashboardCharts';
 import type { FinanceDashboardItem } from '../../services/DashboardCharts';
@@ -20,17 +22,65 @@ import {
 import { formatDashboardCurrency } from '../../utils/dashboardFormat';
 import type { DashboardView } from '../../utils/dashboardCardVisibility';
 
-const STATUS_BADGE: Record<string, string> = {
-  approved: 'dashboard-badge dashboard-badge--success',
-  denied: 'dashboard-badge dashboard-badge--danger',
-  pending: 'dashboard-badge dashboard-badge--warning',
-};
-
 type FinanceDashboardProps = {
   embedded?: boolean;
   filters?: DashboardFilterState;
   isCardVisible?: (view: DashboardView, cardId: string) => boolean;
 };
+
+const dash = (value: unknown) => (value == null || value === '' ? '-' : String(value));
+
+const FINANCE_COLUMNS: Column<FinanceDashboardItem>[] = [
+  {
+    key: 'id',
+    header: 'Cost Sheet ID',
+    className: 'whitespace-nowrap',
+    render: (row) => dash(row.id),
+  },
+  {
+    key: 'briefId',
+    header: 'Brief ID',
+    className: 'whitespace-nowrap',
+    render: (row) => dash(row.briefId),
+  },
+  {
+    key: 'briefName',
+    header: 'Brief Name',
+    className: 'whitespace-nowrap overflow-hidden truncate',
+    render: (row) => dash(row.briefName),
+  },
+  {
+    key: 'plannerName',
+    header: 'Planner Name',
+    className: 'whitespace-nowrap overflow-hidden truncate',
+    render: (row) => dash(row.plannerName),
+  },
+  {
+    key: 'assignUser',
+    header: 'Finance User',
+    className: 'whitespace-nowrap overflow-hidden truncate',
+    render: (row) => dash(row.assignUser),
+  },
+  {
+    key: 'financeStatus',
+    header: 'Finance Status',
+    minWidth: 140,
+    className: 'min-w-[140px] align-middle',
+    allowOverflow: true,
+    render: (row) =>
+      row.financeStatus ? (
+        <Badge status={row.financeStatus}>{row.financeStatus}</Badge>
+      ) : (
+        '-'
+      ),
+  },
+  {
+    key: 'purchaseOrderAmount',
+    header: 'PO Amount',
+    className: 'whitespace-nowrap',
+    render: (row) => formatDashboardCurrency(row.purchaseOrderAmount),
+  },
+];
 
 const FinanceDashboard: React.FC<FinanceDashboardProps> = ({
   embedded = false,
@@ -54,40 +104,36 @@ const FinanceDashboard: React.FC<FinanceDashboardProps> = ({
 
   const recent = data?.recent ?? [];
 
-  const renderFinanceCard = (item: FinanceDashboardItem) => {
-    const statusKey = item.financeStatus.toLowerCase();
-    return (
-      <div key={item.id} className="dashboard-planner-brief">
-        <div className="dashboard-planner-brief__meta">
-          <div className="dashboard-planner-brief__id-row">
-            <span className="dashboard-planner-brief__id-label">Cost Sheet</span>
-            <span className="dashboard-planner-brief__id">#{item.id}</span>
-            <span className={STATUS_BADGE[statusKey] ?? 'dashboard-badge'}>{item.financeStatus}</span>
-          </div>
-          <p className="dashboard-planner-brief__field">
-            <strong>Brief Name:</strong> {item.briefName}
-          </p>
-          <p className="dashboard-planner-brief__field">
-            <strong>Planner:</strong> {item.plannerName}
-          </p>
-          <p className="dashboard-planner-brief__field">
-            <strong>Finance User:</strong> {item.assignUser}
-          </p>
-        </div>
-        <div className="dashboard-planner-brief__aside">
-          <span className="dashboard-planner-brief__budget">
-            {formatDashboardCurrency(item.purchaseOrderAmount)}
-          </span>
-        </div>
-      </div>
-    );
-  };
+  const tableColumns = useMemo<Column<FinanceDashboardItem>[]>(
+    () => [
+      ...FINANCE_COLUMNS,
+      {
+        key: 'view',
+        header: 'View',
+        className: 'text-center',
+        allowOverflow: true,
+        disableTooltip: true,
+        render: () => (
+          <button
+            type="button"
+            onClick={() => navigate(ROUTES.COST_SHEETS)}
+            className="inline-flex items-center justify-center w-8 h-8 !p-0 border-0 !bg-transparent rounded-full hover:!bg-orange-50 transition-colors"
+            title="View Cost Sheet"
+            aria-label="View cost sheet"
+          >
+            <Eye className="w-5 h-5 shrink-0 !text-orange-700" strokeWidth={2} />
+          </button>
+        ),
+      },
+    ],
+    [navigate],
+  );
 
   return (
     <div className="dashboard-content">
       {error ? <div className="dashboard-error-state">{error}</div> : null}
       {summaryError ? <div className="dashboard-error-state">{summaryError}</div> : null}
-      <div className="dashboard-stat-grid">
+      <div className="dashboard-stat-grid dashboard-stat-grid--3">
         {!error && isCardVisible('finance', 'finance.cost-sheets') ? (
           <DashboardMetricCard
             title="Cost Sheets"
@@ -152,24 +198,28 @@ const FinanceDashboard: React.FC<FinanceDashboardProps> = ({
       <DashboardChartsSection variant="finance" filters={filters} isCardVisible={isCardVisible} />
 
       {isCardVisible('finance', 'finance.recent') ? (
-        <div className="dashboard-section-block">
-          <div className="flex items-center justify-between mb-3">
+        <div className={`dashboard-table-panel ${embedded ? 'is-embedded' : ''}`}>
+          <div className="dashboard-table-panel__header dashboard-table-panel__header--plain">
             <h3 className="dashboard-section-block__title mb-0">Recent Cost Sheets</h3>
-            <button type="button" className="a-tag-button" onClick={() => navigate(ROUTES.COST_SHEETS)}>
+            <button type="button" className="a-tag-button shrink-0" onClick={() => navigate(ROUTES.COST_SHEETS)}>
               View All
             </button>
           </div>
-          <div className="dashboard-planner-briefs">
-            {loading ? (
-              <div className="dashboard-empty-state">Loading cost sheets...</div>
-            ) : error ? (
-              <div className="dashboard-error-state">{error}</div>
-            ) : recent.length === 0 ? (
-              <div className="dashboard-empty-state">No cost sheets in the selected date range.</div>
-            ) : (
-              recent.map(renderFinanceCard)
-            )}
-          </div>
+          {error ? (
+            <div className="dashboard-error-state px-4 py-6">{error}</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table
+                data={recent}
+                columns={tableColumns}
+                compact
+                desktopOnMobile
+                loading={loading}
+                emptyMessage="No cost sheets in the selected date range."
+                keyExtractor={(item, index) => String(item.id ?? index)}
+              />
+            </div>
+          )}
         </div>
       ) : null}
     </div>
