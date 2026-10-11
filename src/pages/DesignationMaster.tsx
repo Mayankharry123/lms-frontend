@@ -1,7 +1,7 @@
 /**
  * @file DesignationMaster.tsx
  * @description Designation master data list, create, view, and edit.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 

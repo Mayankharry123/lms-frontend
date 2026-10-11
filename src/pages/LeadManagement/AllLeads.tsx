@@ -1,7 +1,7 @@
 /**
  * @file AllLeads.tsx
  * @description All leads listing with filters, actions, and pagination.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -30,7 +30,6 @@ import { setUnreadCount, setNotifications } from '../../redux/slices/notificatio
 import { getUnreadNotificationCount, listNotifications } from '../../services/notifications';
 import type { CallStatusOption, UserOption, AllLeadtype } from '../../types/AllLeadtype';
 import { buildBriefInitialDataFromLead } from '../../utils/briefLeadPrefill';
-import LeadChatModal from '../../components/lead/LeadChatModal';
 import { MessageCircle } from 'lucide-react';
 
 // Call status options will be fetched from API
@@ -223,10 +222,6 @@ const AllLeads: React.FC = () => {
     navigate(ROUTES.LEAD.CHAT(leadId));
   };
 
-  const handleChat = (lead: AllLeadtype) => {
-    setChatLead(lead);
-  };
-
   const handleAssignToChange = (leadId: string, newSalesMan: string) => {
     setLeads((prev) =>
       prev.map((lead) =>
@@ -274,8 +269,6 @@ const AllLeads: React.FC = () => {
   const [scheduleMeetingLeadId, setScheduleMeetingLeadId] = useState<string | null>(null);
   const [confirmDeleteLabel, setConfirmDeleteLabel] = useState<string>('');
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [chatLead, setChatLead] = useState<AllLeadtype | null>(null);
-
   // Open confirmation dialog (used by ActionMenu)
   const handleDelete = (leadId: string) => {
     const found = leads.find((l) => l.id === leadId);
@@ -389,7 +382,7 @@ const AllLeads: React.FC = () => {
         organisation: it.organisation?.name || it.organisation?.name || it.organisation_name || it.organisation_name || it.organisation || it.organisation || '',
         assignBy: it.created_by_user?.name || it.assign_by_name || it.created_by || '',
         assignTo: it.current_assign_user_name || it.assigned_user?.name || (it.current_assign_user && typeof it.current_assign_user === 'object' ? it.current_assign_user.name : '') || it.assign_to_name || '',
-        dateTime: it.created_at || it.dateTime || it.created_at_formatted || '',
+        dateTime: it.updated_at || it.dateTime || it.updated_at_formatted || it.created_at || it.created_at_formatted || '',
         status: it.status || '',
         leadStatus: it.lead_status_relation?.name || it.lead_status || '',
         callStatus: (() => {
@@ -537,7 +530,7 @@ const AllLeads: React.FC = () => {
       className: 'min-w-[140px]',
       allowOverflow: true,
     } as Column<AllLeadtype>] : []),
-    { key: 'dateTime', header: 'Date & Time', render: (it: AllLeadtype) => it.dateTime || '-', className: 'whitespace-nowrap' },
+    { key: 'dateTime', header: 'Last Action', render: (it: AllLeadtype) => it.dateTime || '-', className: 'whitespace-nowrap' },
     {
       key: 'status',
       header: 'Lead Status',
@@ -620,17 +613,6 @@ const AllLeads: React.FC = () => {
         onConfirm={confirmDelete}
       />
 
-      <LeadChatModal
-        isOpen={Boolean(chatLead)}
-        lead={chatLead}
-        callStatusOptions={callStatusOptions}
-        onClose={() => setChatLead(null)}
-        onSaved={async () => {
-          setChatLead(null);
-          await fetchLeads();
-        }}
-      />
-
       {hasPermission('leads.create') && (
         <MasterHeader
           onCreateClick={handleCreateLead}
@@ -641,7 +623,7 @@ const AllLeads: React.FC = () => {
           createPermissionSlug="leads.create"
         />
       )}
-      
+
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         {/* Table Header */}
         <TableHeader
@@ -674,7 +656,6 @@ const AllLeads: React.FC = () => {
             onDelete={(it: AllLeadtype) => handleDelete(it.id)}
             onCreateMeeting={(it: AllLeadtype) => handleCreateMeeting(it)}
             onBriefCreation={(it: AllLeadtype) => handleBriefCreation(it)}
-            onChat={(it: AllLeadtype) => handleChat(it)}
             editPermissionSlug="leads.edit"
             viewPermissionSlug="leads.view"
             deletePermissionSlug="leads.delete"

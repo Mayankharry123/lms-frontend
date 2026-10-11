@@ -1,13 +1,14 @@
 /**
  * @file BriefLog.tsx
  * @description Brief activity log and plan history navigation.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
 import { updatePlannerStatus } from '../../services/UpdatePlannerStatus';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import Pagination from '../../components/ui/Pagination';
 import Table, { type Column } from '../../components/ui/Table';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -25,6 +26,7 @@ import { getPlannerStatuses } from '../../services/BriefLog';
 import SweetAlert from '../../utils/SweetAlert';
 import FilePreviewModal from '../../components/ui/FilePreviewModal';
 import { Eye, MessageCircle } from 'lucide-react';
+import type { RootState } from '../../redux/store';
 
 // Data is fetched from API via `listBriefLogs` service
 
@@ -32,6 +34,12 @@ const BriefLog: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
+  const canUpdatePlanStatus = hasPermission('brief-status.update');
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+  const hasPlannerActionRestriction = (currentUser?.roles ?? []).some((role) => {
+    const roleName = String(role?.name ?? '').trim().toLowerCase();
+    return ['planner', 'planning admin', 'planing admin'].includes(roleName);
+  });
   type PlannerOption = { id: string | number; name: string };
 
   // Validate URL to only allow safe protocols (http, https, blob)
@@ -66,6 +74,8 @@ const BriefLog: React.FC = () => {
 
   // Fetch planner statuses for dropdown
   useEffect(() => {
+    if (!canUpdatePlanStatus) return;
+
     let mounted = true;
     const load = async () => {
       try {
@@ -79,7 +89,7 @@ const BriefLog: React.FC = () => {
     };
     load();
     return () => { mounted = false; };
-  }, []);
+  }, [canUpdatePlanStatus]);
 
   // Fetch brief logs (server-side paginated)
   useEffect(() => {
@@ -254,11 +264,6 @@ const BriefLog: React.FC = () => {
       render: (item) => item.product_name || 'N/A',
     },
     {
-      key: 'contact_person',
-      header: 'Contact Person',
-      render: (item) => item.contact_person || 'N/A',
-    },
-    {
       key: 'mode_of_campaign',
       header: 'Mode Of Campaign',
       render: (item) => item.mode_of_campaign || 'N/A',
@@ -307,7 +312,7 @@ const BriefLog: React.FC = () => {
     },
     {
       key: 'status',
-      header: 'Status',
+      header: 'Plan Status',
       render: (item) => {
         // Show dropdown with planner statuses, default to '-' if null
         const status = item.planner_status;
@@ -318,6 +323,13 @@ const BriefLog: React.FC = () => {
           statusValue = String(status);
         }
         const isLoading = statusUpdatingId === item.id;
+        if (!canUpdatePlanStatus) {
+          return (
+            <div className="min-w-[140px] text-sm text-gray-700">
+              {statusValue}
+            </div>
+          );
+        }
         return (
           <div className="min-w-[140px]">
             <StatusDropdown
@@ -366,7 +378,7 @@ const BriefLog: React.FC = () => {
           url = String(attachmentVal).trim();
         }
         if (!url) return <span className="text-xs text-gray-400">—</span>;
-        
+
         // Extract name from various possible formats
         let name = '';
         const attachmentNameVal = (item as any).attachmentName || (item as any).attachment_name || '';
@@ -375,19 +387,19 @@ const BriefLog: React.FC = () => {
         } else if (typeof attachmentNameVal === 'string') {
           name = String(attachmentNameVal).trim();
         }
-        
+
         // Fallback to filename from URL if no name provided
         if (!name) {
           name = url.split('/').pop() || 'attachment';
         }
-        
+
         // Validate URL protocol to prevent XSS attacks
         const isUrlValid = isValidAttachmentUrl(url);
         if (!isUrlValid) {
           console.warn('Invalid attachment URL protocol:', url);
           return <span className="text-xs text-gray-400">—</span>;
         }
-        
+
         return (
           <button
             type="button"
@@ -459,6 +471,7 @@ const BriefLog: React.FC = () => {
 
   // Called when dropdown value changes (before confirmation)
   const handleSelectStatus = (id: string | null, newStatus: string) => {
+    if (!canUpdatePlanStatus) return;
     console.log('handleSelectStatus called with:', { id, newStatus });
     if (!id) {
       SweetAlert.showWarning('Planner ID not found for this row. Cannot update status.');
@@ -469,6 +482,7 @@ const BriefLog: React.FC = () => {
 
   // Called when user confirms status change
   const handleStatusConfirm = async (id: string | null, newStatus: string) => {
+    if (!canUpdatePlanStatus) return;
     console.log('handleStatusConfirm called with:', { id, newStatus });
     if (!id) {
       SweetAlert.showWarning('Planner ID not found. Cannot update status.');
@@ -502,6 +516,22 @@ const BriefLog: React.FC = () => {
   const handleEdit = (item: BriefLogItem) => {
     navigate(`/brief/edit-submitted-plan/${item.brief_id || item.id}`);
   };
+
+  const getPlannerStatusName = (item: BriefLogItem) => {
+    const plannerStatus = item.planner_status;
+    return String(
+      plannerStatus && typeof plannerStatus === 'object' && 'name' in plannerStatus
+        ? plannerStatus.name
+        : item.status
+    ).trim().toLowerCase();
+  };
+
+  const canEditPlan = (item: BriefLogItem) =>
+    !hasPlannerActionRestriction || getPlannerStatusName(item) !== 'plan approved';
+
+  const canSubmitPlan = (item: BriefLogItem) =>
+    !hasPlannerActionRestriction ||
+    !['plan approved', 'plan submitted'].includes(getPlannerStatusName(item));
 
   const startIndex = (currentPage - 1) * itemsPerPage;
 
@@ -537,9 +567,12 @@ const BriefLog: React.FC = () => {
             keyExtractor={(it: BriefLogItem, idx: number) => `${it.id}-${idx}`}
             columns={columns}
             onEdit={(item: BriefLogItem) => handleEdit(item)}
+            editLabel="Re-Upload"
+            canEdit={canEditPlan}
             onView={(item: BriefLogItem) => navigate(ROUTES.BRIEF.PLAN_HISTORY((item.brief_id || item.id).toString()))}
             onUpload={(item: BriefLogItem) => navigate(`/brief/plan-submission/${item.brief_id || item.id}`)}
-            editPermissionSlug="brief.edit"
+            canBriefCreation={canSubmitPlan}
+            editPermissionSlug="submitted-plan.edit"
             viewPermissionSlug="brief.view"
             deletePermissionSlug="brief.delete"
             uploadPermissionSlug="brief.upload"

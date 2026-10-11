@@ -43,7 +43,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
   const filtered = query ? normalized.filter(o => o.label.toLowerCase().includes(query.toLowerCase())) : normalized;
 
   // Defensive: ensure value is always an array
-  const safeValue = Array.isArray(value) ? value : [];
+  const safeValue = React.useMemo(() => (Array.isArray(value) ? value : []), [value]);
 
   const sortedFiltered = React.useMemo(() => {
     if (!safeValue.length) return filtered;

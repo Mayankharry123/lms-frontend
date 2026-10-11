@@ -1,7 +1,7 @@
 /**
  * @file LoginCard.tsx
  * @description Login screen with credentials and session bootstrap.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 

@@ -15,8 +15,6 @@ import { ROUTES } from '../../constants';
 import type { RootState } from '../../redux/store';
 import { BRIEF_CHAT_API, useLeadAssignHistory } from '../../hooks/useLeadAssignHistory';
 import type { LeadAssignHistoryItem, ReminderBeforeUnit } from '../../types/lead/lead.types';
-import { getCallStatuses } from '../../services/CallStatus';
-import { fetchLeadById } from '../../services/ViewLead';
 import SweetAlert from '../../utils/SweetAlert';
 
 const REMINDER_UNIT_OPTIONS = [
@@ -44,24 +42,6 @@ function messageTime(item: LeadAssignHistoryItem): string | null {
     minute: '2-digit',
     hour12: true,
   });
-}
-
-function toCallStatusOptions(data: unknown): { value: string; label: string }[] {
-  const rows = Array.isArray(data)
-    ? data
-    : Array.isArray((data as { data?: unknown[] } | null)?.data)
-      ? ((data as { data?: unknown[] }).data || [])
-      : [];
-
-  return rows
-    .map((item) => {
-      const row = item as { id?: number | string; value?: string; name?: string; label?: string };
-      return {
-        value: String(row.id ?? row.value ?? ''),
-        label: String(row.name ?? row.label ?? ''),
-      };
-    })
-    .filter((item) => item.value && item.label);
 }
 
 function formatReminderAt(value: string): string {
@@ -171,8 +151,6 @@ const LeadChat: React.FC<{ chatType?: 'lead' | 'brief' }> = ({ chatType = 'lead'
     sendMessage,
   } = useLeadAssignHistory(leadId || undefined, isBriefChat ? BRIEF_CHAT_API : undefined);
   const [draft, setDraft] = useState('');
-  const [callStatusId, setCallStatusId] = useState('');
-  const [callStatusOptions, setCallStatusOptions] = useState<{ value: string; label: string }[]>([]);
   const [reminder, setReminder] = useState(false);
   const [reminderAt, setReminderAt] = useState('');
   const [reminderBefore, setReminderBefore] = useState('');
@@ -265,48 +243,6 @@ const LeadChat: React.FC<{ chatType?: 'lead' | 'brief' }> = ({ chatType = 'lead'
     [requestOlderMessages]
   );
 
-  useEffect(() => {
-    let mounted = true;
-    const loadStatuses = async () => {
-      if (isBriefChat) return;
-      try {
-        const data: unknown = await getCallStatuses();
-        if (!mounted) return;
-        setCallStatusOptions(toCallStatusOptions(data));
-      } catch {
-        if (mounted) setCallStatusOptions([]);
-      }
-    };
-    void loadStatuses();
-    return () => {
-      mounted = false;
-    };
-  }, [isBriefChat]);
-
-  useEffect(() => {
-    if (!leadId || isBriefChat) return;
-    let mounted = true;
-    fetchLeadById(leadId)
-      .then((lead) => {
-        if (!mounted || !lead) return;
-        const relationId = lead.call_status_relation?.id;
-        if (relationId != null && String(relationId)) {
-          setCallStatusId((prev) => prev || String(relationId));
-          return;
-        }
-        const currentName = String(lead.call_status || '').trim();
-        if (!currentName || currentName.toUpperCase() === 'N/A') return;
-        const matched = callStatusOptions.find(
-          (opt) => opt.label.toLowerCase() === currentName.toLowerCase()
-        );
-        if (matched) setCallStatusId((prev) => prev || matched.value);
-      })
-      .catch(() => undefined);
-    return () => {
-      mounted = false;
-    };
-  }, [isBriefChat, leadId, callStatusOptions]);
-
   const orderedMessages = useMemo(() => {
     return messages
       .map((message, index) => ({ message, index }))
@@ -381,15 +317,10 @@ const LeadChat: React.FC<{ chatType?: 'lead' | 'brief' }> = ({ chatType = 'lead'
     return () => observer.disconnect();
   }, [pinThreadToBottom]);
 
-  const canSend = Boolean(draft.trim() && (isBriefChat || callStatusId) && leadId && !sending);
+  const canSend = Boolean(draft.trim() && leadId && !sending);
 
   const submitDraft = async () => {
     if (!draft.trim() || sending || !leadId) return;
-
-    if (!isBriefChat && !callStatusId) {
-      setComposerError('Please select a call status.');
-      return;
-    }
 
     if (reminder) {
       if (!reminderAt.trim()) {
@@ -407,12 +338,10 @@ const LeadChat: React.FC<{ chatType?: 'lead' | 'brief' }> = ({ chatType = 'lead'
     stickToBottomRef.current = true;
     pendingOwnSendRef.current = true;
     try {
-      const statusPayload = isBriefChat ? {} : { call_status_id: Number(callStatusId) };
       await sendMessage(
         reminder
           ? {
               comment: draft.trim(),
-              ...statusPayload,
               reminder: true,
               reminder_at: formatReminderAt(reminderAt),
               reminder_before: Number(reminderBefore),
@@ -420,7 +349,6 @@ const LeadChat: React.FC<{ chatType?: 'lead' | 'brief' }> = ({ chatType = 'lead'
             }
           : {
               comment: draft.trim(),
-              ...statusPayload,
               reminder: false,
             },
         { id: currentUser?.id, name: currentUser?.name }
@@ -578,28 +506,6 @@ const LeadChat: React.FC<{ chatType?: 'lead' | 'brief' }> = ({ chatType = 'lead'
           className="relative z-20 overflow-visible border-t border-gray-200 bg-white p-4 sm:p-5"
         >
           <div className="flex items-end gap-2">
-            {!isBriefChat && (
-              <div className="relative z-30 w-[9.5rem] shrink-0 overflow-visible sm:w-56">
-                <label htmlFor="chat_call_status" className="app-label">
-                  Call Status
-                  <span className="ml-1 text-red-500">*</span>
-                </label>
-                <SelectField
-                  name="call_status_id"
-                  value={callStatusId}
-                  placeholder="Select call status"
-                  options={callStatusOptions}
-                  searchable
-                  autoCloseOnSelect
-                  placement="top"
-                  disabled={sending}
-                  onChange={(value) => {
-                    setCallStatusId(typeof value === 'string' ? value : value[0] ?? '');
-                    if (composerError) setComposerError('');
-                  }}
-                />
-              </div>
-            )}
             <label htmlFor="lead-chat-message" className="sr-only">
               Type a message
             </label>

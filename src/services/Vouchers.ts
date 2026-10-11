@@ -9,6 +9,7 @@ export interface VoucherRow {
   subtotal: number | null;
   sgstRate: number | null;
   cgstRate: number | null;
+  igstRate: number | null;
   totalTax: number | null;
   totalAmount: number | null;
   expenseFileName: string;
@@ -34,6 +35,11 @@ export interface CreateVoucherPayload {
 }
 
 export interface VoucherTypeOption {
+  id: string;
+  name: string;
+}
+
+export interface PaymentModeOption {
   id: string;
   name: string;
 }
@@ -96,9 +102,26 @@ export function normalizeVoucherTypeOptions(payload: unknown): VoucherTypeOption
     .filter((option): option is VoucherTypeOption => option !== null);
 }
 
+export function normalizePaymentModeOptions(payload: unknown): PaymentModeOption[] {
+  return extractArray(payload)
+    .map((item) => {
+      const record = toRecord(item);
+      if (!record) return null;
+      const id = asText(record.id ?? record.payment_mode_type_id ?? record.paymentModeTypeId);
+      const name = asText(record.name ?? record.payment_mode ?? record.paymentMode ?? record.label);
+      return id && name ? { id, name } : null;
+    })
+    .filter((option): option is PaymentModeOption => option !== null);
+}
+
 export async function listVoucherTypes(): Promise<VoucherTypeOption[]> {
   const response = await http.get(ENDPOINTS.VOUCHERS.TYPES);
   return normalizeVoucherTypeOptions(response.data);
+}
+
+export async function listPaymentModes(): Promise<PaymentModeOption[]> {
+  const response = await http.get(ENDPOINTS.VOUCHERS.PAYMENT_MODES);
+  return normalizePaymentModeOptions(response.data);
 }
 
 export async function getVoucherSampleDownload(
@@ -126,6 +149,7 @@ export function mapVoucher(raw: RecordValue): VoucherRow {
     subtotal: asNullableNumber(raw.subtotal),
     sgstRate: asNullableNumber(raw.sgst_rate ?? raw.sgstRate),
     cgstRate: asNullableNumber(raw.cgst_rate ?? raw.cgstRate),
+    igstRate: asNullableNumber(raw.igst_rate ?? raw.igstRate),
     totalTax: asNullableNumber(raw.total_tax ?? raw.totalTax),
     totalAmount: asNullableNumber(raw.total_amount ?? raw.totalAmount),
     expenseFileName: asText(raw.file_name ?? raw.expense_file_name ?? raw.fileName),

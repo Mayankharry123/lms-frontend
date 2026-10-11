@@ -1,7 +1,7 @@
 /**
  * @file CreateUser.tsx
  * @description Create a new application user.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -65,49 +65,49 @@ const CreateUser: React.FC<RbacFormPageProps> = ({ mode = 'create', initialData 
         ? zoneRaw.map((item: any) => String(item?.id ?? item?.zone_id ?? item?.value ?? item?.name ?? item ?? '')).filter(Boolean)
         : zoneRaw
           ? [typeof zoneRaw === 'object' && zoneRaw !== null
-              ? String((zoneRaw as any).id ?? (zoneRaw as any).zone_id ?? (zoneRaw as any).value ?? (zoneRaw as any).zone ?? (zoneRaw as any).name ?? '')
-              : String(zoneRaw)]
+            ? String((zoneRaw as any).id ?? (zoneRaw as any).zone_id ?? (zoneRaw as any).value ?? (zoneRaw as any).zone ?? (zoneRaw as any).name ?? '')
+            : String(zoneRaw)]
           : [];
       const organisationsValue = Array.isArray(originationRaw)
         ? originationRaw
-            .map((item: any) =>
-              String(item?.id ?? item?.organisation_id ?? item?.value ?? item?.name ?? item ?? '')
-            )
-            .filter(Boolean)
+          .map((item: any) =>
+            String(item?.id ?? item?.organisation_id ?? item?.value ?? item?.name ?? item ?? '')
+          )
+          .filter(Boolean)
         : originationRaw
           ? [
-              typeof originationRaw === 'object' && originationRaw !== null
-                ? String(
-                    (originationRaw as any).id ??
-                      (originationRaw as any).value ??
-                      (originationRaw as any).organisation_id ??
-                      (originationRaw as any).name ??
-                      ''
-                  )
-                : String(originationRaw),
-            ].filter(Boolean)
+            typeof originationRaw === 'object' && originationRaw !== null
+              ? String(
+                (originationRaw as any).id ??
+                (originationRaw as any).value ??
+                (originationRaw as any).organisation_id ??
+                (originationRaw as any).name ??
+                ''
+              )
+              : String(originationRaw),
+          ].filter(Boolean)
           : initialData.organisation_id
             ? [String(initialData.organisation_id)]
             : [];
       const departmentsRaw = initialData.departments ?? initialData.department;
       const departmentsValue = Array.isArray(departmentsRaw)
         ? departmentsRaw
-            .map((item: any) =>
-              String(item?.id ?? item?.department_id ?? item?.value ?? item?.name ?? item ?? '')
-            )
-            .filter(Boolean)
+          .map((item: any) =>
+            String(item?.id ?? item?.department_id ?? item?.value ?? item?.name ?? item ?? '')
+          )
+          .filter(Boolean)
         : departmentsRaw
           ? [
-              typeof departmentsRaw === 'object' && departmentsRaw !== null
-                ? String(
-                    (departmentsRaw as any).id ??
-                      (departmentsRaw as any).value ??
-                      (departmentsRaw as any).department_id ??
-                      (departmentsRaw as any).name ??
-                      ''
-                  )
-                : String(departmentsRaw),
-            ].filter(Boolean)
+            typeof departmentsRaw === 'object' && departmentsRaw !== null
+              ? String(
+                (departmentsRaw as any).id ??
+                (departmentsRaw as any).value ??
+                (departmentsRaw as any).department_id ??
+                (departmentsRaw as any).name ??
+                ''
+              )
+              : String(departmentsRaw),
+          ].filter(Boolean)
           : initialData.department_id
             ? [String(initialData.department_id)]
             : [];

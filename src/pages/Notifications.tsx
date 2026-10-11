@@ -1,7 +1,7 @@
 /**
  * @file Notifications.tsx
  * @description In-app notifications center with module-based filtering.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -149,7 +149,7 @@ const Notifications: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, selectedCategories, notifications, dispatch, moduleKey]);  
+  }, [activeTab, selectedCategories, notifications, dispatch, moduleKey]);
 
   useEffect(() => {
     fetchUnreadCount();

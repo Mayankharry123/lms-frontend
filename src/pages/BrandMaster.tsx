@@ -1,7 +1,7 @@
 /**
  * @file BrandMaster.tsx
  * @description Brand master data list, create, view, and edit.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -198,7 +198,7 @@ const BrandMaster: React.FC = () => {
   };
 
   const handlePageChange = (page: number) => setCurrentPage(page);
-  console.log("isCreateRoute ",isCreateRoute);
+  console.log("isCreateRoute ", isCreateRoute);
   return (
     <div className="flex-1 w-full max-w-full overflow-x-hidden">
       <ConfirmDialog

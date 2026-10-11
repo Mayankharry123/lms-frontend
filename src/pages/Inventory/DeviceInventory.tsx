@@ -103,6 +103,7 @@ const DeviceInventory: React.FC<DeviceInventoryPageProps> = ({
 
   const { theme } = useTheme();
   const mapPointColor = useMemo(() => {
+    void theme;
     if (typeof document === 'undefined') return '#f26222';
     return (
       getComputedStyle(document.documentElement).getPropertyValue('--brand-accent').trim() ||

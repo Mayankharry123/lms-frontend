@@ -1,7 +1,7 @@
 /**
  * @file View.tsx
  * @description Pre-lead list, detail, and inline edit views.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 

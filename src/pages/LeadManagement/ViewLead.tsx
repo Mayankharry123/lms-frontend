@@ -1,7 +1,7 @@
 /**
  * @file ViewLead.tsx
  * @description Read-only lead detail view.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -396,7 +396,7 @@ const ViewLead: React.FC = () => {
                   <p className="text-xs text-gray-600 mt-1">{lead.assigned_user?.email || ''}</p>
                 </div>
               </div>
-              
+
               <div>
                 <label className="text-sm font-medium text-gray-600 block mb-2">Current Assign User ID</label>
                 <div className="bg-orange-100 rounded-lg p-3 border border-orange-200">

@@ -1,7 +1,7 @@
 /**
  * @file CreateBrandForm.tsx
  * @description Form to create or update a brand master record.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -820,7 +820,7 @@ const CreateBrandForm: React.FC<MasterInlineFormProps> = ({ onClose, initialData
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.22 }} 
+      transition={{ duration: 0.22 }}
       className="space-y-6"
     >
       <MasterFormHeader onBack={onClose} title={mode === 'edit' ? 'Edit Brand' : 'Create Brand'} />

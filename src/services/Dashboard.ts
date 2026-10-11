@@ -1,8 +1,10 @@
 import { handleApiError } from '../utils/apiErrorHandler';
 import { apiClient } from '../utils/apiClient';
+import { ENDPOINTS } from '../constants/endpoints';
 import {
   buildDashboardFilterQuery,
   appendDashboardQueryParams,
+  withDashboardFilters,
   type DashboardFilterState,
 } from '../utils/dashboardFilters';
 
@@ -53,11 +55,274 @@ export type DashboardApiResponse = {
   open_alerts: number | null;
 };
 
-const ENDPOINTS = {
-  PENDING_ASSIGNMENTS: '/leads/pending',
-  DASHBOARD_STATS: '/dashboard',
-  MEETINGS: '/meetings',
+const SERVICE_ENDPOINTS = {
+  PENDING_ASSIGNMENTS: ENDPOINTS.LEADS.PENDING,
+  DASHBOARD_STATS: ENDPOINTS.DASHBOARD.STATS,
+  PENDING_ASSIGNMENT_COUNTS: ENDPOINTS.DASHBOARD.UNASSIGNED_COUNTS,
+  UNASSIGNED_COUNTS: ENDPOINTS.DASHBOARD.UNASSIGNED_COUNTS,
+  LEGACY_PENDING_ASSIGNMENT_COUNTS: ENDPOINTS.DASHBOARD.PENDING_ASSIGNMENTS,
+  MEETINGS: ENDPOINTS.MEETINGS.LIST,
 } as const;
+
+export type PendingAssignmentCounts = {
+  lead: number;
+  brief: number;
+  plan: number;
+  backupPlan: number;
+  costSheets: number;
+  purchaseOrder: number;
+  totalUnassigned?: number;
+};
+
+const EMPTY_PENDING_ASSIGNMENT_COUNTS: PendingAssignmentCounts = {
+  lead: 0,
+  brief: 0,
+  plan: 0,
+  backupPlan: 0,
+  costSheets: 0,
+  purchaseOrder: 0,
+  totalUnassigned: 0,
+};
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
+const toCount = (value: unknown): number | null => {
+  if (value == null || value === '') return null;
+  if (Array.isArray(value)) return value.length;
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return toCount(record.count ?? record.total ?? record.pending ?? record.pending_count ?? record.value);
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : null;
+};
+
+const pickCount = (source: Record<string, unknown> | null, keys: string[]): number | null => {
+  if (!source) return null;
+  for (const key of keys) {
+    if (!(key in source)) continue;
+    const count = toCount(source[key]);
+    if (count != null) return count;
+  }
+  return null;
+};
+
+const extractPendingAssignmentCounts = (payload: unknown): Partial<PendingAssignmentCounts> => {
+  const root = asRecord(payload) ?? {};
+  const nested =
+    asRecord(root.pending_assignments) ??
+    asRecord(root.pendingAssignments) ??
+    asRecord(root.unassigned_counts) ??
+    asRecord(root.unassignedCounts) ??
+    asRecord(root.notifications) ??
+    asRecord(root.counts) ??
+    asRecord(root.data) ??
+    root;
+
+  const lead = pickCount(nested, [
+    'unassigned_sales',
+    'unassigned_sale',
+    'unassigned_leads',
+    'unassigned_lead',
+    'lead',
+    'leads',
+    'pending_lead',
+    'pending_leads',
+    'pending_lead_count',
+    'lead_count',
+    'leads_count',
+  ]);
+  const brief = pickCount(nested, [
+    'unassigned_briefs',
+    'unassigned_brief',
+    'brief',
+    'briefs',
+    'pending_brief',
+    'pending_briefs',
+    'pending_brief_count',
+    'brief_count',
+    'briefs_count',
+  ]);
+  const plan = pickCount(nested, [
+    'unassigned_planner',
+    'unassigned_planners',
+    'unassigned_plans',
+    'unassigned_plan',
+    'plan',
+    'plans',
+    'pending_plan',
+    'pending_plans',
+    'pending_plan_count',
+    'plan_count',
+    'plans_count',
+  ]);
+  const backupPlan = pickCount(nested, [
+    'unassigned_operations',
+    'unassigned_operation',
+    'unassigned_ops',
+    'unassigned_backup_plans',
+    'unassigned_backup_plan',
+    'unassigned_backupPlan',
+    'backup_plan',
+    'backupPlan',
+    'backup_plans',
+    'pending_backup_plan',
+    'pending_backup_plans',
+    'pending_backup_plan_count',
+    'backup_plan_count',
+  ]);
+  const costSheets = pickCount(nested, [
+    'unassigned_finance',
+    'unassigned_cost_sheets',
+    'unassigned_cost_sheet',
+    'unassigned_costSheets',
+    'cost_sheet',
+    'cost_sheets',
+    'costSheet',
+    'costSheets',
+    'pending_cost_sheet',
+    'pending_cost_sheets',
+    'pending_cost_sheet_count',
+    'cost_sheet_count',
+  ]);
+  const purchaseOrder = pickCount(nested, [
+    'unassigned_purchase_orders',
+    'unassigned_purchase_order',
+    'unassigned_purchaseOrders',
+    'unassigned_purchaseOrder',
+    'purchase_order',
+    'purchase_orders',
+    'purchaseOrder',
+    'purchaseOrders',
+    'po',
+    'pending_purchase_order',
+    'pending_purchase_orders',
+    'pending_purchase_order_count',
+    'purchase_order_count',
+  ]);
+  const totalUnassigned = pickCount(nested, [
+    'total_unassigned',
+    'totalUnassigned',
+    'total_pending',
+    'totalPending',
+  ]);
+
+  return {
+    ...(lead != null ? { lead } : {}),
+    ...(brief != null ? { brief } : {}),
+    ...(plan != null ? { plan } : {}),
+    ...(backupPlan != null ? { backupPlan } : {}),
+    ...(costSheets != null ? { costSheets } : {}),
+    ...(purchaseOrder != null ? { purchaseOrder } : {}),
+    ...(totalUnassigned != null ? { totalUnassigned } : {}),
+  };
+};
+
+const mergePendingAssignmentCounts = (
+  current: Partial<PendingAssignmentCounts>,
+  next: Partial<PendingAssignmentCounts>,
+): Partial<PendingAssignmentCounts> => {
+  const merged = { ...current };
+  (Object.keys(next) as (keyof PendingAssignmentCounts)[]).forEach((key) => {
+    if (merged[key] == null && next[key] != null) merged[key] = next[key];
+  });
+  return merged;
+};
+
+const fetchCountPayload = async (
+  path: string,
+  filters?: DashboardFilterState,
+): Promise<Partial<PendingAssignmentCounts>> => {
+  const res = await apiClient.get<unknown>(
+    withDashboardFilters(path, filters, { includePriority: false }),
+  );
+  if (!res?.success) return {};
+  return extractPendingAssignmentCounts(res.data);
+};
+
+const fetchPendingLeadCount = async (filters?: DashboardFilterState): Promise<number | null> => {
+  const query = filters ? buildDashboardFilterQuery(filters, { includePriority: true }) : '';
+  const res = await apiClient.get<unknown[]>(`${SERVICE_ENDPOINTS.PENDING_ASSIGNMENTS}${query}`);
+  if (!res?.success) return null;
+
+  const paginationTotal = res.meta?.pagination?.total;
+  if (typeof paginationTotal === 'number' && Number.isFinite(paginationTotal)) {
+    return Math.max(0, Math.round(paginationTotal));
+  }
+  return Array.isArray(res.data) ? res.data.length : null;
+};
+
+export async function getPendingAssignmentCounts(
+  filters?: DashboardFilterState,
+): Promise<PendingAssignmentCounts> {
+  let counts: Partial<PendingAssignmentCounts> = {};
+
+  try {
+    counts = mergePendingAssignmentCounts(
+      counts,
+      await fetchCountPayload(SERVICE_ENDPOINTS.UNASSIGNED_COUNTS, filters),
+    );
+  } catch {
+    // Dedicated unassigned counts endpoint is optional; fall back to other backend sources.
+  }
+
+  // If filtered fetch returned nothing (e.g. backend route does not support filter params), fetch without filters
+  if (Object.keys(counts).length === 0) {
+    try {
+      counts = mergePendingAssignmentCounts(
+        counts,
+        await fetchCountPayload(SERVICE_ENDPOINTS.UNASSIGNED_COUNTS),
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  // Fallback to legacy pending-assignments endpoint if needed
+  if (Object.keys(counts).length === 0) {
+    try {
+      counts = mergePendingAssignmentCounts(
+        counts,
+        await fetchCountPayload(SERVICE_ENDPOINTS.LEGACY_PENDING_ASSIGNMENT_COUNTS, filters),
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  const missingKeys = (Object.keys(EMPTY_PENDING_ASSIGNMENT_COUNTS) as (keyof PendingAssignmentCounts)[])
+    .filter((key) => counts[key] == null);
+
+  if (missingKeys.length > 0) {
+    try {
+      counts = mergePendingAssignmentCounts(
+        counts,
+        await fetchCountPayload(SERVICE_ENDPOINTS.DASHBOARD_STATS, filters),
+      );
+    } catch {
+      // Dashboard stats may omit module-specific pending assignment fields.
+    }
+  }
+
+  if (counts.lead == null) {
+    try {
+      const leadCount = await fetchPendingLeadCount(filters);
+      if (leadCount != null) counts.lead = leadCount;
+    } catch {
+      // Keep the lead count at zero when the pending-leads source is unavailable.
+    }
+  }
+
+  return {
+    ...EMPTY_PENDING_ASSIGNMENT_COUNTS,
+    ...counts,
+  };
+}
+
+export const getUnassignedCounts = getPendingAssignmentCounts;
 
 export type PendingAssignmentsResponse = {
   data: PendingAssignment[];
@@ -76,7 +341,7 @@ export async function getPendingAssignments(
 ): Promise<PendingAssignmentsResponse> {
   try {
     const query = filters ? buildDashboardFilterQuery(filters, { includePriority: true }) : '';
-    const res = await apiClient.get<PendingAssignment[]>(`${ENDPOINTS.PENDING_ASSIGNMENTS}${query}`);
+    const res = await apiClient.get<PendingAssignment[]>(`${SERVICE_ENDPOINTS.PENDING_ASSIGNMENTS}${query}`);
     const json = res;
     if (!json || !json.success) {
       const message = (json as any)?.message || (json as any)?.error || 'Request failed';
@@ -154,7 +419,7 @@ export async function getDashboardStats(
 ): Promise<DashboardStatsResponse> {
   try {
     const query = filters ? buildDashboardFilterQuery(filters, { includePriority: false }) : '';
-    const res = await apiClient.get<DashboardApiResponse>(`${ENDPOINTS.DASHBOARD_STATS}${query}`);
+    const res = await apiClient.get<DashboardApiResponse>(`${SERVICE_ENDPOINTS.DASHBOARD_STATS}${query}`);
     const json = res;
     if (!json || !json.success) {
       const message = (json as any)?.message || (json as any)?.error || 'Request failed';
@@ -185,7 +450,7 @@ export async function getMeetings(
 ): Promise<MeetingsResponse> {
   try {
     const endpoint = appendDashboardQueryParams(
-      ENDPOINTS.MEETINGS,
+      SERVICE_ENDPOINTS.MEETINGS,
       filters,
       { per_page: 50 },
       { includePriority: false }

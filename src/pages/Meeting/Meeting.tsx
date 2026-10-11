@@ -1,7 +1,7 @@
 /**
  * @file Meeting.tsx
  * @description Meeting pipeline list, create, and detail views.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -101,7 +101,7 @@ const MeetingPipeline: React.FC = () => {
                 createButtonLabel="Create Meeting"
               />
             )}
-          
+
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
               {/* Table Header */}
               <TableHeader title='Meeting Pipeline'>

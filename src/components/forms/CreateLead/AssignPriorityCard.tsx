@@ -259,15 +259,19 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
           : [];
         setPriorityOptions(fetched);
 
-        // Check if current priority is still valid, if not, clear it
-        const isCurrentPriorityValid = priorityRef.current && fetched.some((option: any) => option.value === priorityRef.current);
-        if (priorityRef.current && !isCurrentPriorityValid) {
-          onChangeRef.current?.({ organisation: organisationRef.current, assignTo: assignToRef.current, priority: undefined, callFeedback });
-        }
-
-        // Auto-select if only one priority and no priority is currently selected
-        if (fetched.length === 1 && !priorityRef.current) {
-          onChangeRef.current?.({ organisation: organisationRef.current, assignTo: assignToRef.current, priority: fetched[0].value, callFeedback });
+        const currentPriorityIsValid = fetched.some(
+          (option) => option.value === priorityRef.current
+        );
+        if (!currentPriorityIsValid) {
+          const defaultPriority =
+            fetched.find((option) => option.label.trim().toLowerCase() === 'high') ??
+            fetched[0];
+          onChangeRef.current?.({
+            organisation: organisationRef.current,
+            assignTo: assignToRef.current,
+            priority: defaultPriority?.value,
+            callFeedback,
+          });
         }
 
         setPriorityLoading(false);
@@ -343,22 +347,6 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
             )}
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Priority</label>
-            <SelectField
-              options={priorityOptions}
-              placeholder="Select Priority"
-              value={priority}
-              onChange={(value) => onChange?.({ organisation, assignTo, priority: typeof value === 'string' ? value : value[0] ?? '', callFeedback })}
-              inputClassName="px-3 py-2 rounded-lg bg-white text-[var(--text-primary)] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-              disabled={priorityLoading}
-            />
-            {priorityLoading && <div className="text-xs text-gray-400 mt-1">Loading...</div>}
-            {priorityError && <div className="text-xs text-red-500 mt-1">{priorityError}</div>}
-            {!priorityLoading && !priorityError && priorityOptions.length === 0 && (
-              <div className="text-xs text-gray-400 mt-1">No priorities found.</div>
-            )}
-          </div>
-          <div>
             <label className="block text-sm text-gray-600 mb-1">Call Feedback</label>
             <SelectField
               options={callStatusOptions}
@@ -372,6 +360,22 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
             {callStatusError && <div className="text-xs text-red-500 mt-1">{callStatusError}</div>}
             {!callStatusLoading && !callStatusError && callStatusOptions.length === 0 && (
               <div className="text-xs text-gray-400 mt-1">No call statuses found.</div>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">Priority</label>
+            <SelectField
+              options={priorityOptions}
+              placeholder="Select Priority"
+              value={priority}
+              onChange={(value) => onChange?.({ organisation, assignTo, priority: typeof value === 'string' ? value : value[0] ?? '', callFeedback })}
+              inputClassName="px-3 py-2 rounded-lg bg-white text-[var(--text-primary)] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              disabled={priorityLoading}
+            />
+            {priorityLoading && <div className="text-xs text-gray-400 mt-1">Loading...</div>}
+            {priorityError && <div className="text-xs text-red-500 mt-1">{priorityError}</div>}
+            {!priorityLoading && !priorityError && priorityOptions.length === 0 && (
+              <div className="text-xs text-gray-400 mt-1">No priorities found.</div>
             )}
           </div>
         </div>

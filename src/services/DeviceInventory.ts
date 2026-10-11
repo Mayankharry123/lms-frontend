@@ -9,6 +9,11 @@ import type {
 } from '../types/inventory.types';
 import { exportDeviceInventoryExcel } from '../utils/deviceInventoryExcel';
 import { resolveCdnImageUrl, resolveDeviceImageUrl } from '../utils/deviceImageLoader';
+import {
+  downloadBlobFile,
+  defaultDatedXlsxFilename,
+  parseContentDispositionFilename,
+} from '../utils/downloadFile';
 
 export type { DeviceData, DeviceMapMarker };
 
@@ -460,8 +465,6 @@ export async function downloadDeviceInventoryExport(
   downloadUrl: string,
   fallbackFilename: string
 ): Promise<{ notice?: string }> {
-  const { downloadBlobFile, defaultDatedXlsxFilename, parseContentDispositionFilename } =
-    await import('../utils/downloadFile');
 
   const target = resolveSspDownloadPath(downloadUrl);
   const isAbsolute = target.startsWith('http://') || target.startsWith('https://');

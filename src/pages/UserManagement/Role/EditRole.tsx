@@ -1,7 +1,7 @@
 /**
  * @file EditRole.tsx
  * @description Edit role details and permissions.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -21,7 +21,7 @@ import PermissionTree from '../../../components/ui/PermissionTree';
 const EditRole: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
+
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -51,7 +51,7 @@ const EditRole: React.FC = () => {
         } else {
           setPermissionError('Failed to load permissions');
         }
-        
+
         if (id) {
           const roleId = parseInt(extractNumericId(id), 10);
           const roleData = (await getRole(String(roleId))) as unknown as Record<string, unknown>;
@@ -140,9 +140,9 @@ const EditRole: React.FC = () => {
       transition={{ duration: 0.22 }}
       className="space-y-6"
     >
-      <MasterFormHeader 
-        onBack={handleBack} 
-        title="Edit Role" 
+      <MasterFormHeader
+        onBack={handleBack}
+        title="Edit Role"
       />
 
       <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -161,11 +161,10 @@ const EditRole: React.FC = () => {
                   setErrors((prev) => ({ ...prev, name: '' }));
                 }}
                 placeholder="Please enter role name"
-                className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${
-                  errors.name
+                className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${errors.name
                     ? 'border border-red-500 bg-red-50 focus:ring-red-500'
                     : 'border border-gray-200 focus:ring-black'
-                }`}
+                  }`}
                 aria-invalid={errors.name ? 'true' : 'false'}
                 aria-describedby={errors.name ? 'name-error' : undefined}
               />
@@ -194,11 +193,10 @@ const EditRole: React.FC = () => {
                 onChange={handleChange}
                 placeholder="Please enter role description"
                 rows={4}
-                className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors resize-none ${
-                  errors.description
+                className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors resize-none ${errors.description
                     ? 'border border-red-500 bg-red-50 focus:ring-red-500'
                     : 'border border-gray-200 focus:ring-black'
-                }`}
+                  }`}
                 aria-invalid={errors.description ? 'true' : 'false'}
                 aria-describedby={errors.description ? 'description-error' : undefined}
               />

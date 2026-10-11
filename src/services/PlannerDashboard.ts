@@ -18,6 +18,7 @@ export interface PlannerDashboardBrief {
 }
 
 export interface PlannerDashboardCardResponse {
+  total_plans?: number;
   active_briefs: number;
   closed_briefs: number;
   overdue_briefs: number;

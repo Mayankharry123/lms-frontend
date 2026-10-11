@@ -1,7 +1,7 @@
 /**
  * @file MeetingSchedule.tsx
  * @description Schedule a meeting for a selected lead.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -27,10 +27,11 @@ const MeetingSchedule: React.FC = () => {
     prefillLeadId?: string;
     updateCallStatusId?: string | number;
   } | null;
-  const prefillLeadId =
-    searchParams.get('lead_id')?.replace(/^#/, '') ||
-    searchParams.get('leadId')?.replace(/^#/, '') ||
+  const rawPrefillLeadId =
+    searchParams.get('lead_id') ||
+    searchParams.get('leadId') ||
     routeState?.prefillLeadId;
+  const prefillLeadId = rawPrefillLeadId ? String(rawPrefillLeadId).trim().replace(/^#/, '') : '';
   const pendingCallStatusId =
     searchParams.get('call_status_id') ||
     (routeState?.updateCallStatusId != null ? String(routeState.updateCallStatusId) : '');
@@ -59,7 +60,7 @@ const MeetingSchedule: React.FC = () => {
     };
   }, []);
 
-  const [lead, setLead] = useState<string>('');
+  const [lead, setLead] = useState<string>(prefillLeadId);
   const [meetingType, setMeetingType] = useState<string>('');
   const [attendees, setAttendees] = useState<string[]>([]);
   const [startDateTime, setStartDateTime] = useState<Date | null>(null);
@@ -94,30 +95,36 @@ const MeetingSchedule: React.FC = () => {
 
   // Fetch leads and attendees from API
   useEffect(() => {
+    let isMounted = true;
     const fetchData = async () => {
       try {
         // Fetch leads
         const leadsResponse = await listLeads(1, 100);
-        const leadOpts = leadsResponse.data.map((leadItem: any) => ({
-          value: String(leadItem.id),
-          label: `${leadItem.name || leadItem.contact_person || `Lead ${leadItem.id}`} #${leadItem.id}`,
-        }));
+        const leadOpts = leadsResponse.data.map((leadItem: any) => {
+          const rawId = String(leadItem.id ?? '').replace(/^#/, '');
+          return {
+            value: rawId,
+            label: `${leadItem.name || leadItem.contact_person || `Lead ${rawId}`} #${rawId}`,
+          };
+        });
         if (prefillLeadId && !leadOpts.some((option) => option.value === prefillLeadId)) {
           try {
             const detail = await getLeadById(prefillLeadId);
             const leadName = detail.name || detail.contact_person || detail.brand_name || `Lead ${prefillLeadId}`;
+            const detailId = String(detail.id ?? prefillLeadId).replace(/^#/, '');
             leadOpts.unshift({
-              value: String(detail.id ?? prefillLeadId),
-              label: `${leadName} #${detail.id ?? prefillLeadId}`,
+              value: detailId,
+              label: `${leadName} #${detailId}`,
             });
           } catch {
             leadOpts.unshift({ value: prefillLeadId, label: `Lead #${prefillLeadId}` });
           }
         }
-        setLeadOptions(leadOpts);
-
-        if (prefillLeadId) {
-          setLead(prefillLeadId);
+        if (isMounted) {
+          setLeadOptions(leadOpts);
+          if (prefillLeadId) {
+            setLead(prefillLeadId);
+          }
         }
 
         // Fetch attendees
@@ -126,19 +133,26 @@ const MeetingSchedule: React.FC = () => {
           value: String(user.id),
           label: `${user.name || user.email || 'Unknown'} #${user.id}`,
         }));
-        setAttendeesOptions(attendeeOpts);
+        if (isMounted) {
+          setAttendeesOptions(attendeeOpts);
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
-        if (prefillLeadId) {
-          setLead(prefillLeadId);
-          setLeadOptions([{ value: prefillLeadId, label: `Lead #${prefillLeadId}` }]);
-        } else {
-          setLeadOptions([]);
+        if (isMounted) {
+          if (prefillLeadId) {
+            setLead(prefillLeadId);
+            setLeadOptions([{ value: prefillLeadId, label: `Lead #${prefillLeadId}` }]);
+          } else {
+            setLeadOptions([]);
+          }
+          setAttendeesOptions([]);
         }
-        setAttendeesOptions([]);
       }
     };
     fetchData();
+    return () => {
+      isMounted = false;
+    };
   }, [prefillLeadId]);
 
   const handleSave = async () => {
@@ -194,9 +208,11 @@ const MeetingSchedule: React.FC = () => {
         return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
       };
 
+      const cleanLeadId = String(lead).trim().replace(/^#/, '');
+
       const payload = {
         title,
-        lead_id: String(lead),
+        lead_id: cleanLeadId,
         attendees_id: attendeeIds,  // Array of integer IDs
         type: meetingType,
         location,
@@ -220,11 +236,11 @@ const MeetingSchedule: React.FC = () => {
           const matched = statuses.find((status) => String(status.id) === String(pendingCallStatusId))
             || statuses.find((status) => status.name.trim().toLowerCase() === 'meeting schedule');
           if (matched?.id != null) callStatusId = matched.id;
-          await updateCallStatus(String(lead), callStatusId);
+          await updateCallStatus(cleanLeadId, callStatusId);
         } catch (statusError) {
           console.error('Meeting was created, but call status was not updated', statusError);
-          SweetAlert.showError('Meeting was scheduled, but the lead status could not be updated.');
-          return;
+          // Backend workflow already auto-updates lead status and call status on meeting creation,
+          // so we log the warning without interrupting successful meeting creation flow.
         }
       }
 
@@ -256,7 +272,7 @@ const MeetingSchedule: React.FC = () => {
           type="button"
           onClick={() => navigate(-1)}
           className="font-semibold px-3 py-1 rounded-md flex items-center text-sm btn-primary text-white">
-          
+
           <IoIosArrowBack size={16} className="mr-1" />
           Go Back
         </button>

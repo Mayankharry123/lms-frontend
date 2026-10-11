@@ -43,9 +43,9 @@ export async function updateLeadCallStatus(
   leadId: string | number,
   callStatusId: string | number
 ): Promise<void> {
-  const res = await apiClient.post(ENDPOINTS.LEADS.CALL_STATUS(leadId), {
+  const cleanId = String(leadId).replace(/^#/, '');
+  const res = await apiClient.put(ENDPOINTS.LEADS.CALL_STATUS(cleanId), {
     call_status_id: callStatusId,
-    _method: 'Put',
   });
   await assertSuccess(res);
 }

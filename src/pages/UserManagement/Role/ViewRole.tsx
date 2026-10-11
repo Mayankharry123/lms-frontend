@@ -1,7 +1,7 @@
 /**
  * @file ViewRole.tsx
  * @description View role details and assigned permissions.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -87,7 +87,7 @@ const ViewRole: React.FC = () => {
             <div className="text-sm text-gray-800 font-semibold">Description</div>
             <div className="text-sm text-gray-600 whitespace-pre-wrap">{role.description}</div>
           </div>
-          
+
         </div>
 
 

@@ -1,7 +1,7 @@
 /**
  * @file CreateSourceForm.tsx
  * @description Form to create or update a lead source master record.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -134,59 +134,58 @@ const CreateSourceForm: React.FC<CreateSourceFormProps> = ({ onClose, onSave }) 
         <div className="p-4 bg-gray-50 rounded-2xl h-[70dvh]">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Source Name <span className="text-red-500">*</span>
-              </label>
               <div>
-                <SelectField
-                  name="source"
-                  value={source}
-                  onChange={(v) => { setSource(typeof v === 'string' ? v : v[0] ?? ''); setErrors(prev => ({ ...prev, source: '' })); }}
-                  options={options.map(o => ({ value: String(o.id), label: o.name }))}
-                  placeholder={loading ? 'Loading...' : 'Please Select Source Name'}
-                  inputClassName={errors.source || loadError ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'}
-                  disabled={loading}
-                />
-                {loading && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Source Name <span className="text-red-500">*</span>
+                </label>
+                <div>
+                  <SelectField
+                    name="source"
+                    value={source}
+                    onChange={(v) => { setSource(typeof v === 'string' ? v : v[0] ?? ''); setErrors(prev => ({ ...prev, source: '' })); }}
+                    options={options.map(o => ({ value: String(o.id), label: o.name }))}
+                    placeholder={loading ? 'Loading...' : 'Please Select Source Name'}
+                    inputClassName={errors.source || loadError ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'}
+                    disabled={loading}
+                  />
+                  {loading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                {(errors.source || loadError) && (
+                  <div id="source-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.source || loadError}
                   </div>
                 )}
               </div>
-              {(errors.source || loadError) && (
-                <div id="source-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                  <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  {errors.source || loadError}
-                </div>
-              )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Sub Source <span className="text-red-500">*</span>
-              </label>
-              <input
-                value={subSource}
-                onChange={(e) => { setSubSource(e.target.value); setErrors(prev => ({ ...prev, subSource: '' })); }}
-                placeholder="Please Enter Sub Source"
-                className={`w-full px-3 py-2 border rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-1 transition-colors ${
-                  errors.subSource ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-black'
-                }`}
-                aria-invalid={errors.subSource ? 'true' : 'false'}
-                aria-describedby={errors.subSource ? 'subSource-error' : undefined}
-              />
-              {errors.subSource && (
-                <div id="subSource-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                  <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  {errors.subSource}
-                </div>
-              )}
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Sub Source <span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={subSource}
+                  onChange={(e) => { setSubSource(e.target.value); setErrors(prev => ({ ...prev, subSource: '' })); }}
+                  placeholder="Please Enter Sub Source"
+                  className={`w-full px-3 py-2 border rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-1 transition-colors ${errors.subSource ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-black'
+                    }`}
+                  aria-invalid={errors.subSource ? 'true' : 'false'}
+                  aria-describedby={errors.subSource ? 'subSource-error' : undefined}
+                />
+                {errors.subSource && (
+                  <div id="subSource-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.subSource}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center justify-end">

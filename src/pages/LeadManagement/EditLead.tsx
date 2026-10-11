@@ -1,7 +1,7 @@
 /**
  * @file EditLead.tsx
  * @description Edit existing lead details and related actions.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -691,75 +691,75 @@ const EditLead: React.FC = () => {
           titleWrapperClassName="mb-3"
           icon={<PhoneCall className="h-5 w-5" strokeWidth={2} />}
         >
-            <div className="min-w-0">
-              {/* Render call history rows from API (fallback to sample rows) */}
-              {
-                (() => {
-                  const formatDateTime = (date: string | null | undefined) => {
-                    if (!date) return '-';
-                    try {
-                      return new Date(date).toLocaleString('en-IN', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                      });
-                    } catch {
-                      return '-';
-                    }
-                  };
+          <div className="min-w-0">
+            {/* Render call history rows from API (fallback to sample rows) */}
+            {
+              (() => {
+                const formatDateTime = (date: string | null | undefined) => {
+                  if (!date) return '-';
+                  try {
+                    return new Date(date).toLocaleString('en-IN', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    });
+                  } catch {
+                    return '-';
+                  }
+                };
 
-                  const rows = history && history.length > 0 ? history.map((h: any) => ({
-                    id: String(h.id || h.uuid),
-                    assignedTo: h.assigned_user?.name || '-',
-                    currentUser: h.current_user?.name || '-',
-                    priority: h.priority?.name || h.priority?.slug || '-',
-                    status: h.status?.name || '-',
-                    callStatus: h.call_status?.name || '-',
-                    meetingDateTime: h.meeting_date ? formatDateTime(h.meeting_date) : '-',
-                    createdAt: formatDateTime(h.created_at),
-                    comment: h.lead_comment || '-'
-                  })) : Array.from({ length: 3 }).map((_, i) => ({
-                    id: String(i),
-                    assignedTo: lead.assignToName || lead.assignTo || '-',
-                    currentUser: '-',
-                    priority: '-',
-                    status: '-',
-                    callStatus: 'Not Interested',
-                    meetingDateTime: '-',
-                    createdAt: '-',
-                    comment: 'According to Form'
-                  }));
+                const rows = history && history.length > 0 ? history.map((h: any) => ({
+                  id: String(h.id || h.uuid),
+                  assignedTo: h.assigned_user?.name || '-',
+                  currentUser: h.current_user?.name || '-',
+                  priority: h.priority?.name || h.priority?.slug || '-',
+                  status: h.status?.name || '-',
+                  callStatus: h.call_status?.name || '-',
+                  meetingDateTime: h.meeting_date ? formatDateTime(h.meeting_date) : '-',
+                  createdAt: formatDateTime(h.created_at),
+                  comment: h.lead_comment || '-'
+                })) : Array.from({ length: 3 }).map((_, i) => ({
+                  id: String(i),
+                  assignedTo: lead.assignToName || lead.assignTo || '-',
+                  currentUser: '-',
+                  priority: '-',
+                  status: '-',
+                  callStatus: 'Not Interested',
+                  meetingDateTime: '-',
+                  createdAt: '-',
+                  comment: 'According to Form'
+                }));
 
-                  type Row = typeof rows[number];
+                type Row = typeof rows[number];
 
-                  const columns: Column<Row>[] = [
-                    { key: 'assignedTo', header: 'Assigned To', render: (r) => r.assignedTo, minWidth: 130 },
-                    { key: 'currentUser', header: 'Current User', render: (r) => r.currentUser, minWidth: 140 },
-                    { key: 'priority', header: 'Priority', render: (r) => r.priority, minWidth: 100 },
-                    { key: 'status', header: 'Status', render: (r) => r.status, minWidth: 140 },
-                    { key: 'callStatus', header: 'Call Status', render: (r) => r.callStatus, minWidth: 140 },
-                    { key: 'meetingDateTime', header: 'Meeting Date & Time', render: (r) => r.meetingDateTime, minWidth: 180 },
-                    { key: 'createdAt', header: 'Created At', render: (r) => r.createdAt, minWidth: 170 },
-                    { key: 'comment', header: 'Comment', render: (r) => r.comment, minWidth: 180, maxWords: 5 },
-                  ];
+                const columns: Column<Row>[] = [
+                  { key: 'assignedTo', header: 'Assigned To', render: (r) => r.assignedTo, minWidth: 130 },
+                  { key: 'currentUser', header: 'Current User', render: (r) => r.currentUser, minWidth: 140 },
+                  { key: 'priority', header: 'Priority', render: (r) => r.priority, minWidth: 100 },
+                  { key: 'status', header: 'Status', render: (r) => r.status, minWidth: 140 },
+                  { key: 'callStatus', header: 'Call Status', render: (r) => r.callStatus, minWidth: 140 },
+                  { key: 'meetingDateTime', header: 'Meeting Date & Time', render: (r) => r.meetingDateTime, minWidth: 180 },
+                  { key: 'createdAt', header: 'Created At', render: (r) => r.createdAt, minWidth: 170 },
+                  { key: 'comment', header: 'Comment', render: (r) => r.comment, minWidth: 180, maxWords: 5 },
+                ];
 
-                  return (
-                    <Table<Row>
-                      data={rows}
-                      columns={columns}
-                      startIndex={0}
-                      loading={historyLoading}
-                      compact
-                      desktopOnMobile={true}
-                      keyExtractor={(it) => it.id}
-                    />
-                  );
-                })()
-              }
-            </div>
+                return (
+                  <Table<Row>
+                    data={rows}
+                    columns={columns}
+                    startIndex={0}
+                    loading={historyLoading}
+                    compact
+                    desktopOnMobile={true}
+                    keyExtractor={(it) => it.id}
+                  />
+                );
+              })()
+            }
+          </div>
         </CollapsibleFormCard>
       </div>
     </div>

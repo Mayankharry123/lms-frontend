@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 
 import { useApiQuery } from '../../hooks/useApiQuery';
 import { listOrganisationZones } from '../../api/users';
@@ -156,7 +156,7 @@ const SECTION_COPY: Record<
 
   ChartVariant,
 
-  { title: string; subtitle: string; gridClass: string }
+  { title: string; subtitle?: string; gridClass: string }
 
 > = {
 
@@ -174,9 +174,7 @@ const SECTION_COPY: Record<
 
     title: 'Sales Analytics',
 
-    subtitle: 'Lead and brief performance by organisation, plus sales pipeline.',
-
-    gridClass: 'dashboard-charts__grid dashboard-charts__grid--3',
+    gridClass: 'dashboard-charts__grid dashboard-charts__grid--2',
 
   },
 
@@ -184,30 +182,17 @@ const SECTION_COPY: Record<
 
     title: 'Planner Analytics',
 
-    subtitle: 'Briefs, assigned plans, plan submission time (assign → submit), and budget by organisation.',
-
     gridClass: 'dashboard-charts__grid dashboard-charts__grid--2',
 
   },
 
   operations: {
-
-    title: 'Operations Metrics',
-
-    subtitle: 'Operations, pending, live, and assigned campaigns by organisation.',
-
-    gridClass: 'dashboard-charts__grid',
-
+    title: 'Operations Analytics',
+    gridClass: 'dashboard-charts__grid dashboard-charts__grid--2',
   },
-
   finance: {
-
-    title: 'Finance Metrics',
-
-    subtitle: 'Cost sheets, finance decisions, and purchase order amount by organisation.',
-
-    gridClass: 'dashboard-charts__grid',
-
+    title: 'Finance Analytics',
+    gridClass: 'dashboard-charts__grid dashboard-charts__grid--2',
   },
 
 };
@@ -422,6 +407,65 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
     [isCardVisible, permittedMetrics, variant],
   );
 
+  const [salesExpandedCards, setSalesExpandedCards] = useState<Record<string, boolean>>({
+    totalLeads: false,
+    briefs: false,
+    briefBudget: false,
+    pipeline: false,
+  });
+
+  const toggleSalesCard = useCallback((cardKey: string) => {
+    setSalesExpandedCards((prev) => ({
+      ...prev,
+      [cardKey]: !prev[cardKey],
+    }));
+  }, []);
+
+  const [plannerExpandedCards, setPlannerExpandedCards] = useState<Record<string, boolean>>({
+    briefs: false,
+    assignedPlans: false,
+    avgAssignmentDays: false,
+    briefBudget: false,
+    briefStatus: false,
+  });
+
+  const togglePlannerCard = useCallback((cardKey: string) => {
+    setPlannerExpandedCards((prev) => ({
+      ...prev,
+      [cardKey]: !prev[cardKey],
+    }));
+  }, []);
+
+  const [operationsExpandedCards, setOperationsExpandedCards] = useState<Record<string, boolean>>({
+    operations: false,
+    pendingOperations: false,
+    liveOperations: false,
+    assignedOperations: false,
+    operationStatus: false,
+  });
+
+  const toggleOperationsCard = useCallback((cardKey: string) => {
+    setOperationsExpandedCards((prev) => ({
+      ...prev,
+      [cardKey]: !prev[cardKey],
+    }));
+  }, []);
+
+  const [financeExpandedCards, setFinanceExpandedCards] = useState<Record<string, boolean>>({
+    costSheets: false,
+    approved: false,
+    denied: false,
+    purchaseOrderAmount: false,
+    financeStatus: false,
+  });
+
+  const toggleFinanceCard = useCallback((cardKey: string) => {
+    setFinanceExpandedCards((prev) => ({
+      ...prev,
+      [cardKey]: !prev[cardKey],
+    }));
+  }, []);
+
 
 
   const canFetch =
@@ -610,83 +654,323 @@ const DashboardChartsSection: React.FC<DashboardChartsSectionProps> = ({ variant
 
 
 
-      {visibleMetrics.length > 0 || showStatusMix ? (
+      {variant === 'sales' ? (
+        <>
+          <div className="dashboard-charts__grid dashboard-charts__grid--2">
+            {isCardVisible('sales', 'sales.total-leads-analytics') ? (
+              <MetricChartCard
+                key="totalLeads"
+                title="Total Leads"
+                color="#2563eb"
+                data={orgChartData['totalLeads'] ?? []}
+                loading={loading}
+                collapsible
+                isExpanded={!!salesExpandedCards['totalLeads']}
+                onToggle={() => toggleSalesCard('totalLeads')}
+              />
+            ) : null}
 
-        <div className={copy.gridClass}>
+            {isCardVisible('sales', 'sales.briefs-analytics') ? (
+              <MetricChartCard
+                key="briefs"
+                title="Briefs"
+                color="#ea580c"
+                data={orgChartData['briefs'] ?? []}
+                loading={loading}
+                collapsible
+                isExpanded={!!salesExpandedCards['briefs']}
+                onToggle={() => toggleSalesCard('briefs')}
+              />
+            ) : null}
 
-          {visibleMetrics.map((chart) => (
+            {isCardVisible('sales', 'sales.brief-budget') ? (
+              <MetricChartCard
+                key="briefBudget"
+                title="Brief Budget"
+                color="#059669"
+                data={orgChartData['briefBudget'] ?? []}
+                loading={loading}
+                valueFormatter={formatCurrency}
+                collapsible
+                isExpanded={!!salesExpandedCards['briefBudget']}
+                onToggle={() => toggleSalesCard('briefBudget')}
+              />
+            ) : null}
 
+            {showPipeline ? (
+              <PipelineChartCard
+                title="Sales Pipeline"
+                data={pipelineData}
+                loading={loading}
+                colors={PIPELINE_COLORS}
+                collapsible
+                isExpanded={!!salesExpandedCards['pipeline']}
+                onToggle={() => toggleSalesCard('pipeline')}
+              />
+            ) : null}
+          </div>
+
+          {showPipeline && filters.organisationIds.length > 0 ? (
+            <div className="dashboard-charts__grid dashboard-charts__grid--1">
+              <ZoneLeadPerformanceCards
+                data={zonePerformanceData}
+                loading={organisationZonesQuery.loading}
+                organisationIds={filters.organisationIds}
+              />
+            </div>
+          ) : null}
+        </>
+      ) : variant === 'planner' ? (
+        <>
+          <div className="dashboard-charts__grid dashboard-charts__grid--2">
+            {isCardVisible('planner', 'planner.briefs-analytics') ? (
+              <MetricChartCard
+                key="briefs"
+                title="Briefs"
+                color="#ea580c"
+                data={orgChartData['briefs'] ?? []}
+                loading={loading}
+                collapsible
+                isExpanded={!!plannerExpandedCards['briefs']}
+                onToggle={() => togglePlannerCard('briefs')}
+              />
+            ) : null}
+
+            {isCardVisible('planner', 'planner.assigned-plans-analytics') ? (
+              <MetricChartCard
+                key="assignedPlans"
+                title="Plans Assigned"
+                color="#2563eb"
+                data={orgChartData['assignedPlans'] ?? []}
+                loading={loading}
+                collapsible
+                isExpanded={!!plannerExpandedCards['assignedPlans']}
+                onToggle={() => togglePlannerCard('assignedPlans')}
+              />
+            ) : null}
+
+            {isCardVisible('planner', 'planner.avg-submission-analytics') ? (
+              <MetricChartCard
+                key="avgAssignmentDays"
+                title="Avg Plan Submission Time"
+                color="#7c3aed"
+                data={orgChartData['avgAssignmentDays'] ?? []}
+                loading={loading}
+                valueFormatter={formatDays}
+                collapsible
+                isExpanded={!!plannerExpandedCards['avgAssignmentDays']}
+                onToggle={() => togglePlannerCard('avgAssignmentDays')}
+              />
+            ) : null}
+
+            {isCardVisible('planner', 'planner.brief-budget-analytics') ? (
+              <MetricChartCard
+                key="briefBudget"
+                title="Brief Budget"
+                color="#059669"
+                data={orgChartData['briefBudget'] ?? []}
+                loading={loading}
+                valueFormatter={formatCurrency}
+                collapsible
+                isExpanded={!!plannerExpandedCards['briefBudget']}
+                onToggle={() => togglePlannerCard('briefBudget')}
+              />
+            ) : null}
+
+            {showBriefStatus ? (
+              <StatusPieChartCard
+                title={statusTitle}
+                data={statusData}
+                loading={loading}
+                colors={statusColors}
+                collapsible
+                isExpanded={!!plannerExpandedCards['briefStatus']}
+                onToggle={() => togglePlannerCard('briefStatus')}
+              />
+            ) : null}
+          </div>
+
+          {plannerData ? (
+            <PlannerOrganisationTable rows={plannerData.rows} loading={loading} />
+          ) : null}
+        </>
+      ) : variant === 'operations' ? (
+        <div className="dashboard-charts__grid dashboard-charts__grid--2">
+          {isCardVisible('operations', 'operations.operations-analytics') && dashboardPermissions.canViewChart('operations') ? (
             <MetricChartCard
-
-              key={chart.key}
-
-              title={chart.title}
-
-              color={chart.color}
-
-              data={orgChartData[chart.key] ?? []}
-
+              key="operations"
+              title="Operations"
+              color="#2563eb"
+              data={orgChartData['operations'] ?? []}
               loading={loading}
-
-              valueFormatter={chart.valueFormatter}
-
+              collapsible
+              isExpanded={!!operationsExpandedCards['operations']}
+              onToggle={() => toggleOperationsCard('operations')}
             />
-
-          ))}
-
-
-
-          {showStatusMix ? (
-
-            <StatusPieChartCard
-
-              title={statusTitle}
-
-              data={statusData}
-
-              loading={loading}
-
-              colors={statusColors}
-
-            />
-
           ) : null}
 
+          {isCardVisible('operations', 'operations.pending-analytics') && dashboardPermissions.canViewChart('pendingOperations') ? (
+            <MetricChartCard
+              key="pendingOperations"
+              title="Pending"
+              color="#d97706"
+              data={orgChartData['pendingOperations'] ?? []}
+              loading={loading}
+              collapsible
+              isExpanded={!!operationsExpandedCards['pendingOperations']}
+              onToggle={() => toggleOperationsCard('pendingOperations')}
+            />
+          ) : null}
+
+          {isCardVisible('operations', 'operations.live-analytics') && dashboardPermissions.canViewChart('liveOperations') ? (
+            <MetricChartCard
+              key="liveOperations"
+              title="Live"
+              color="#059669"
+              data={orgChartData['liveOperations'] ?? []}
+              loading={loading}
+              collapsible
+              isExpanded={!!operationsExpandedCards['liveOperations']}
+              onToggle={() => toggleOperationsCard('liveOperations')}
+            />
+          ) : null}
+
+          {isCardVisible('operations', 'operations.assigned-analytics') && dashboardPermissions.canViewChart('assignedOperations') ? (
+            <MetricChartCard
+              key="assignedOperations"
+              title="Assigned"
+              color="#7c3aed"
+              data={orgChartData['assignedOperations'] ?? []}
+              loading={loading}
+              collapsible
+              isExpanded={!!operationsExpandedCards['assignedOperations']}
+              onToggle={() => toggleOperationsCard('assignedOperations')}
+            />
+          ) : null}
+
+          {showOperationStatus ? (
+            <StatusPieChartCard
+              title={statusTitle}
+              data={statusData}
+              loading={loading}
+              colors={statusColors}
+              collapsible
+              isExpanded={!!operationsExpandedCards['operationStatus']}
+              onToggle={() => toggleOperationsCard('operationStatus')}
+            />
+          ) : null}
         </div>
+      ) : variant === 'finance' ? (
+        <div className="dashboard-charts__grid dashboard-charts__grid--2">
+          {isCardVisible('finance', 'finance.cost-sheets-analytics') && dashboardPermissions.canViewChart('costSheets') ? (
+            <MetricChartCard
+              key="costSheets"
+              title="Cost Sheets"
+              color="#2563eb"
+              data={orgChartData['costSheets'] ?? []}
+              loading={loading}
+              collapsible
+              isExpanded={!!financeExpandedCards['costSheets']}
+              onToggle={() => toggleFinanceCard('costSheets')}
+            />
+          ) : null}
 
-      ) : null}
+          {isCardVisible('finance', 'finance.approved-analytics') && dashboardPermissions.canViewChart('approvedFinance') ? (
+            <MetricChartCard
+              key="approved"
+              title="Approved"
+              color="#059669"
+              data={orgChartData['approved'] ?? []}
+              loading={loading}
+              collapsible
+              isExpanded={!!financeExpandedCards['approved']}
+              onToggle={() => toggleFinanceCard('approved')}
+            />
+          ) : null}
 
+          {isCardVisible('finance', 'finance.denied-analytics') && dashboardPermissions.canViewChart('deniedFinance') ? (
+            <MetricChartCard
+              key="denied"
+              title="Denied"
+              color="#dc2626"
+              data={orgChartData['denied'] ?? []}
+              loading={loading}
+              collapsible
+              isExpanded={!!financeExpandedCards['denied']}
+              onToggle={() => toggleFinanceCard('denied')}
+            />
+          ) : null}
 
+          {isCardVisible('finance', 'finance.purchase-order-analytics') && dashboardPermissions.canViewChart('purchaseOrderAmount') ? (
+            <MetricChartCard
+              key="purchaseOrderAmount"
+              title="Purchase Order Amount"
+              color="#0891b2"
+              data={orgChartData['purchaseOrderAmount'] ?? []}
+              loading={loading}
+              valueFormatter={formatCurrency}
+              collapsible
+              isExpanded={!!financeExpandedCards['purchaseOrderAmount']}
+              onToggle={() => toggleFinanceCard('purchaseOrderAmount')}
+            />
+          ) : null}
 
-      {showPipeline ? (
-
-        <div className="dashboard-charts__grid dashboard-charts__grid--1">
-
-          <PipelineChartCard
-
-            title="Sales Pipeline"
-
-            data={pipelineData}
-
-            loading={loading}
-
-            colors={PIPELINE_COLORS}
-
-          />
-
-          <ZoneLeadPerformanceCards
-            data={zonePerformanceData}
-            loading={organisationZonesQuery.loading}
-            organisationIds={filters.organisationIds}
-          />
-
+          {showFinanceStatus ? (
+            <StatusPieChartCard
+              title={statusTitle}
+              data={statusData}
+              loading={loading}
+              colors={statusColors}
+              collapsible
+              isExpanded={!!financeExpandedCards['financeStatus']}
+              onToggle={() => toggleFinanceCard('financeStatus')}
+            />
+          ) : null}
         </div>
+      ) : (
+        <>
+          {visibleMetrics.length > 0 || showStatusMix ? (
+            <div className={copy.gridClass}>
+              {visibleMetrics.map((chart) => (
+                <MetricChartCard
+                  key={chart.key}
+                  title={chart.title}
+                  color={chart.color}
+                  data={orgChartData[chart.key] ?? []}
+                  loading={loading}
+                  valueFormatter={chart.valueFormatter}
+                />
+              ))}
 
-      ) : null}
+              {showStatusMix ? (
+                <StatusPieChartCard
+                  title={statusTitle}
+                  data={statusData}
+                  loading={loading}
+                  colors={statusColors}
+                />
+              ) : null}
+            </div>
+          ) : null}
 
-      {variant === 'planner' && plannerData ? (
-        <PlannerOrganisationTable rows={plannerData.rows} loading={loading} />
-      ) : null}
+          {showPipeline ? (
+            <div className="dashboard-charts__grid dashboard-charts__grid--1">
+              <PipelineChartCard
+                title="Sales Pipeline"
+                data={pipelineData}
+                loading={loading}
+                colors={PIPELINE_COLORS}
+              />
+              <ZoneLeadPerformanceCards
+                data={zonePerformanceData}
+                loading={organisationZonesQuery.loading}
+                organisationIds={filters.organisationIds}
+              />
+            </div>
+          ) : null}
+        </>
+      )}
+
 
     </section>
 

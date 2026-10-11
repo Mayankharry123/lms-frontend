@@ -1,7 +1,7 @@
 /**
  * @file CreateIndustryForm.tsx
  * @description Form to create or update an industry master record.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -16,7 +16,7 @@ const CreateIndustryForm: React.FC<CreateIndustryFormProps> = ({ onClose, onSave
   const [name, setName] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  
+
 
   const formatDateTime = (d: Date) => {
     const dd = String(d.getDate()).padStart(2, '0');
@@ -99,9 +99,8 @@ const CreateIndustryForm: React.FC<CreateIndustryFormProps> = ({ onClose, onSave
                 name="industryName"
                 value={name}
                 onChange={(e) => { setName(e.target.value); setErrors(prev => ({ ...prev, name: '' })); }}
-                className={`w-full px-3 py-2 border rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-1 transition-colors ${
-                  errors.name ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-black'
-                }`}
+                className={`w-full px-3 py-2 border rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-1 transition-colors ${errors.name ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-black'
+                  }`}
                 placeholder="Please Enter Industry Name"
                 aria-invalid={errors.name ? 'true' : 'false'}
                 aria-describedby={errors.name ? 'name-error' : undefined}

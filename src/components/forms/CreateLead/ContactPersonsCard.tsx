@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getDesignations, getZones, getCities, getStates, getCountries } from '../../../services/CreateLead';
 import { quickCreateApi } from '../../../services/QuickCreate';
 import { Trash2, X as XIcon, Plus, UserRound } from 'lucide-react';
@@ -76,6 +76,8 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
   defaultOpen,
 }) => {
   const [contacts, setContacts] = useState<Contact[]>(initialContacts || [emptyContact('1')]);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   const [quickModalKind, setQuickModalKind] = useState<QuickCreateKind | null>(null);
   const quickModalContactIdRef = useRef<string | null>(null);
@@ -83,9 +85,6 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
   const [quickName, setQuickName] = useState('');
   const [quickError, setQuickError] = useState<string | null>(null);
   const [quickSubmitting, setQuickSubmitting] = useState(false);
-  const [leadTypeOptions, setLeadTypeOptions] = useState<{ value: string; label: string }[]>([]);
-  const [leadTypeLoading, setLeadTypeLoading] = useState(false);
-  const [leadTypeError, setLeadTypeError] = useState<string | null>(null);
 
   const openQuickCreate = (kind: QuickCreateKind, contactId: string) => {
     setQuickModalKind(kind);
@@ -246,33 +245,6 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
 
   useEffect(() => {
     let isMounted = true;
-    setLeadTypeLoading(true);
-    setLeadTypeError(null);
-    quickCreateApi.listLeadTypes().then((data: any) => {
-      if (!isMounted) return;
-      try {
-        const mapped = Array.isArray(data)
-          ? data
-            .filter((item: any) => item && item.id !== undefined && item.id !== null && item.name)
-            .map((item: any) => ({ value: String(item.id), label: String(item.name) }))
-          : [];
-
-        setLeadTypeOptions(mapped);
-      } catch (error: any) {
-        setLeadTypeError(error?.message || 'Failed to load lead types');
-      }
-      setLeadTypeLoading(false);
-    }).catch((error: any) => {
-      if (isMounted) {
-        setLeadTypeError(error?.message || 'Failed to load lead types');
-        setLeadTypeLoading(false);
-      }
-    });
-    return () => { isMounted = false; };
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
     setSourceLoading(true);
     setSourceError(null);
     quickCreateApi.listSourcesForPreLead().then((data) => {
@@ -327,6 +299,7 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceSelectionKey]);
 
   useEffect(() => {
@@ -410,16 +383,17 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
     return () => { isMounted = false; };
   }, []);
 
-  const updateContacts = (
-    nextOrUpdater: Contact[] | ((prev: Contact[]) => Contact[])
-  ) => {
-    setContacts((prev) => {
-      const next =
-        typeof nextOrUpdater === 'function' ? nextOrUpdater(prev) : nextOrUpdater;
-      onChange?.(next);
-      return next;
-    });
-  };
+  const updateContacts = useCallback(
+    (nextOrUpdater: Contact[] | ((prev: Contact[]) => Contact[])) => {
+      setContacts((prev) => {
+        const next =
+          typeof nextOrUpdater === 'function' ? nextOrUpdater(prev) : nextOrUpdater;
+        onChange?.(next);
+        return next;
+      });
+    },
+    [onChange]
+  );
 
   const removeContact = (id: string) => {
     updateContacts((prev) => prev.filter((c) => c.id !== id));
@@ -477,11 +451,10 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
     getCountries().then((data: any) => {
       if (!isMounted) return;
       try {
-        setCountryOptions(
-          Array.isArray(data)
-            ? data.map((item: any) => ({ value: String(item.id), label: item.name }))
-            : []
-        );
+        const options = Array.isArray(data)
+          ? data.map((item: any) => ({ value: String(item.id), label: item.name }))
+          : [];
+        setCountryOptions(options);
       } catch (error: any) {
         setCountryError(error?.message || 'Failed to load countries');
         setCountryOptions([]);
@@ -496,6 +469,19 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
     });
     return () => { isMounted = false; };
   }, []);
+
+  useEffect(() => {
+    const india = countryOptions.find((option) => option.label.trim().toLowerCase() === 'india');
+    if (!india) return;
+
+    const next = contacts.map((contact) =>
+      contact.country ? contact : { ...contact, country: india.value }
+    );
+    if (next.every((contact, index) => contact === contacts[index])) return;
+
+    setContacts(next);
+    onChangeRef.current?.(next);
+  }, [contacts, countryOptions]);
 
   // Fetch states per contact when that contact's country changes
   useEffect(() => {
@@ -645,7 +631,7 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
         }
       })();
     });
-  }, [contacts, countryOptions]);
+  }, [contacts, countryOptions, updateContacts]);
 
   // Fetch cities per contact when that contact's state changes
   useEffect(() => {
@@ -833,25 +819,7 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
                 </div>
 
                 {/* Row 3: Type, Designation, Department */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm text-gray-800 mb-1">Type <span className="text-[#FF0000]">*</span></label>
-
-                    <SelectField
-                      name="type"
-                      placeholder={leadTypeLoading ? 'Loading...' : 'Select type'}
-                      options={leadTypeOptions}
-                      value={c.type}
-                      onChange={(v) => updateContact(c.id, 'type', typeof v === 'string' ? v : v[0] ?? '')}
-                      inputClassName="border border-gray-200 focus:ring-blue-500"
-                      disabled={leadTypeLoading}
-                    />
-
-                    {errors?.[c.id]?.type && <div className="text-xs text-red-500 mt-1">{errors[c.id].type}</div>}
-                    {leadTypeLoading && <div className="text-xs text-gray-400 mt-1">Loading...</div>}
-                    {leadTypeError && <div className="text-xs text-red-500 mt-1">{leadTypeError}</div>}
-                  </div>
-                  
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-800 mb-1">Designation <span className="text-[#FF0000]">*</span></label>
                     <SelectField

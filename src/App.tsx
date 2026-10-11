@@ -2,7 +2,7 @@
  * @file App.tsx
  * @description Root application component. Wraps the LMS UI with global error handling,
  *              sidebar permission context, and client-side routing (`AppRoutes`).
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
