@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Download } from 'lucide-react';
 import LoadingModal from './LoadingModal';
 import SweetAlert from '../../utils/SweetAlert';
+import { downloadDeviceInventoryExport } from '../../services/DeviceInventory';
 
 export type ExportExcelButtonProps = {
   /** Trigger export (e.g. call API and download generated file) */
@@ -36,7 +37,6 @@ const ExportExcelButton: React.FC<ExportExcelButtonProps> = ({
     setExporting(true);
     try {
       if (downloadUrl) {
-        const { downloadDeviceInventoryExport } = await import('../../services/DeviceInventory');
         await downloadDeviceInventoryExport(downloadUrl, 'device-inventory.xlsx');
         return;
       }

@@ -1,7 +1,7 @@
 /**
  * @file EditUser.tsx
  * @description Edit user profile, role, and status.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -30,16 +30,16 @@ function parseOrganisationsFromUser(user: Record<string, any>): string[] {
 
   const single = String(
     user.origination?.id ??
-      user.organisation_id ??
-      user.orientation?.id ??
-      user.origination?.value ??
-      user.orientation?.value ??
-      user.origination?.name ??
-      user.orientation?.name ??
-      user.organisation_name ??
-      user.origination ??
-      user.orientation ??
-      ''
+    user.organisation_id ??
+    user.orientation?.id ??
+    user.origination?.value ??
+    user.orientation?.value ??
+    user.origination?.name ??
+    user.orientation?.name ??
+    user.organisation_name ??
+    user.origination ??
+    user.orientation ??
+    ''
   ).trim();
 
   return single && single !== 'undefined' && single !== 'null' ? [single] : [];
@@ -54,13 +54,13 @@ function parseDepartmentsFromUser(user: Record<string, any>): string[] {
       .map((item: any) =>
         String(
           item?.id ??
-            item?.department_id ??
-            item?.departments_id ??
-            item?.value ??
-            item?.name ??
-            item?.departments_name ??
-            item ??
-            ''
+          item?.department_id ??
+          item?.departments_id ??
+          item?.value ??
+          item?.name ??
+          item?.departments_name ??
+          item ??
+          ''
         )
       )
       .filter(Boolean);
@@ -72,14 +72,14 @@ function parseDepartmentsFromUser(user: Record<string, any>): string[] {
 
   const single = String(
     user.department?.id ??
-      user.department_id ??
+    user.department_id ??
     user.departments_id ??
-      user.department?.value ??
-      user.department?.name ??
-      user.department_name ??
+    user.department?.value ??
+    user.department?.name ??
+    user.department_name ??
     user.departments_name ??
-      user.department ??
-      ''
+    user.department ??
+    ''
   ).trim();
 
   return single && single !== 'undefined' && single !== 'null' ? [single] : [];

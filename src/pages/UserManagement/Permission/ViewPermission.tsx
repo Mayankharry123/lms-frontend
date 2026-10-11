@@ -1,7 +1,7 @@
 /**
  * @file ViewPermission.tsx
  * @description View permission details.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -67,7 +67,7 @@ const ViewPermission: React.FC = () => {
             <div className="text-sm text-gray-600">{permission.id}</div>
           </div>
 
-         <div className='flex gap-x-3 gap-y-1 items-center flex-wrap bg-gray-50 border border-gray-200 rounded-lg py-3 px-3'>
+          <div className='flex gap-x-3 gap-y-1 items-center flex-wrap bg-gray-50 border border-gray-200 rounded-lg py-3 px-3'>
             <div className="text-sm text-gray-800 font-semibold">Permission Name : </div>
             <div className="text-sm text-gray-600">{permission.display_name}</div>
           </div>

@@ -317,6 +317,7 @@ const DeviceInventoryCloneFilterPanel: React.FC<CloneFilterPanelProps> = ({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, setFieldLoading]);
 
   useEffect(() => {
@@ -337,8 +338,9 @@ const DeviceInventoryCloneFilterPanel: React.FC<CloneFilterPanelProps> = ({
   }, [externalSyncKey, scheduleFieldLoad]);
 
   useEffect(() => {
+    const debounceTimers = debounceTimersRef.current;
     return () => {
-      Object.values(debounceTimersRef.current).forEach((timer) => {
+      Object.values(debounceTimers).forEach((timer) => {
         if (timer) clearTimeout(timer);
       });
       if (applyTimerRef.current) clearTimeout(applyTimerRef.current);

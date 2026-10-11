@@ -97,7 +97,10 @@ const SelectDropdown: React.FC<SelectDropdownProps> = ({
   }, [open]);
 
   // Multi-select: value is array, show tags
-  const selectedValues = isMulti ? (Array.isArray(value) ? value : []) : (value ? [String(value)] : []);
+  const selectedValues = React.useMemo(
+    () => (isMulti ? (Array.isArray(value) ? value : []) : value ? [String(value)] : []),
+    [isMulti, value]
+  );
   const selectedLabels = normalized.filter(n => selectedValues.includes(String(n.value)));
 
   const sortedFiltered = React.useMemo(() => {

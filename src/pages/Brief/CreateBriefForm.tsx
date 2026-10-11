@@ -1,11 +1,11 @@
 /**
  * @file CreateBriefForm.tsx
  * @description Form to create a new brief record.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
 import Table from '../../components/ui/Table';
@@ -48,7 +48,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
     (role) => String(role?.name ?? '').trim() === 'Super Admin'
   );
   useEffect(() => {
-    
+
   }, [initialData]);
   const [form, setForm] = useState({
     briefId: '',
@@ -121,14 +121,14 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
 
   const existingAttachmentUrl = String(
     initialData?.attachmentUrl ||
-      initialData?.attachment_url ||
-      initialData?.attachment ||
-      initialData?.attachment_path ||
-      initialData?.attachment_file_url ||
-      initialData?.file_url ||
-      initialData?.file_path ||
-      initialData?.document_url ||
-      ''
+    initialData?.attachment_url ||
+    initialData?.attachment ||
+    initialData?.attachment_path ||
+    initialData?.attachment_file_url ||
+    initialData?.file_url ||
+    initialData?.file_path ||
+    initialData?.document_url ||
+    ''
   ).trim();
   const existingAttachmentName =
     String(initialData?.attachmentName || initialData?.attachment_name || '').trim() ||
@@ -339,7 +339,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
 
     fillAgencyForBrand();
     return () => { mounted = false; };
-  }, [form.brandName]);
+  }, [form.brandName, initialData?.agency_id, initialData?.createdBy]);
 
   // Load brand options on mount
   useEffect(() => {
@@ -495,29 +495,30 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
 
   }, [form.createdBy, form.brandName]);
 
-  const resolveAssignToFromInitialData = (
-    opts: Array<{ value: string; label: string }>
-  ) => {
-    const assignUserId = String(initialData?.assign_user_id ?? '').trim();
-    const assignToVal = initialData?.assignTo || initialData?.assigned_user;
-    const assignToName =
-      typeof assignToVal === 'object' && assignToVal?.name
-        ? String(assignToVal.name)
-        : String(assignToVal ?? '');
+  const resolveAssignToFromInitialData = useCallback(
+    (opts: Array<{ value: string; label: string }>) => {
+      const assignUserId = String(initialData?.assign_user_id ?? '').trim();
+      const assignToVal = initialData?.assignTo || initialData?.assigned_user;
+      const assignToName =
+        typeof assignToVal === 'object' && assignToVal?.name
+          ? String(assignToVal.name)
+          : String(assignToVal ?? '');
 
-    if (!assignUserId && !assignToVal) return;
+      if (!assignUserId && !assignToVal) return;
 
-    const foundById = opts.find((o) => o.value === assignUserId);
-    const foundByName = opts.find((o) => o.label === assignToName);
+      const foundById = opts.find((o) => o.value === assignUserId);
+      const foundByName = opts.find((o) => o.label === assignToName);
 
-    if (foundById) {
-      setForm((prev) => ({ ...prev, assignTo: foundById.value }));
-    } else if (foundByName) {
-      setForm((prev) => ({ ...prev, assignTo: foundByName.value }));
-    } else {
-      setForm((prev) => ({ ...prev, assignTo: '' }));
-    }
-  };
+      if (foundById) {
+        setForm((prev) => ({ ...prev, assignTo: foundById.value }));
+      } else if (foundByName) {
+        setForm((prev) => ({ ...prev, assignTo: foundByName.value }));
+      } else {
+        setForm((prev) => ({ ...prev, assignTo: '' }));
+      }
+    },
+    [initialData]
+  );
 
   useEffect(() => {
     if (mode !== 'edit') {
@@ -563,12 +564,12 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
     return () => {
       mounted = false;
     };
-  }, [initialData, mode]);
+  }, [initialData, mode, resolveAssignToFromInitialData]);
 
-/**
-  * Loads users from the planning hierarchy for the Assign To dropdown.
-  * The hierarchical API response is flattened before creating dropdown options.
-  */ 
+  /**
+    * Loads users from the planning hierarchy for the Assign To dropdown.
+    * The hierarchical API response is flattened before creating dropdown options.
+    */
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -1117,10 +1118,10 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
     return form.campaignDuration && !isNaN(durVal) ? durVal : 0;
   };
 
-/**
- * Returns the minimum selectable campaign start date.
- * Campaign start must be at least one day after the submission date.
- */
+  /**
+   * Returns the minimum selectable campaign start date.
+   * Campaign start must be at least one day after the submission date.
+   */
   const getMinCampaignStartDate = () => {
     if (calendarDate) {
       const nextDay = new Date(calendarDate);
@@ -1157,520 +1158,520 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                 title="Brief Information"
                 icon={<FileText className="h-5 w-5" strokeWidth={2} />}
               >
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Brief Name <span className="text-[#FF0000]">*</span></label>
-                  <input name="briefName" value={form.briefName} onChange={(e) => { handleChange(e); setErrors(prev => ({ ...prev, briefName: '' })); }}
-                    placeholder="Please enter product name"
-                    className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 transition-colors ${errors.briefName ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200 focus:ring-blue-500'}`}
-                    aria-invalid={errors.briefName ? 'true' : 'false'}
-                    aria-describedby={errors.briefName ? 'briefName-error' : undefined}
-                  />
-                  {errors.briefName && (
-                    <div id="briefName-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                      <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                      {errors.briefName}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Brand Name</label>
-                  <SelectField
-                    name="brandName"
-                    placeholder={brandsLoading ? 'Loading brands...' : 'Auto Select'}
-                    options={brands}
-                    value={form.brandName}
-                    onChange={(v: any) => { const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v; lastChangedFieldRef.current = 'brand'; setForm(prev => ({ ...prev, brandName: val })); }}
-                    searchable
-                    inputClassName="border border-gray-200 focus:ring-black"
-                    disabled={brandsLoading}
-                  />
-                  {brandsError && <div className="text-xs text-red-600 mt-1">{brandsError}</div>}
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Product Name <span className="text-[#FF0000]">*</span></label>
-                  <input name="productName" value={form.productName} onChange={(e) => { handleChange(e); setErrors(prev => ({ ...prev, productName: '' })); }}
-                    placeholder="Please enter product name"
-                    className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 transition-colors ${errors.productName ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200 focus:ring-blue-500'}`}
-                    aria-invalid={errors.productName ? 'true' : 'false'}
-                    aria-describedby={errors.productName ? 'productName-error' : undefined}
-                  />
-                  {errors.productName && (
-                    <div id="productName-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                      <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                      {errors.productName}
-                    </div>
-                  )}
-                </div>
-                {canAssignTo && (
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Assign To</label>
-                  <SelectField
-                    name="assignTo"
-                    placeholder={
-                      !form.contactPerson
-                        ? 'Select Contact Person first'
-                        : usersLoading
-                          ? 'Loading users...'
-                          : 'Please Assign To Planner'
-                    }
-                    options={users}
-                    value={String(form.assignTo || '')}
-                    onChange={(v: any) => {
-                      const val = String(v || '').trim();
-                      setForm(prev => ({ ...prev, assignTo: val }));
-                    }}
-                    searchable
-                    inputClassName={`border border-gray-200 focus:ring-black ${!form.contactPerson ? 'bg-gray-50 opacity-60 cursor-not-allowed' : ''}`}
-                    disabled={usersLoading || !form.contactPerson}
-                  />
-                  {!form.contactPerson && (
-                    <div className="text-xs text-amber-500 mt-1">Please select a contact person first.</div>
-                  )}
-                  {usersError && <div className="text-xs text-red-600 mt-1">{usersError}</div>}
-                </div>
-                )}
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Brief Status</label>
-                  <SelectField
-                    name="status"
-                    placeholder={briefStatusesLoading ? 'Loading statuses...' : 'Select Brief Status'}
-                    options={briefStatuses}
-                    value={form.status}
-                    onChange={(v: any) => { const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v; lastChangedFieldRef.current = 'status'; setForm(prev => ({ ...prev, status: val })); setTimeout(() => { if (lastChangedFieldRef.current === 'status') lastChangedFieldRef.current = null; }, 500); }}
-                    searchable
-                    inputClassName="border border-gray-200 focus:ring-black"
-                    disabled={mode !== 'edit' || briefStatusesLoading}
-                  />
-                  {briefStatusesError && <div className="text-xs text-red-600 mt-1">{briefStatusesError}</div>}
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Mode Of Campaign</label>
-                  <div className="flex gap-4 mt-1">
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="programmatic"
-                        value="programmatic"
-                        checked={form.programmatic === 'programmatic'}
-                        onChange={handleChange}
-                        className="form-radio accent-blue-600"
-                      />
-                      <span className="ml-2 text-sm text-gray-800">Programmatic</span>
-                    </label>
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="programmatic"
-                        value="non_programmatic"
-                        checked={form.programmatic === 'non_programmatic'}
-                        onChange={handleChange}
-                        className="form-radio accent-blue-600"
-                      />
-                      <span className="ml-2 text-sm text-gray-800">Non-Programmatic</span>
-                    </label>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-gray-800 mb-1">Brief Name <span className="text-[#FF0000]">*</span></label>
+                    <input name="briefName" value={form.briefName} onChange={(e) => { handleChange(e); setErrors(prev => ({ ...prev, briefName: '' })); }}
+                      placeholder="Please enter product name"
+                      className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 transition-colors ${errors.briefName ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200 focus:ring-blue-500'}`}
+                      aria-invalid={errors.briefName ? 'true' : 'false'}
+                      aria-describedby={errors.briefName ? 'briefName-error' : undefined}
+                    />
+                    {errors.briefName && (
+                      <div id="briefName-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                        <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.briefName}
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Select Type</label>
-                  <SelectField
-                    name="type"
-                    placeholder="Select Type"
-                    options={form.programmatic === 'non_programmatic' ? ['DOOH', 'OOH'] : ['DOOH', 'CTV']}
-                    value={form.type}
-                    onChange={(v: any) => { const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v; setForm(prev => ({ ...prev, type: val })); }}
-                    inputClassName="border border-[var(--border-color)] focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Attach File</label>
-                  <div className={`border rounded-lg bg-white p-3 transition-colors ${errors.attachmentFile ? 'border-red-500 bg-red-50' : 'border border-gray-200'}`}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-gray-900">
-                          {form.attachmentFile
-                            ? form.attachmentFile.name
-                            : existingAttachmentName
-                              ? existingAttachmentName
-                              : 'No file selected'}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          {form.attachmentFile
-                            ? `${Math.round((form.attachmentFile.size / 1024) * 10) / 10} KB`
-                            : existingAttachmentUrl
-                              ? 'Current file attached'
-                              : 'PDF, JPG, PNG, DOCX'}
-                        </div>
+                  <div>
+                    <label className="block text-sm text-gray-800 mb-1">Brand Name</label>
+                    <SelectField
+                      name="brandName"
+                      placeholder={brandsLoading ? 'Loading brands...' : 'Auto Select'}
+                      options={brands}
+                      value={form.brandName}
+                      onChange={(v: any) => { const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v; lastChangedFieldRef.current = 'brand'; setForm(prev => ({ ...prev, brandName: val })); }}
+                      searchable
+                      inputClassName="border border-gray-200 focus:ring-black"
+                      disabled={brandsLoading}
+                    />
+                    {brandsError && <div className="text-xs text-red-600 mt-1">{brandsError}</div>}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-800 mb-1">Product Name <span className="text-[#FF0000]">*</span></label>
+                    <input name="productName" value={form.productName} onChange={(e) => { handleChange(e); setErrors(prev => ({ ...prev, productName: '' })); }}
+                      placeholder="Please enter product name"
+                      className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 transition-colors ${errors.productName ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200 focus:ring-blue-500'}`}
+                      aria-invalid={errors.productName ? 'true' : 'false'}
+                      aria-describedby={errors.productName ? 'productName-error' : undefined}
+                    />
+                    {errors.productName && (
+                      <div id="productName-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                        <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.productName}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {existingAttachmentUrl && !form.attachmentFile && (
-                          <button
-                            type="button"
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-md border border-gray-300 bg-white text-blue-700 hover:bg-gray-50"
-                            onClick={() => {
-                              setAttachmentModalSource({ kind: 'remote', url: existingAttachmentUrl, name: existingAttachmentName || undefined });
-                              setIsAttachmentModalOpen(true);
-                            }}
-                            aria-label="View current attachment"
-                            title="View current attachment"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        )}
-                        <label
-                          htmlFor="attachmentFile"
-                          className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 cursor-pointer"
-                        >
-                          {existingAttachmentUrl ? 'Replace' : 'Choose file'}
-                        </label>
-                      </div>
-                    </div>
-                    <input
-                      id="attachmentFile"
-                      type="file"
-                      name="attachmentFile"
-                      accept=".pdf,.jpg,.jpeg,.png,.docx,.doc,application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
-                      onChange={e => {
-                        const file = e.target.files?.[0] ?? null;
-                        if (file) {
-                          const ext = file.name.split('.').pop()?.toLowerCase() || '';
-                          if (!['pdf', 'jpg', 'jpeg', 'png', 'docx', 'doc'].includes(ext)) {
-                            setErrors(prev => ({
-                              ...prev,
-                              attachmentFile: 'Only PDF, JPG, PNG, and DOCX files are allowed.'
-                            }));
-                            setForm(prev => ({ ...prev, attachmentFile: null }));
-                            e.target.value = '';
-                            return;
-                          }
-                          if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
-                            setErrors(prev => ({
-                              ...prev,
-                              attachmentFile: 'File must be 7 MB or smaller.'
-                            }));
-                            setForm(prev => ({ ...prev, attachmentFile: null }));
-                            e.target.value = '';
-                            return;
-                          }
-                          setErrors(prev => ({ ...prev, attachmentFile: '' }));
-                          setForm(prev => ({ ...prev, attachmentFile: file }));
-                        } else {
-                          setForm(prev => ({ ...prev, attachmentFile: null }));
+                    )}
+                  </div>
+                  {canAssignTo && (
+                    <div>
+                      <label className="block text-sm text-gray-800 mb-1">Assign To</label>
+                      <SelectField
+                        name="assignTo"
+                        placeholder={
+                          !form.contactPerson
+                            ? 'Select Contact Person first'
+                            : usersLoading
+                              ? 'Loading users...'
+                              : 'Please Assign To Planner'
                         }
-                      }}
-                      className="hidden"
+                        options={users}
+                        value={String(form.assignTo || '')}
+                        onChange={(v: any) => {
+                          const val = String(v || '').trim();
+                          setForm(prev => ({ ...prev, assignTo: val }));
+                        }}
+                        searchable
+                        inputClassName={`border border-gray-200 focus:ring-black ${!form.contactPerson ? 'bg-gray-50 opacity-60 cursor-not-allowed' : ''}`}
+                        disabled={usersLoading || !form.contactPerson}
+                      />
+                      {!form.contactPerson && (
+                        <div className="text-xs text-amber-500 mt-1">Please select a contact person first.</div>
+                      )}
+                      {usersError && <div className="text-xs text-red-600 mt-1">{usersError}</div>}
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm text-gray-800 mb-1">Brief Status</label>
+                    <SelectField
+                      name="status"
+                      placeholder={briefStatusesLoading ? 'Loading statuses...' : 'Select Brief Status'}
+                      options={briefStatuses}
+                      value={form.status}
+                      onChange={(v: any) => { const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v; lastChangedFieldRef.current = 'status'; setForm(prev => ({ ...prev, status: val })); setTimeout(() => { if (lastChangedFieldRef.current === 'status') lastChangedFieldRef.current = null; }, 500); }}
+                      searchable
+                      inputClassName="border border-gray-200 focus:ring-black"
+                      disabled={mode !== 'edit' || briefStatusesLoading}
+                    />
+                    {briefStatusesError && <div className="text-xs text-red-600 mt-1">{briefStatusesError}</div>}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-800 mb-1">Mode Of Campaign</label>
+                    <div className="flex gap-4 mt-1">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="programmatic"
+                          value="programmatic"
+                          checked={form.programmatic === 'programmatic'}
+                          onChange={handleChange}
+                          className="form-radio accent-blue-600"
+                        />
+                        <span className="ml-2 text-sm text-gray-800">Programmatic</span>
+                      </label>
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="programmatic"
+                          value="non_programmatic"
+                          checked={form.programmatic === 'non_programmatic'}
+                          onChange={handleChange}
+                          className="form-radio accent-blue-600"
+                        />
+                        <span className="ml-2 text-sm text-gray-800">Non-Programmatic</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-800 mb-1">Select Type</label>
+                    <SelectField
+                      name="type"
+                      placeholder="Select Type"
+                      options={form.programmatic === 'non_programmatic' ? ['DOOH', 'OOH'] : ['DOOH', 'CTV']}
+                      value={form.type}
+                      onChange={(v: any) => { const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v; setForm(prev => ({ ...prev, type: val })); }}
+                      inputClassName="border border-[var(--border-color)] focus:ring-blue-500"
                     />
                   </div>
-                  {errors.attachmentFile && (
-                    <div id="attachmentFile-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                      <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                      {errors.attachmentFile}
+                  <div>
+                    <label className="block text-sm text-gray-800 mb-1">Attach File</label>
+                    <div className={`border rounded-lg bg-white p-3 transition-colors ${errors.attachmentFile ? 'border-red-500 bg-red-50' : 'border border-gray-200'}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium text-gray-900">
+                            {form.attachmentFile
+                              ? form.attachmentFile.name
+                              : existingAttachmentName
+                                ? existingAttachmentName
+                                : 'No file selected'}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {form.attachmentFile
+                              ? `${Math.round((form.attachmentFile.size / 1024) * 10) / 10} KB`
+                              : existingAttachmentUrl
+                                ? 'Current file attached'
+                                : 'PDF, JPG, PNG, DOCX'}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {existingAttachmentUrl && !form.attachmentFile && (
+                            <button
+                              type="button"
+                              className="inline-flex items-center justify-center w-10 h-10 rounded-md border border-gray-300 bg-white text-blue-700 hover:bg-gray-50"
+                              onClick={() => {
+                                setAttachmentModalSource({ kind: 'remote', url: existingAttachmentUrl, name: existingAttachmentName || undefined });
+                                setIsAttachmentModalOpen(true);
+                              }}
+                              aria-label="View current attachment"
+                              title="View current attachment"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          )}
+                          <label
+                            htmlFor="attachmentFile"
+                            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 cursor-pointer"
+                          >
+                            {existingAttachmentUrl ? 'Replace' : 'Choose file'}
+                          </label>
+                        </div>
+                      </div>
+                      <input
+                        id="attachmentFile"
+                        type="file"
+                        name="attachmentFile"
+                        accept=".pdf,.jpg,.jpeg,.png,.docx,.doc,application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
+                        onChange={e => {
+                          const file = e.target.files?.[0] ?? null;
+                          if (file) {
+                            const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                            if (!['pdf', 'jpg', 'jpeg', 'png', 'docx', 'doc'].includes(ext)) {
+                              setErrors(prev => ({
+                                ...prev,
+                                attachmentFile: 'Only PDF, JPG, PNG, and DOCX files are allowed.'
+                              }));
+                              setForm(prev => ({ ...prev, attachmentFile: null }));
+                              e.target.value = '';
+                              return;
+                            }
+                            if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
+                              setErrors(prev => ({
+                                ...prev,
+                                attachmentFile: 'File must be 7 MB or smaller.'
+                              }));
+                              setForm(prev => ({ ...prev, attachmentFile: null }));
+                              e.target.value = '';
+                              return;
+                            }
+                            setErrors(prev => ({ ...prev, attachmentFile: '' }));
+                            setForm(prev => ({ ...prev, attachmentFile: file }));
+                          } else {
+                            setForm(prev => ({ ...prev, attachmentFile: null }));
+                          }
+                        }}
+                        className="hidden"
+                      />
                     </div>
-                  )}
-                </div>
+                    {errors.attachmentFile && (
+                      <div id="attachmentFile-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                        <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.attachmentFile}
+                      </div>
+                    )}
+                  </div>
 
-              </div>
+                </div>
               </EditSection>
               <EditSection
                 edit={isEdit}
                 title="Campaign Details"
                 icon={<CalendarRange className="h-5 w-5" strokeWidth={2} />}
               >
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Contact Person Name <span className="text-[#FF0000]">*</span></label>
-                  <SelectField
-                    name="contactPerson"
-                    placeholder={contactPersonsLoading ? 'Loading contacts...' : 'Search or select contact person'}
-                    options={contactPersons}
-                    value={form.contactPerson}
-                    onChange={(v: any) => {
-                      const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v;
-                      setForm(prev => ({ ...prev, contactPerson: val, assignTo: '' }));
-                      setErrors(prev => ({ ...prev, contactPerson: '' }));
-                    }}
-                    searchable
-                    disabled={contactPersonsLoading}
-                    inputClassName={errors.contactPerson ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200 focus:ring-black'}
-                    className=""
-                  />
-                  {errors.contactPerson && (
-                    <div id="contactPerson-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                      <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                      {errors.contactPerson}
-                    </div>
-                  )}
-                  {contactPersonsError && <div className="text-xs text-red-600 mt-1">{contactPersonsError}</div>}
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Agency Name</label>
-                  <SelectField
-                    name="createdBy"
-                    placeholder={agenciesLoading ? 'Loading agencies...' : 'Search or select agency'}
-                    options={agencies}
-                    value={form.createdBy}
-                    onChange={(v: any) => { const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v; lastChangedFieldRef.current = 'agency'; setForm(prev => ({ ...prev, createdBy: val })); }}
-                    searchable
-                    disabled={agenciesLoading}
-                  />
-                  {agenciesError && <div className="text-xs text-red-600 mt-1">{agenciesError}</div>}
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Brief Budget <span className="text-[#FF0000]">*</span></label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    name="budget"
-                    value={form.budget}
-                    onChange={(e) => { handleChange(e); setErrors(prev => ({ ...prev, budget: '' })); }}
-                    placeholder="Please Enter Est. Budget"
-                    className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 transition-colors ${errors.budget ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200 focus:ring-blue-500'}`}
-                    aria-invalid={errors.budget ? 'true' : 'false'}
-                    aria-describedby={errors.budget ? 'budget-error' : undefined}
-                  />
-                  {errors.budget && (
-                    <div id="budget-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                      <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                      {errors.budget}
-                    </div>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="w-full">
-                    <label className="block text-sm text-gray-800 mb-1">Submission Date <span className="text-[#FF0000]">*</span></label>
-                    <DatePicker
-                      selected={calendarDate}
-                      onChange={date => {
-                        setCalendarDate(date);
-                        setErrors(prev => ({ ...prev, submissionDate: '' }));
-                        if (date) {
-                          const d = date;
-                          const dd = String(d.getDate()).padStart(2, '0');
-                          const mm = String(d.getMonth() + 1).padStart(2, '0');
-                          const yyyy = d.getFullYear();
-                          const formattedSubDate = `${dd}-${mm}-${yyyy}`;
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-gray-800 mb-1">Contact Person Name <span className="text-[#FF0000]">*</span></label>
+                    <SelectField
+                      name="contactPerson"
+                      placeholder={contactPersonsLoading ? 'Loading contacts...' : 'Search or select contact person'}
+                      options={contactPersons}
+                      value={form.contactPerson}
+                      onChange={(v: any) => {
+                        const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v;
+                        setForm(prev => ({ ...prev, contactPerson: val, assignTo: '' }));
+                        setErrors(prev => ({ ...prev, contactPerson: '' }));
+                      }}
+                      searchable
+                      disabled={contactPersonsLoading}
+                      inputClassName={errors.contactPerson ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200 focus:ring-black'}
+                      className=""
+                    />
+                    {errors.contactPerson && (
+                      <div id="contactPerson-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                        <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.contactPerson}
+                      </div>
+                    )}
+                    {contactPersonsError && <div className="text-xs text-red-600 mt-1">{contactPersonsError}</div>}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-800 mb-1">Agency Name</label>
+                    <SelectField
+                      name="createdBy"
+                      placeholder={agenciesLoading ? 'Loading agencies...' : 'Search or select agency'}
+                      options={agencies}
+                      value={form.createdBy}
+                      onChange={(v: any) => { const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v; lastChangedFieldRef.current = 'agency'; setForm(prev => ({ ...prev, createdBy: val })); }}
+                      searchable
+                      disabled={agenciesLoading}
+                    />
+                    {agenciesError && <div className="text-xs text-red-600 mt-1">{agenciesError}</div>}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-800 mb-1">Brief Budget <span className="text-[#FF0000]">*</span></label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      name="budget"
+                      value={form.budget}
+                      onChange={(e) => { handleChange(e); setErrors(prev => ({ ...prev, budget: '' })); }}
+                      placeholder="Please Enter Est. Budget"
+                      className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 transition-colors ${errors.budget ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200 focus:ring-blue-500'}`}
+                      aria-invalid={errors.budget ? 'true' : 'false'}
+                      aria-describedby={errors.budget ? 'budget-error' : undefined}
+                    />
+                    {errors.budget && (
+                      <div id="budget-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                        <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.budget}
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="w-full">
+                      <label className="block text-sm text-gray-800 mb-1">Submission Date <span className="text-[#FF0000]">*</span></label>
+                      <DatePicker
+                        selected={calendarDate}
+                        onChange={date => {
+                          setCalendarDate(date);
+                          setErrors(prev => ({ ...prev, submissionDate: '' }));
+                          if (date) {
+                            const d = date;
+                            const dd = String(d.getDate()).padStart(2, '0');
+                            const mm = String(d.getMonth() + 1).padStart(2, '0');
+                            const yyyy = d.getFullYear();
+                            const formattedSubDate = `${dd}-${mm}-${yyyy}`;
 
-                          // If campaign start date is already selected and is <= new submission date, reset it
-                          if (calendarCampaignStartDate && calendarCampaignStartDate <= date) {
-                            setCalendarCampaignStartDate(null);
-                            setCalendarCampaignEndDate(null);
+                            // If campaign start date is already selected and is <= new submission date, reset it
+                            if (calendarCampaignStartDate && calendarCampaignStartDate <= date) {
+                              setCalendarCampaignStartDate(null);
+                              setCalendarCampaignEndDate(null);
+                              setForm(prev => ({
+                                ...prev,
+                                submissionDate: formattedSubDate,
+                                campaignStartDate: '',
+                                campaignEndDate: '',
+                              }));
+                              setErrors(prev => ({ ...prev, campaignStartDate: '', campaignEndDate: '' }));
+                            } else {
+                              setForm(prev => ({
+                                ...prev,
+                                submissionDate: formattedSubDate,
+                              }));
+                            }
+                          } else {
                             setForm(prev => ({
                               ...prev,
-                              submissionDate: formattedSubDate,
+                              submissionDate: '',
+                            }));
+                          }
+                        }}
+                        minDate={new Date()}
+                        dateFormat="dd-MM-yyyy"
+                        placeholderText="DD-MM-YYYY"
+                        className={`w-full px-3 py-2 rounded-lg bg-white transition-colors ${errors.submissionDate ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200'}`}
+                        popperClassName="!duration-0 !transition-none"
+                        disabled={false}
+                      />
+                      {errors.submissionDate && (
+                        <div id="submissionDate-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                          <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.submissionDate}
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-full">
+                      <label className="block text-sm text-gray-800 mb-1">Submission Time <span className="text-[#FF0000]">*</span></label>
+                      <DatePicker
+                        selected={calendarTime}
+                        onChange={date => {
+                          setCalendarTime(date);
+                          setErrors(prev => ({ ...prev, submissionTime: '' }));
+                          if (date) {
+                            const d = date;
+                            const hh = String(d.getHours()).padStart(2, '0');
+                            const min = String(d.getMinutes()).padStart(2, '0');
+                            setForm(prev => ({
+                              ...prev,
+                              submissionTime: `${hh}:${min}`
+                            }));
+                          }
+                        }}
+                        showTimeSelect
+                        showTimeSelectOnly
+                        timeIntervals={15}
+                        timeCaption="Time"
+                        dateFormat="HH:mm"
+                        placeholderText="HH:mm"
+                        className={`w-full px-3 py-2 rounded-lg bg-white transition-colors ${errors.submissionTime ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200'}`}
+                        popperClassName="!duration-0 !transition-none"
+                        disabled={false}
+                      />
+                      {errors.submissionTime && (
+                        <div id="submissionTime-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                          <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.submissionTime}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="w-full">
+                      <label className="block text-sm text-gray-800 mb-1">Campaign Start Date <span className="text-[#FF0000]">*</span></label>
+                      <DatePicker
+                        selected={calendarCampaignStartDate}
+                        onChange={date => {
+                          setCalendarCampaignStartDate(date);
+                          setErrors(prev => ({ ...prev, campaignStartDate: '' }));
+                          if (date) {
+                            const d = date;
+                            const dd = String(d.getDate()).padStart(2, '0');
+                            const mm = String(d.getMonth() + 1).padStart(2, '0');
+                            const yyyy = d.getFullYear();
+                            const formattedStartDate = `${dd}-${mm}-${yyyy}`;
+
+                            // If campaign end date is already selected and is < new campaign start date, reset it
+                            if (calendarCampaignEndDate && calendarCampaignEndDate < date) {
+                              setCalendarCampaignEndDate(null);
+                              setForm(prev => ({
+                                ...prev,
+                                campaignStartDate: formattedStartDate,
+                                campaignEndDate: '',
+                              }));
+                              setErrors(prev => ({ ...prev, campaignEndDate: '' }));
+                            } else {
+                              setForm(prev => ({
+                                ...prev,
+                                campaignStartDate: formattedStartDate,
+                              }));
+                            }
+                          } else {
+                            setForm(prev => ({
+                              ...prev,
                               campaignStartDate: '',
-                              campaignEndDate: '',
-                            }));
-                            setErrors(prev => ({ ...prev, campaignStartDate: '', campaignEndDate: '' }));
-                          } else {
-                            setForm(prev => ({
-                              ...prev,
-                              submissionDate: formattedSubDate,
                             }));
                           }
-                        } else {
-                          setForm(prev => ({
-                            ...prev,
-                            submissionDate: '',
-                          }));
-                        }
-                      }}
-                      minDate={new Date()}
-                      dateFormat="dd-MM-yyyy"
-                      placeholderText="DD-MM-YYYY"
-                      className={`w-full px-3 py-2 rounded-lg bg-white transition-colors ${errors.submissionDate ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200'}`}
-                      popperClassName="!duration-0 !transition-none"
-                      disabled={false}
-                    />
-                    {errors.submissionDate && (
-                      <div id="submissionDate-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                        <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        {errors.submissionDate}
-                      </div>
-                    )}
-                  </div>
-                  <div className="w-full">
-                    <label className="block text-sm text-gray-800 mb-1">Submission Time <span className="text-[#FF0000]">*</span></label>
-                    <DatePicker
-                      selected={calendarTime}
-                      onChange={date => {
-                        setCalendarTime(date);
-                        setErrors(prev => ({ ...prev, submissionTime: '' }));
-                        if (date) {
-                          const d = date;
-                          const hh = String(d.getHours()).padStart(2, '0');
-                          const min = String(d.getMinutes()).padStart(2, '0');
-                          setForm(prev => ({
-                            ...prev,
-                            submissionTime: `${hh}:${min}`
-                          }));
-                        }
-                      }}
-                      showTimeSelect
-                      showTimeSelectOnly
-                      timeIntervals={15}
-                      timeCaption="Time"
-                      dateFormat="HH:mm"
-                      placeholderText="HH:mm"
-                      className={`w-full px-3 py-2 rounded-lg bg-white transition-colors ${errors.submissionTime ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200'}`}
-                      popperClassName="!duration-0 !transition-none"
-                      disabled={false}
-                    />
-                    {errors.submissionTime && (
-                      <div id="submissionTime-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                        <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        {errors.submissionTime}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="w-full">
-                    <label className="block text-sm text-gray-800 mb-1">Campaign Start Date <span className="text-[#FF0000]">*</span></label>
-                    <DatePicker
-                      selected={calendarCampaignStartDate}
-                      onChange={date => {
-                        setCalendarCampaignStartDate(date);
-                        setErrors(prev => ({ ...prev, campaignStartDate: '' }));
-                        if (date) {
-                          const d = date;
-                          const dd = String(d.getDate()).padStart(2, '0');
-                          const mm = String(d.getMonth() + 1).padStart(2, '0');
-                          const yyyy = d.getFullYear();
-                          const formattedStartDate = `${dd}-${mm}-${yyyy}`;
-
-                          // If campaign end date is already selected and is < new campaign start date, reset it
-                          if (calendarCampaignEndDate && calendarCampaignEndDate < date) {
-                            setCalendarCampaignEndDate(null);
-                            setForm(prev => ({
-                              ...prev,
-                              campaignStartDate: formattedStartDate,
-                              campaignEndDate: '',
-                            }));
-                            setErrors(prev => ({ ...prev, campaignEndDate: '' }));
+                        }}
+                        minDate={getMinCampaignStartDate()}
+                        dateFormat="dd-MM-yyyy"
+                        placeholderText="DD-MM-YYYY"
+                        className={`w-full px-3 py-2 rounded-lg bg-white transition-colors ${errors.campaignStartDate ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200'}`}
+                        popperClassName="!duration-0 !transition-none"
+                      />
+                      {errors.campaignStartDate && (
+                        <div id="campaignStartDate-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                          <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.campaignStartDate}
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-full">
+                      <label className="block text-sm text-gray-800 mb-1">Campaign End Date <span className="text-[#FF0000]">*</span></label>
+                      <DatePicker
+                        selected={calendarCampaignEndDate}
+                        onChange={date => {
+                          setCalendarCampaignEndDate(date);
+                          setErrors(prev => ({ ...prev, campaignEndDate: '' }));
+                          if (date) {
+                            const d = date;
+                            const dd = String(d.getDate()).padStart(2, '0');
+                            const mm = String(d.getMonth() + 1).padStart(2, '0');
+                            const yyyy = d.getFullYear();
+                            setForm(prev => ({ ...prev, campaignEndDate: `${dd}-${mm}-${yyyy}` }));
                           } else {
-                            setForm(prev => ({
-                              ...prev,
-                              campaignStartDate: formattedStartDate,
-                            }));
+                            setForm(prev => ({ ...prev, campaignEndDate: '' }));
                           }
-                        } else {
-                          setForm(prev => ({
-                            ...prev,
-                            campaignStartDate: '',
-                          }));
-                        }
-                      }}
-                      minDate={getMinCampaignStartDate()}
-                      dateFormat="dd-MM-yyyy"
-                      placeholderText="DD-MM-YYYY"
-                      className={`w-full px-3 py-2 rounded-lg bg-white transition-colors ${errors.campaignStartDate ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200'}`}
-                      popperClassName="!duration-0 !transition-none"
-                    />
-                    {errors.campaignStartDate && (
-                      <div id="campaignStartDate-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                        <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        {errors.campaignStartDate}
-                      </div>
-                    )}
+                        }}
+                        minDate={calendarCampaignStartDate || getMinCampaignStartDate()}
+                        dateFormat="dd-MM-yyyy"
+                        placeholderText="DD-MM-YYYY"
+                        className={`w-full px-3 py-2 rounded-lg bg-white transition-colors ${errors.campaignEndDate ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200'}`}
+                        popperClassName="!duration-0 !transition-none"
+                      />
+                      {errors.campaignEndDate && (
+                        <div id="campaignEndDate-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                          <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.campaignEndDate}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="w-full">
-                    <label className="block text-sm text-gray-800 mb-1">Campaign End Date <span className="text-[#FF0000]">*</span></label>
-                    <DatePicker
-                      selected={calendarCampaignEndDate}
-                      onChange={date => {
-                        setCalendarCampaignEndDate(date);
-                        setErrors(prev => ({ ...prev, campaignEndDate: '' }));
-                        if (date) {
-                          const d = date;
-                          const dd = String(d.getDate()).padStart(2, '0');
-                          const mm = String(d.getMonth() + 1).padStart(2, '0');
-                          const yyyy = d.getFullYear();
-                          setForm(prev => ({ ...prev, campaignEndDate: `${dd}-${mm}-${yyyy}` }));
-                        } else {
-                          setForm(prev => ({ ...prev, campaignEndDate: '' }));
-                        }
-                      }}
-                      minDate={calendarCampaignStartDate || getMinCampaignStartDate()}
-                      dateFormat="dd-MM-yyyy"
-                      placeholderText="DD-MM-YYYY"
-                      className={`w-full px-3 py-2 rounded-lg bg-white transition-colors ${errors.campaignEndDate ? 'border border-red-500 bg-red-50 focus:ring-red-500' : 'border border-gray-200'}`}
-                      popperClassName="!duration-0 !transition-none"
+                    <label className="block text-sm text-gray-800 mb-1">Campaign Duration</label>
+                    <input
+                      type="number"
+                      value={getCalculatedDuration()}
+                      disabled
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                     />
-                    {errors.campaignEndDate && (
-                      <div id="campaignEndDate-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                        <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        {errors.campaignEndDate}
-                      </div>
-                    )}
                   </div>
-                </div>
-                <div className="w-full">
-                  <label className="block text-sm text-gray-800 mb-1">Campaign Duration</label>
-                  <input
-                    type="number"
-                    value={getCalculatedDuration()}
-                    disabled
-                    placeholder="0"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-[var(--text-secondary)] mb-1">Priority</label>
-                  <SelectField
-                    name="priority"
-                    placeholder={priorityLoading ? 'Loading priorities...' : 'Select Priority'}
-                    options={priorityOptions}
-                    value={form.priority}
-                    onChange={(v: any) => {
-                      const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v;
-                      lastChangedFieldRef.current = 'priority';
-                      setForm(prev => ({ ...prev, priority: val }));
-                      setTimeout(() => { if (lastChangedFieldRef.current === 'priority') lastChangedFieldRef.current = null; }, 500);
-                    }}
-                    inputClassName={priorityLoading ? 'border border-gray-300 bg-gray-50' : 'border border-[var(--border-color)] focus:ring-blue-500'}
-                    disabled={priorityLoading}
-                  />
-                  {priorityError && <div className="text-xs text-red-600 mt-1">{priorityError}</div>}
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-800 mb-1">Brief Detail</label>
-                  <textarea
-                    ref={briefDetailRef}
-                    name="briefDetail"
-                    value={form.briefDetail}
-                    onChange={handleChange}
-                    spellCheck={false}
-                    data-gramm="false"
-                    data-quillbot-element="false"
-                    rows={4}
-                    placeholder="Show all data regarding to Brief"
-                    className="w-full px-3 py-2 border border-gray-200 text-gray-800 rounded-lg bg-white resize-none"
-                    style={{ overflow: 'hidden' }}
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm text-[var(--text-secondary)] mb-1">Priority</label>
+                    <SelectField
+                      name="priority"
+                      placeholder={priorityLoading ? 'Loading priorities...' : 'Select Priority'}
+                      options={priorityOptions}
+                      value={form.priority}
+                      onChange={(v: any) => {
+                        const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v;
+                        lastChangedFieldRef.current = 'priority';
+                        setForm(prev => ({ ...prev, priority: val }));
+                        setTimeout(() => { if (lastChangedFieldRef.current === 'priority') lastChangedFieldRef.current = null; }, 500);
+                      }}
+                      inputClassName={priorityLoading ? 'border border-gray-300 bg-gray-50' : 'border border-[var(--border-color)] focus:ring-blue-500'}
+                      disabled={priorityLoading}
+                    />
+                    {priorityError && <div className="text-xs text-red-600 mt-1">{priorityError}</div>}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-800 mb-1">Brief Detail</label>
+                    <textarea
+                      ref={briefDetailRef}
+                      name="briefDetail"
+                      value={form.briefDetail}
+                      onChange={handleChange}
+                      spellCheck={false}
+                      data-gramm="false"
+                      data-quillbot-element="false"
+                      rows={4}
+                      placeholder="Show all data regarding to Brief"
+                      className="w-full px-3 py-2 border border-gray-200 text-gray-800 rounded-lg bg-white resize-none"
+                      style={{ overflow: 'hidden' }}
+                    />
+                  </div>
 
 
-                {/* Brief Detail moved to pair with Select Type for aligned row */}
-              </div>
+                  {/* Brief Detail moved to pair with Select Type for aligned row */}
+                </div>
               </EditSection>
             </div>
 
@@ -1713,56 +1714,56 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
           titleWrapperClassName="mb-3"
           icon={<History className="h-5 w-5" strokeWidth={2} />}
         >
-            <div className="min-w-0 overflow-x-auto">
-              {/* Use the Table component for consistent design */}
-              <Table
-                data={
-                  historiesLoading ? [] : (histories || []).map((it: any) => {
-                    const assignedTo = it.assigned_to?.name || it.assigned_to || '-';
-                    const callStatus = it.brief_status?.name || it.brief_status || (it.status ? String(it.status) : '-');
-                    const followUp = it.brief_status_time || it.brief_status_time || '-';
-                    const lastCall = it.created_at || it.updated_at || '-';
-                    const submissionRaw = it.submission_date || it.brief?.submission_date || '-';
-                    const submission = (submissionRaw && submissionRaw !== '-') ? (
-                      // normalize common formats to DD-MM-YYYY HH:mm when possible
-                      ((): string => {
-                        try {
-                          const s = String(submissionRaw).trim();
-                          // if already in DD-MM-YYYY or contains space with time
-                          if (/^\d{2}-\d{2}-\d{4}/.test(s)) return s.replace(/T/, ' ');
-                          // if ISO like 2025-12-17 18:45 or 2025-12-17T18:45:00
-                          const iso = s.replace(/\s+/, 'T');
-                          const d = new Date(iso);
-                          if (!isNaN(d.getTime())) {
-                            const dd = String(d.getDate()).padStart(2, '0');
-                            const mm = String(d.getMonth() + 1).padStart(2, '0');
-                            const yyyy = d.getFullYear();
-                            const hh = String(d.getHours()).padStart(2, '0');
-                            const min = String(d.getMinutes()).padStart(2, '0');
-                            return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
-                          }
-                        } catch {
-                          // no need to action
+          <div className="min-w-0 overflow-x-auto">
+            {/* Use the Table component for consistent design */}
+            <Table
+              data={
+                historiesLoading ? [] : (histories || []).map((it: any) => {
+                  const assignedTo = it.assigned_to?.name || it.assigned_to || '-';
+                  const callStatus = it.brief_status?.name || it.brief_status || (it.status ? String(it.status) : '-');
+                  const followUp = it.brief_status_time || it.brief_status_time || '-';
+                  const lastCall = it.created_at || it.updated_at || '-';
+                  const submissionRaw = it.submission_date || it.brief?.submission_date || '-';
+                  const submission = (submissionRaw && submissionRaw !== '-') ? (
+                    // normalize common formats to DD-MM-YYYY HH:mm when possible
+                    ((): string => {
+                      try {
+                        const s = String(submissionRaw).trim();
+                        // if already in DD-MM-YYYY or contains space with time
+                        if (/^\d{2}-\d{2}-\d{4}/.test(s)) return s.replace(/T/, ' ');
+                        // if ISO like 2025-12-17 18:45 or 2025-12-17T18:45:00
+                        const iso = s.replace(/\s+/, 'T');
+                        const d = new Date(iso);
+                        if (!isNaN(d.getTime())) {
+                          const dd = String(d.getDate()).padStart(2, '0');
+                          const mm = String(d.getMonth() + 1).padStart(2, '0');
+                          const yyyy = d.getFullYear();
+                          const hh = String(d.getHours()).padStart(2, '0');
+                          const min = String(d.getMinutes()).padStart(2, '0');
+                          return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
                         }
-                        return String(submissionRaw);
-                      })()
-                    ) : '-';
-                    const comment = it.comment || it.brief?.comment || '-';
-                    return { assignedTo, callStatus, followUp, lastCall, submission, comment };
-                  })
-                }
-                columns={[
-                  { key: 'assignedTo', header: 'Assigned TO', className: 'whitespace-nowrap overflow-hidden truncate' },
-                  { key: 'callStatus', header: 'Call Status', className: 'whitespace-nowrap overflow-hidden truncate' },
-                  { key: 'followUp', header: 'FollowUp Date & Time', className: 'whitespace-nowrap overflow-hidden truncate' },
-                  { key: 'lastCall', header: 'Last Call Status', className: 'whitespace-nowrap overflow-hidden truncate' },
-                  { key: 'submission', header: 'Submission Date & Time', className: 'whitespace-nowrap overflow-hidden truncate' },
-                  { key: 'comment', header: 'Comment', className: 'whitespace-nowrap overflow-hidden truncate' },
-                ]}
-                desktopOnMobile={true}
-                keyExtractor={(row: any, idx: number) => `history-row-${row.assignedTo || idx}-${idx}`}
-              />
-            </div>
+                      } catch {
+                        // no need to action
+                      }
+                      return String(submissionRaw);
+                    })()
+                  ) : '-';
+                  const comment = it.comment || it.brief?.comment || '-';
+                  return { assignedTo, callStatus, followUp, lastCall, submission, comment };
+                })
+              }
+              columns={[
+                { key: 'assignedTo', header: 'Assigned TO', className: 'whitespace-nowrap overflow-hidden truncate' },
+                { key: 'callStatus', header: 'Call Status', className: 'whitespace-nowrap overflow-hidden truncate' },
+                { key: 'followUp', header: 'FollowUp Date & Time', className: 'whitespace-nowrap overflow-hidden truncate' },
+                { key: 'lastCall', header: 'Last Call Status', className: 'whitespace-nowrap overflow-hidden truncate' },
+                { key: 'submission', header: 'Submission Date & Time', className: 'whitespace-nowrap overflow-hidden truncate' },
+                { key: 'comment', header: 'Comment', className: 'whitespace-nowrap overflow-hidden truncate' },
+              ]}
+              desktopOnMobile={true}
+              keyExtractor={(row: any, idx: number) => `history-row-${row.assignedTo || idx}-${idx}`}
+            />
+          </div>
         </CollapsibleFormCard>
       )}
     </motion.div>

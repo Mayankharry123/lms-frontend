@@ -7,12 +7,14 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Eye, Radio, UserCheck, Clock3 } from 'lucide-react';
 import DashboardChartsSection from '../../components/dashboard/DashboardChartsSection';
-import DashboardMetricCard from '../../components/dashboard/DashboardMetricCard';
+import PlannerKpiCard from '../../components/dashboard/PlannerKpiCard';
+import PendingAssignmentsCard from '../../components/dashboard/PendingAssignmentsCard';
 import Badge from '../../components/ui/Badge';
 import Table, { type Column } from '../../components/ui/Table';
 import { useApiQuery } from '../../hooks/useApiQuery';
 import { getOperationsChartMetrics } from '../../services/DashboardCharts';
 import type { OperationsDashboardItem } from '../../services/DashboardCharts';
+import { getPendingAssignmentCounts } from '../../services/Dashboard';
 import { ROUTES } from '../../constants';
 import {
   createDefaultDashboardFilters,
@@ -86,6 +88,11 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = ({
     [filterKey],
   );
 
+  const { data: pendingAssignmentCounts, loading: pendingAssignmentLoading } = useApiQuery(
+    () => getPendingAssignmentCounts(filters),
+    [filterKey],
+  );
+
   const recent = data?.recent ?? [];
 
   const tableColumns = useMemo<Column<OperationsDashboardItem>[]>(
@@ -113,53 +120,104 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = ({
     [navigate],
   );
 
+  const showNotifications = isCardVisible('operations', 'operations.notifications');
+
+  const totalOps = data?.totals.operations ?? 0;
+  const pendingOps = data?.totals.pendingOperations ?? 0;
+  const liveOps = data?.totals.liveOperations ?? 0;
+  const assignedOps = data?.totals.assignedOperations ?? 0;
+
+  const pendingPercent = totalOps > 0 ? Math.round((pendingOps / totalOps) * 100) : 0;
+  const livePercent = totalOps > 0 ? Math.round((liveOps / totalOps) * 100) : 0;
+  const assignedPercent = totalOps > 0 ? Math.round((assignedOps / totalOps) * 100) : 0;
+
+  const kpiCards = (
+    <>
+      {isCardVisible('operations', 'operations.total') ? (
+        <PlannerKpiCard
+          title="Total Operations"
+          subtitle="Campaign Operations"
+          value={totalOps}
+          icon={<ClipboardList />}
+          tone="blue"
+          badge={<span>Total</span>}
+          pill={<span>Operations</span>}
+          progressPercent={100}
+          footerLeft="Total operational campaigns"
+          footerRight={`${totalOps} records`}
+          embedded={embedded}
+          loading={loading}
+        />
+      ) : null}
+
+      {isCardVisible('operations', 'operations.pending') ? (
+        <PlannerKpiCard
+          title="Pending"
+          subtitle="Awaiting Execution"
+          value={pendingOps}
+          icon={<Clock3 />}
+          tone="orange"
+          badge={<span>Pending</span>}
+          pill={<span>{totalOps > 0 ? `${pendingPercent}% Pending` : 'Pending'}</span>}
+          progressPercent={pendingPercent}
+          footerLeft={`${pendingOps} awaiting processing`}
+          footerRight="Action Required"
+          embedded={embedded}
+          loading={loading}
+        />
+      ) : null}
+
+      {isCardVisible('operations', 'operations.live') ? (
+        <PlannerKpiCard
+          title="Live"
+          subtitle="Active Campaigns"
+          value={liveOps}
+          icon={<Radio />}
+          tone="emerald"
+          badge={<span>Live</span>}
+          pill={<span>{totalOps > 0 ? `${livePercent}% Live` : 'Live'}</span>}
+          progressPercent={livePercent}
+          footerLeft={`${liveOps} active in field`}
+          footerRight="On Air"
+          embedded={embedded}
+          loading={loading}
+        />
+      ) : null}
+
+      {isCardVisible('operations', 'operations.assigned') ? (
+        <PlannerKpiCard
+          title="Assigned"
+          subtitle="Team Allocation"
+          value={assignedOps}
+          icon={<UserCheck />}
+          tone="purple"
+          badge={<span>Assigned</span>}
+          pill={<span>{totalOps > 0 ? `${assignedPercent}% Assigned` : 'Assigned'}</span>}
+          progressPercent={assignedPercent}
+          footerLeft={`${assignedOps} assigned to teams`}
+          footerRight="Allocated"
+          embedded={embedded}
+          loading={loading}
+        />
+      ) : null}
+    </>
+  );
+
   return (
     <div className="dashboard-content">
       {error ? (
         <div className="dashboard-error-state">{error}</div>
-      ) : (
-        <div className="dashboard-stat-grid">
-          {isCardVisible('operations', 'operations.total') ? (
-            <DashboardMetricCard
-              title="Total Operations"
-              value={data?.totals.operations ?? 0}
-              icon={<ClipboardList />}
-              embedded={embedded}
-              loading={loading}
-              className="dashboard-metric-card--tone-blue"
-            />
-          ) : null}
-          {isCardVisible('operations', 'operations.pending') ? (
-            <DashboardMetricCard
-              title="Pending"
-              value={data?.totals.pendingOperations ?? 0}
-              icon={<Clock3 />}
-              embedded={embedded}
-              loading={loading}
-              className="dashboard-metric-card--tone-amber"
-            />
-          ) : null}
-          {isCardVisible('operations', 'operations.live') ? (
-            <DashboardMetricCard
-              title="Live"
-              value={data?.totals.liveOperations ?? 0}
-              icon={<Radio />}
-              embedded={embedded}
-              loading={loading}
-              className="dashboard-metric-card--tone-teal"
-            />
-          ) : null}
-          {isCardVisible('operations', 'operations.assigned') ? (
-            <DashboardMetricCard
-              title="Assigned"
-              value={data?.totals.assignedOperations ?? 0}
-              icon={<UserCheck />}
-              embedded={embedded}
-              loading={loading}
-              className="dashboard-metric-card--tone-violet"
-            />
-          ) : null}
+      ) : showNotifications ? (
+        <div className="dashboard-operations-performance">
+          <PendingAssignmentsCard
+            counts={pendingAssignmentCounts}
+            loading={pendingAssignmentLoading}
+            embedded={embedded}
+          />
+          <div className="dashboard-operations-kpis">{kpiCards}</div>
         </div>
+      ) : (
+        <div className="dashboard-stat-grid">{kpiCards}</div>
       )}
 
       <DashboardChartsSection variant="operations" filters={filters} isCardVisible={isCardVisible} />

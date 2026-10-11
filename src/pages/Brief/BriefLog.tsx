@@ -1,7 +1,7 @@
 /**
  * @file BriefLog.tsx
  * @description Brief activity log and plan history navigation.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -264,11 +264,6 @@ const BriefLog: React.FC = () => {
       render: (item) => item.product_name || 'N/A',
     },
     {
-      key: 'contact_person',
-      header: 'Contact Person',
-      render: (item) => item.contact_person || 'N/A',
-    },
-    {
       key: 'mode_of_campaign',
       header: 'Mode Of Campaign',
       render: (item) => item.mode_of_campaign || 'N/A',
@@ -383,7 +378,7 @@ const BriefLog: React.FC = () => {
           url = String(attachmentVal).trim();
         }
         if (!url) return <span className="text-xs text-gray-400">—</span>;
-        
+
         // Extract name from various possible formats
         let name = '';
         const attachmentNameVal = (item as any).attachmentName || (item as any).attachment_name || '';
@@ -392,19 +387,19 @@ const BriefLog: React.FC = () => {
         } else if (typeof attachmentNameVal === 'string') {
           name = String(attachmentNameVal).trim();
         }
-        
+
         // Fallback to filename from URL if no name provided
         if (!name) {
           name = url.split('/').pop() || 'attachment';
         }
-        
+
         // Validate URL protocol to prevent XSS attacks
         const isUrlValid = isValidAttachmentUrl(url);
         if (!isUrlValid) {
           console.warn('Invalid attachment URL protocol:', url);
           return <span className="text-xs text-gray-400">—</span>;
         }
-        
+
         return (
           <button
             type="button"
@@ -572,6 +567,7 @@ const BriefLog: React.FC = () => {
             keyExtractor={(it: BriefLogItem, idx: number) => `${it.id}-${idx}`}
             columns={columns}
             onEdit={(item: BriefLogItem) => handleEdit(item)}
+            editLabel="Re-Upload"
             canEdit={canEditPlan}
             onView={(item: BriefLogItem) => navigate(ROUTES.BRIEF.PLAN_HISTORY((item.brief_id || item.id).toString()))}
             onUpload={(item: BriefLogItem) => navigate(`/brief/plan-submission/${item.brief_id || item.id}`)}

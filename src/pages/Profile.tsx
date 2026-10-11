@@ -1,13 +1,33 @@
 /**
  * @file Profile.tsx
  * @description Authenticated user profile view and settings.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
 import React, { useEffect, useState } from 'react';
 import { getUserProfile } from '../services/Profile';
 import axios from '../services/http';
+
+function formatAssignedValues(value: unknown, nameKeys: string[]): string {
+  if (!Array.isArray(value)) {
+    return typeof value === 'string' || typeof value === 'number' ? String(value) : 'N/A';
+  }
+
+  const names = value
+    .map((item: unknown) => {
+      if (typeof item === 'string' || typeof item === 'number') return String(item);
+      if (!item || typeof item !== 'object') return '';
+      const record = item as Record<string, unknown>;
+      const name = nameKeys
+        .map((key) => record[key])
+        .find((candidate) => typeof candidate === 'string' && candidate.trim());
+      return typeof name === 'string' ? name.trim() : '';
+    })
+    .filter(Boolean);
+
+  return names.length ? names.join(', ') : 'N/A';
+}
 
 
 const Profile: React.FC = () => {
@@ -29,7 +49,15 @@ const Profile: React.FC = () => {
         try {
           // Try to get user profile from /users/{id}
           const userProfile = await getUserProfile(Number(userId));
-          if (isMounted) setProfile(userProfile);
+          if (isMounted) {
+            setProfile({
+              ...userData,
+              ...userProfile,
+              organisations: userProfile.organisations ?? userData.organisations,
+              departments: userProfile.departments ?? userData.departments,
+              zone_name: userProfile.zone_name ?? userData.zone_name,
+            });
+          }
         } catch {
           // If /users/{id} fails, fallback to /auth/me data
           if (isMounted) setProfile(userData);
@@ -150,6 +178,30 @@ const Profile: React.FC = () => {
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Last Updated</label>
                 <p className="text-base font-medium text-gray-900">{formatDate(profile.updated_at, profile.updated_at_human) || 'N/A'}</p>
+              </div>
+
+              {/* Organisations */}
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Organisations</label>
+                <p className="text-base font-medium text-gray-900">
+                  {formatAssignedValues(profile.organisations, ['name', 'organisation_name'])}
+                </p>
+              </div>
+
+              {/* Departments */}
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Departments</label>
+                <p className="text-base font-medium text-gray-900">
+                  {formatAssignedValues(profile.departments, ['departments_name', 'department_name', 'name'])}
+                </p>
+              </div>
+
+              {/* Zone */}
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Zone</label>
+                <p className="text-base font-medium text-gray-900">
+                  {formatAssignedValues(profile.zone_name ?? profile.zone, ['name', 'zone_name'])}
+                </p>
               </div>
             </div>
             {/* Roles Section */}

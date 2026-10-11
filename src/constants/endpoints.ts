@@ -246,6 +246,8 @@ export const ENDPOINTS = {
     OPERATIONS_CHARTS: '/dashboard/operations-charts',
     FINANCE_CHARTS: '/dashboard/finance-charts',
     FINANCE_SUMMARY: '/dashboard/finance-summary',
+    PENDING_ASSIGNMENTS: '/dashboard/pending-assignments',
+    UNASSIGNED_COUNTS: '/dashboard/unassigned-counts',
   },
   NOTIFICATIONS: {
     LIST: '/notifications',

@@ -1,7 +1,7 @@
 /**
  * @file SomePage.tsx
  * @description Placeholder or sample page component.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 

@@ -8,6 +8,7 @@ import { usePermissions } from '../../hooks/SidebarMenuHooks';
 
 interface ActionMenuProps {
   onEdit?: () => void;
+  editLabel?: string;
   onView?: () => void;
   onDelete?: () => void;
   onUpload?: () => void;
@@ -40,7 +41,7 @@ interface ActionMenuProps {
   totalRows?: number;
 }
 
-const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, briefCreationLabel = 'Brief Creation', onCostSheet, onDownload, onApprove, onDecline, onCreatePo, showViewWithoutPermission = false, editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, createPoPermissionSlug, isLast, rowIndex, totalRows }) => {
+const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, editLabel = 'Edit', onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, briefCreationLabel = 'Brief Creation', onCostSheet, onDownload, onApprove, onDecline, onCreatePo, showViewWithoutPermission = false, editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, createPoPermissionSlug, isLast, rowIndex, totalRows }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showAbove, setShowAbove] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -329,6 +330,29 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpl
             `}
             onClick={(e) => e.stopPropagation()}
           >
+            {(onBriefCreation && (!planSubmissionPermissionSlug || hasPermission(planSubmissionPermissionSlug))) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onBriefCreation();
+                  setIsOpen(false);
+                }}
+                className="
+                      w-full px-4 py-2.5 text-sm font-medium bg-white shadow-none outline-0
+                      text-gray-700 hover:text-gray-700 hover:bg-white
+                      flex items-center gap-3
+                      transition-colors duration-150 ease-in-out
+                      first:rounded-t-lg last:rounded-b-lg
+                      focus:outline-none focus:bg-white focus:text-gray-700
+                    "
+                role="menuitem"
+                tabIndex={0}
+              >
+                <FilePlus2 className="w-4 h-4 flex-shrink-0" />
+                <span>{briefCreationLabel}</span>
+              </button>
+            )}
+
             {(onEdit && editPermissionSlug && hasPermission(editPermissionSlug)) && (
               <button
                 onClick={(e) => {
@@ -348,7 +372,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpl
                 tabIndex={0}
               >
                 <Edit className="w-4 h-4 flex-shrink-0" />
-                <span>Edit</span>
+                <span>{editLabel}</span>
               </button>
             )}
 
@@ -533,29 +557,6 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ onEdit, onView, onDelete, onUpl
               >
                 <CalendarPlus className="w-4 h-4 flex-shrink-0" />
                 <span>Meeting Schedule</span>
-              </button>
-            )}
-
-            {(onBriefCreation && (!planSubmissionPermissionSlug || hasPermission(planSubmissionPermissionSlug))) && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onBriefCreation();
-                  setIsOpen(false);
-                }}
-                className="
-                      w-full px-4 py-2.5 text-sm font-medium bg-white shadow-none outline-0
-                      text-gray-700 hover:text-gray-700 hover:bg-white
-                      flex items-center gap-3
-                      transition-colors duration-150 ease-in-out
-                      first:rounded-t-lg last:rounded-b-lg
-                      focus:outline-none focus:bg-white focus:text-gray-700
-                    "
-                role="menuitem"
-                tabIndex={0}
-              >
-                <FilePlus2 className="w-4 h-4 flex-shrink-0" />
-                <span>{briefCreationLabel}</span>
               </button>
             )}
 

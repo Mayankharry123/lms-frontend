@@ -1,7 +1,7 @@
 /**
  * @file BriefPipeline.tsx
  * @description Brief pipeline list, create, view, and edit workflows.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -39,20 +39,20 @@ type Brief = ServiceBriefItem;
 const BriefPipeline: React.FC = () => {
   const { hasPermission } = usePermissions();
   const dispatch = useDispatch<AppDispatch>();
-    // Helper to fetch briefs (for refresh)
-    const fetchBriefs = async () => {
-      try {
-        setLoading(true);
-        const res = await listBriefs(currentPage, itemsPerPage, searchQuery || undefined);
-        setBriefs(res.data || []);
-        const total = res.meta?.pagination?.total ?? 0;
-        setTotalItems(Number(total));
-      } catch (err) {
-        console.error('Failed to load briefs', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Helper to fetch briefs (for refresh)
+  const fetchBriefs = async () => {
+    try {
+      setLoading(true);
+      const res = await listBriefs(currentPage, itemsPerPage, searchQuery || undefined);
+      setBriefs(res.data || []);
+      const total = res.meta?.pagination?.total ?? 0;
+      setTotalItems(Number(total));
+    } catch (err) {
+      console.error('Failed to load briefs', err);
+    } finally {
+      setLoading(false);
+    }
+  };
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -125,10 +125,10 @@ const BriefPipeline: React.FC = () => {
       setLoading(false);
     }
   };
- /**
- * Fetches the selected lead when creating a new Brief and pre-fills
- * the Brief form with lead, contact person, brand, and agency details.
- */
+  /**
+  * Fetches the selected lead when creating a new Brief and pre-fills
+  * the Brief form with lead, contact person, brand, and agency details.
+  */
   useEffect(() => {
     const rawId = params.id;
     const id = rawId ? decodeURIComponent(rawId) : undefined;
@@ -154,8 +154,8 @@ const BriefPipeline: React.FC = () => {
               item.submissionDate = `${dd}-${mm}-${yyyy}`;
               item.submissionTime = `${hh}:${min}`;
             }
-          } catch { 
-          // no need to action
+          } catch {
+            // no need to action
           }
         }
         return item;
@@ -165,7 +165,7 @@ const BriefPipeline: React.FC = () => {
         try {
           setLoading(true);
           const single = await getBrief(id);
-          
+
           if (!mounted) return;
           setEditItem(single ? patchSubmissionFields(single) : null);
           setViewItem(null);
@@ -242,7 +242,7 @@ const BriefPipeline: React.FC = () => {
   }, [currentPage, itemsPerPage, searchQuery]);
 
 
-// Assign To options loaded per brief via child-planing-users?brief_id=
+  // Assign To options loaded per brief via child-planing-users?brief_id=
   const [assignOptionsByBriefId, setAssignOptionsByBriefId] = useState<Record<string, UserOption[]>>({});
 
   useEffect(() => {
@@ -309,11 +309,11 @@ const BriefPipeline: React.FC = () => {
   };
 
   const handleAssignConfirm = async (_newPlanner: string) => {
-    void _newPlanner; 
-  // This is called when user confirms the assignment in the dialog
-  // The actual API call happens after confirmation in handleAssignToChange
-  // intentionally empty for now
-};
+    void _newPlanner;
+    // This is called when user confirms the assignment in the dialog
+    // The actual API call happens after confirmation in handleAssignToChange
+    // intentionally empty for now
+  };
 
   const handleSaveEdited = async (updated: Partial<Brief>) => {
     if (!updated.id) return;
@@ -349,17 +349,17 @@ const BriefPipeline: React.FC = () => {
     // Extract URL from various possible formats (string or object)
     // Check all possible attachment keys in order of preference
     let url = '';
-    const attachmentVal = (it as any).attachmentUrl || 
-      (it as any)._raw?.attachment_url || 
-      (it as any)._raw?.attachment || 
-      (it as any)._raw?.attachment_path || 
-      (it as any)._raw?.attachment_file_url || 
-      (it as any)._raw?.file_url || 
-      (it as any)._raw?.file_path || 
-      (it as any)._raw?.document_url || 
-      (it as any)._raw?.brief_attachment || 
-      (it as any)._raw?.brief_file || 
-      (it as any)._raw?.attachment_file || 
+    const attachmentVal = (it as any).attachmentUrl ||
+      (it as any)._raw?.attachment_url ||
+      (it as any)._raw?.attachment ||
+      (it as any)._raw?.attachment_path ||
+      (it as any)._raw?.attachment_file_url ||
+      (it as any)._raw?.file_url ||
+      (it as any)._raw?.file_path ||
+      (it as any)._raw?.document_url ||
+      (it as any)._raw?.brief_attachment ||
+      (it as any)._raw?.brief_file ||
+      (it as any)._raw?.attachment_file ||
       '';
     if (typeof attachmentVal === 'object' && attachmentVal !== null && 'url' in attachmentVal) {
       url = String((attachmentVal as any).url || '').trim();
@@ -367,7 +367,7 @@ const BriefPipeline: React.FC = () => {
       url = String(attachmentVal).trim();
     }
     if (!url) return;
-    
+
     // Extract name from various possible formats
     let name = '';
     const attachmentNameVal = (it as any).attachmentName || (it as any)._raw?.attachment_name || '';
@@ -376,18 +376,18 @@ const BriefPipeline: React.FC = () => {
     } else if (typeof attachmentNameVal === 'string') {
       name = String(attachmentNameVal).trim();
     }
-    
+
     // Fallback to filename from URL if no name provided
     if (!name) {
       name = url.split('/').pop() || 'attachment';
     }
-    
+
     // Validate URL protocol to prevent XSS attacks
     if (!isValidAttachmentUrl(url)) {
       console.warn('Invalid attachment URL protocol:', url);
       return;
     }
-    
+
     setAttachmentModalSource({ kind: 'remote', url, name });
     setIsAttachmentModalOpen(true);
   };
@@ -473,7 +473,7 @@ const BriefPipeline: React.FC = () => {
           // refresh list to show updated status
           setTimeout(() => { fetchBriefs(); }, 300);
           SweetAlert.showUpdateSuccess();
-          
+
           // Refresh notifications in Redux after status update
           try {
             const [count, notificationsRes] = await Promise.all([
@@ -498,12 +498,12 @@ const BriefPipeline: React.FC = () => {
     })();
   };
 
-    const handleStatusConfirm = async (_newStatus: string) => {
-        void _newStatus; // mark as intentionally unused
-      // This is called when user confirms the status change in the dialog
-      // The actual API call happens after confirmation in handleSelectStatus
-      // intentionally empty for now
-    };
+  const handleStatusConfirm = async (_newStatus: string) => {
+    void _newStatus; // mark as intentionally unused
+    // This is called when user confirms the status change in the dialog
+    // The actual API call happens after confirmation in handleSelectStatus
+    // intentionally empty for now
+  };
 
 
   return (
@@ -521,7 +521,7 @@ const BriefPipeline: React.FC = () => {
       ) : viewItem ? (
         <MasterView item={viewItem} onClose={() => navigate(ROUTES.BRIEF.PIPELINE)} />
       ) : editItem ? (
-       
+
         <CreateBriefForm
           inline
           mode="edit"
@@ -557,178 +557,188 @@ const BriefPipeline: React.FC = () => {
                 desktopOnMobile={true}
                 keyExtractor={(it: Brief, idx: number) => `${it.id}-${idx}`}
                 columns={([
-                {
-                  key: 'chat',
-                  header: 'CHAT',
-                  minWidth: 72,
-                  allowOverflow: true,
-                  className: 'text-center whitespace-nowrap',
-                  headerClassName: 'text-center',
-                  render: (it: Brief) => (
-                    <div className="flex items-center justify-center">
-                      <button
-                        type="button"
-                        title="Chat"
-                        aria-label={`Chat for brief ${it.id}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleOpenChat(it);
-                        }}
-                        className="app-icon-btn inline-flex items-center justify-center rounded-full border-0 text-white shadow-sm"
-                        style={{
-                          width: '2rem',
-                          height: '2rem',
-                          minWidth: '2rem',
-                          padding: 0,
-                          backgroundColor: '#f26222',
-                          color: '#ffffff',
-                        }}
-                      >
-                        <MessageCircle
-                          className="h-4 w-4"
-                          strokeWidth={2.25}
-                          color="#ffffff"
-                          style={{ width: 16, height: 16, stroke: '#ffffff', fill: 'none' }}
-                        />
-                      </button>
-                    </div>
-                  ),
-                },
-                { key: 'sr', header: 'Id', render: (it: Brief) => `#${it.id}`, className: 'whitespace-nowrap overflow-hidden truncate' },
-                { key: 'briefName', header: 'Brief Name', render: (it: Brief) => it.briefName, className: 'whitespace-nowrap overflow-hidden truncate' },
-                { key: 'brandName', header: 'Brand Name', render: (it: Brief) => it.brandName, className: 'whitespace-nowrap overflow-hidden truncate' },
-                { key: 'productName', header: 'Product Name', render: (it: Brief) => it.productName, className: 'whitespace-nowrap overflow-hidden truncate' },
-                { key: 'contactPerson', header: 'Contact Person', render: (it: Brief) => {
-                  const contactPersonVal = it.contactPerson;
-                  if (typeof contactPersonVal === 'object' && contactPersonVal !== null && 'name' in contactPersonVal) {
-                    return (contactPersonVal as any).name;
-                  }
-                  return String(contactPersonVal ?? '');
-                }, className: 'whitespace-nowrap overflow-hidden truncate' },
-                { key: 'modeOfCampaign', header: 'Mode Of Campaign', render: (it: Brief) => it.modeOfCampaign, className: 'whitespace-nowrap overflow-hidden truncate' },
-                { key: 'mediaType', header: 'Media Type', render: (it: Brief) => it.mediaType, className: 'whitespace-nowrap overflow-hidden truncate' },
-                { key: 'priority', header: 'Priority', render: (it: Brief) => {
-                  const priorityVal = it.priority;
-                  if (typeof priorityVal === 'object' && priorityVal !== null && 'name' in priorityVal) {
-                    return (priorityVal as any).name;
-                  }
-                  return String(priorityVal ?? '');
-                }, className: 'whitespace-nowrap overflow-hidden truncate' },
-                { key: 'budget', header: 'Budget', render: (it: Brief) => String(it.budget ?? ''), className: 'whitespace-nowrap overflow-hidden truncate' },
-                {
-                  key: 'attachment',
-                  header: 'Attachment',
-                  render: (it: Brief) => {
-                    // Extract URL from various possible formats (string or object)
-                    let url = '';
-                    const attachmentVal = (it as any).attachmentUrl || (it as any)._raw?.attachment_url || (it as any)._raw?.file_url || (it as any)._raw?.document_url || '';
-                    if (typeof attachmentVal === 'object' && attachmentVal !== null && 'url' in attachmentVal) {
-                      url = String((attachmentVal as any).url || '').trim();
-                    } else if (typeof attachmentVal === 'string') {
-                      url = String(attachmentVal).trim();
-                    }
-                    if (!url) return <span className="text-xs text-gray-400">—</span>;
-                    return (
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center w-10 h-10 !p-0 rounded-md border border-gray-200 !bg-gray-100 hover:!bg-gray-200"
-                        onClick={() => openAttachment(it)}
-                        aria-label="View attachment"
-                        title="View attachment"
-                      >
-                        <Eye className="w-4 h-4 !text-black" />
-                      </button>
-                    );
-                  },
-                  className: 'whitespace-nowrap',
-                },
-                { key: 'createdBy', header: 'Created By', render: (it: Brief) => {
-                  const createdByVal = it.createdBy;
-                  if (typeof createdByVal === 'object' && createdByVal !== null && 'name' in createdByVal) {
-                    return (createdByVal as any).name;
-                  }
-                  return String(createdByVal ?? '');
-                }, className: 'whitespace-nowrap overflow-hidden truncate' },
-                { key: 'assignTo', header: 'Planner', render: (it: Brief) => {
-                  const assignToVal = it.assignTo;
-                  let displayName = '';
-                  if (typeof assignToVal === 'object' && assignToVal !== null && 'name' in assignToVal) {
-                    displayName = (assignToVal as any).name;
-                  } else {
-                    displayName = String(assignToVal ?? '');
-                  }
-                  const rowAssignOptions = assignOptionsByBriefId[it.id] || [];
-                  const optionNames = rowAssignOptions.map((opt) => opt.name);
-                  const assignDropdownOptions =
-                    displayName && !optionNames.includes(displayName)
-                      ? [displayName, ...optionNames]
-                      : optionNames;
-                  return hasPermission('brief.assign') ? (
-                    <div className="relative min-w-[140px]">
-                      <AssignDropdown
-                        value={displayName}
-                        options={assignDropdownOptions}
-                        onChange={(newPlanner: string) => handleAssignToChange(it.id, newPlanner)}
-                        onConfirm={handleAssignConfirm}
-                      />
-                    </div>
-                  ) : (
-                    <div className="min-w-[140px] text-sm text-gray-700">
-                      {displayName || 'Not Assigned'}
-                    </div>
-                  );
-                }, className: 'min-w-[140px]', allowOverflow: true },
-                { key: 'status', header: 'Brief Status', render: (it: Brief) => {
-                  // Show status name from brief_status object, fallback to '-' or 'No Status'
-                  const statusName = it.brief_status && typeof it.brief_status === 'object' && 'name' in it.brief_status
-                    ? (it.brief_status as any).name
-                    : '-';
-                  return hasPermission('brief-status.update') ? (
-                    <div className="min-w-[140px]">
-                      <StatusDropdown
-                        value={statusName}
-                        options={statusOptions.map(opt => opt.name)}
-                        onChange={(newStatus: string) => handleSelectStatus(it.id, newStatus)}
-                        onConfirm={handleStatusConfirm}
-                      />
-                    </div>
-                  ) : (
-                    <div className="min-w-[140px] text-sm text-gray-700">
-                      {statusName}
-                    </div>
-                  );
-                }, className: 'min-w-[140px]', allowOverflow: true },
-                {
-                  key: 'briefDetail',
-                  header: 'Brief Detail',
-                  render: (it: Brief) => (
-                    <span
-                      className="inline-block"
-                      onMouseEnter={(e) => showTooltip(e, String(it.comment ?? ''))}
-                      onMouseLeave={() => hideTooltip()}
-                      // provide native tooltip as a11y/fallback
-                      title={String(it.comment ?? '')}
-                    >
-                      <div
-                        className="text-sm text-gray-800"
-                        style={{
-                          maxWidth: '40ch',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          overflowWrap: 'break-word',
-                        }}
-                      >
-                        {it.comment}
+                  {
+                    key: 'chat',
+                    header: 'CHAT',
+                    minWidth: 72,
+                    allowOverflow: true,
+                    className: 'text-center whitespace-nowrap',
+                    headerClassName: 'text-center',
+                    render: (it: Brief) => (
+                      <div className="flex items-center justify-center">
+                        <button
+                          type="button"
+                          title="Chat"
+                          aria-label={`Chat for brief ${it.id}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleOpenChat(it);
+                          }}
+                          className="app-icon-btn inline-flex items-center justify-center rounded-full border-0 text-white shadow-sm"
+                          style={{
+                            width: '2rem',
+                            height: '2rem',
+                            minWidth: '2rem',
+                            padding: 0,
+                            backgroundColor: '#f26222',
+                            color: '#ffffff',
+                          }}
+                        >
+                          <MessageCircle
+                            className="h-4 w-4"
+                            strokeWidth={2.25}
+                            color="#ffffff"
+                            style={{ width: 16, height: 16, stroke: '#ffffff', fill: 'none' }}
+                          />
+                        </button>
                       </div>
-                    </span>
-                  ),
-                },
-                { key: 'campaignDuration', header: 'Campaign Duration', render: (it: Brief) => it.campaignDuration !== undefined && it.campaignDuration !== null ? String(it.campaignDuration) : 'N/A', className: 'whitespace-nowrap overflow-hidden truncate' },
-                { key: 'submissionDate', header: 'Submission Date & Time', render: (it: Brief) => it.submissionDate, className: 'whitespace-nowrap overflow-hidden truncate' },
-              ] as Column<Brief>[])}
+                    ),
+                  },
+                  { key: 'sr', header: 'Id', render: (it: Brief) => `#${it.id}`, className: 'whitespace-nowrap overflow-hidden truncate' },
+                  { key: 'briefName', header: 'Brief Name', render: (it: Brief) => it.briefName, className: 'whitespace-nowrap overflow-hidden truncate' },
+                  { key: 'brandName', header: 'Brand Name', render: (it: Brief) => it.brandName, className: 'whitespace-nowrap overflow-hidden truncate' },
+                  { key: 'productName', header: 'Product Name', render: (it: Brief) => it.productName, className: 'whitespace-nowrap overflow-hidden truncate' },
+                  {
+                    key: 'contactPerson', header: 'Contact Person', render: (it: Brief) => {
+                      const contactPersonVal = it.contactPerson;
+                      if (typeof contactPersonVal === 'object' && contactPersonVal !== null && 'name' in contactPersonVal) {
+                        return (contactPersonVal as any).name;
+                      }
+                      return String(contactPersonVal ?? '');
+                    }, className: 'whitespace-nowrap overflow-hidden truncate'
+                  },
+                  { key: 'modeOfCampaign', header: 'Mode Of Campaign', render: (it: Brief) => it.modeOfCampaign, className: 'whitespace-nowrap overflow-hidden truncate' },
+                  { key: 'mediaType', header: 'Media Type', render: (it: Brief) => it.mediaType, className: 'whitespace-nowrap overflow-hidden truncate' },
+                  {
+                    key: 'priority', header: 'Priority', render: (it: Brief) => {
+                      const priorityVal = it.priority;
+                      if (typeof priorityVal === 'object' && priorityVal !== null && 'name' in priorityVal) {
+                        return (priorityVal as any).name;
+                      }
+                      return String(priorityVal ?? '');
+                    }, className: 'whitespace-nowrap overflow-hidden truncate'
+                  },
+                  { key: 'budget', header: 'Budget', render: (it: Brief) => String(it.budget ?? ''), className: 'whitespace-nowrap overflow-hidden truncate' },
+                  {
+                    key: 'attachment',
+                    header: 'Attachment',
+                    render: (it: Brief) => {
+                      // Extract URL from various possible formats (string or object)
+                      let url = '';
+                      const attachmentVal = (it as any).attachmentUrl || (it as any)._raw?.attachment_url || (it as any)._raw?.file_url || (it as any)._raw?.document_url || '';
+                      if (typeof attachmentVal === 'object' && attachmentVal !== null && 'url' in attachmentVal) {
+                        url = String((attachmentVal as any).url || '').trim();
+                      } else if (typeof attachmentVal === 'string') {
+                        url = String(attachmentVal).trim();
+                      }
+                      if (!url) return <span className="text-xs text-gray-400">—</span>;
+                      return (
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center w-10 h-10 !p-0 rounded-md border border-gray-200 !bg-gray-100 hover:!bg-gray-200"
+                          onClick={() => openAttachment(it)}
+                          aria-label="View attachment"
+                          title="View attachment"
+                        >
+                          <Eye className="w-4 h-4 !text-black" />
+                        </button>
+                      );
+                    },
+                    className: 'whitespace-nowrap',
+                  },
+                  {
+                    key: 'createdBy', header: 'Created By', render: (it: Brief) => {
+                      const createdByVal = it.createdBy;
+                      if (typeof createdByVal === 'object' && createdByVal !== null && 'name' in createdByVal) {
+                        return (createdByVal as any).name;
+                      }
+                      return String(createdByVal ?? '');
+                    }, className: 'whitespace-nowrap overflow-hidden truncate'
+                  },
+                  {
+                    key: 'assignTo', header: 'Planner', render: (it: Brief) => {
+                      const assignToVal = it.assignTo;
+                      let displayName = '';
+                      if (typeof assignToVal === 'object' && assignToVal !== null && 'name' in assignToVal) {
+                        displayName = (assignToVal as any).name;
+                      } else {
+                        displayName = String(assignToVal ?? '');
+                      }
+                      const rowAssignOptions = assignOptionsByBriefId[it.id] || [];
+                      const optionNames = rowAssignOptions.map((opt) => opt.name);
+                      const assignDropdownOptions =
+                        displayName && !optionNames.includes(displayName)
+                          ? [displayName, ...optionNames]
+                          : optionNames;
+                      return hasPermission('brief.assign') ? (
+                        <div className="relative min-w-[140px]">
+                          <AssignDropdown
+                            value={displayName}
+                            options={assignDropdownOptions}
+                            onChange={(newPlanner: string) => handleAssignToChange(it.id, newPlanner)}
+                            onConfirm={handleAssignConfirm}
+                          />
+                        </div>
+                      ) : (
+                        <div className="min-w-[140px] text-sm text-gray-700">
+                          {displayName || 'Not Assigned'}
+                        </div>
+                      );
+                    }, className: 'min-w-[140px]', allowOverflow: true
+                  },
+                  {
+                    key: 'status', header: 'Brief Status', render: (it: Brief) => {
+                      // Show status name from brief_status object, fallback to '-' or 'No Status'
+                      const statusName = it.brief_status && typeof it.brief_status === 'object' && 'name' in it.brief_status
+                        ? (it.brief_status as any).name
+                        : '-';
+                      return hasPermission('brief-status.update') ? (
+                        <div className="min-w-[140px]">
+                          <StatusDropdown
+                            value={statusName}
+                            options={statusOptions.map(opt => opt.name)}
+                            onChange={(newStatus: string) => handleSelectStatus(it.id, newStatus)}
+                            onConfirm={handleStatusConfirm}
+                          />
+                        </div>
+                      ) : (
+                        <div className="min-w-[140px] text-sm text-gray-700">
+                          {statusName}
+                        </div>
+                      );
+                    }, className: 'min-w-[140px]', allowOverflow: true
+                  },
+                  {
+                    key: 'briefDetail',
+                    header: 'Brief Detail',
+                    render: (it: Brief) => (
+                      <span
+                        className="inline-block"
+                        onMouseEnter={(e) => showTooltip(e, String(it.comment ?? ''))}
+                        onMouseLeave={() => hideTooltip()}
+                        // provide native tooltip as a11y/fallback
+                        title={String(it.comment ?? '')}
+                      >
+                        <div
+                          className="text-sm text-gray-800"
+                          style={{
+                            maxWidth: '40ch',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            overflowWrap: 'break-word',
+                          }}
+                        >
+                          {it.comment}
+                        </div>
+                      </span>
+                    ),
+                  },
+                  { key: 'campaignDuration', header: 'Campaign Duration', render: (it: Brief) => it.campaignDuration !== undefined && it.campaignDuration !== null ? String(it.campaignDuration) : 'N/A', className: 'whitespace-nowrap overflow-hidden truncate' },
+                  { key: 'submissionDate', header: 'Submission Date & Time', render: (it: Brief) => it.submissionDate, className: 'whitespace-nowrap overflow-hidden truncate' },
+                ] as Column<Brief>[])}
                 onEdit={(it: Brief) => handleEdit(it.id)}
                 onView={(it: Brief) => handleView(it.id)}
                 onDelete={(it: Brief) => handleDelete(it.id)}

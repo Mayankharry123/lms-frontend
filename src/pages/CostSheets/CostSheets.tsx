@@ -348,7 +348,7 @@ const CostSheets: React.FC = () => {
     },
     {
       key: 'financeStatus',
-      header: 'Finance Status',
+      header: 'Admin Status',
       minWidth: 150,
       headerClassName: 'text-left',
       className: 'min-w-[150px] align-middle',

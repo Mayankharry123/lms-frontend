@@ -1,7 +1,7 @@
 /**
  * @file PlanHistory.tsx
  * @description Plan revision history for a brief.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -206,13 +206,13 @@ const SubmittedPlansList: React.FC<SubmittedPlansListProps> = ({ plans = [], loa
           const backupPlan = plan.planner?.backup_plan ?? plan.backup_plan;
           const attachments = [
             ...(Array.isArray(plan.planner?.submitted_plan)
-            ? plan.planner.submitted_plan.map((file: { name: string; url: string }, i: number) => ({
-              type: file.name.toLowerCase().endsWith('.xlsx') ? 'xls' : file.name.toLowerCase().endsWith('.pptx') ? 'ppt' : 'file',
-              label: (i + 1).toString(),
-              url: file.url,
-              name: file.name
-            }))
-            : []),
+              ? plan.planner.submitted_plan.map((file: { name: string; url: string }, i: number) => ({
+                type: file.name.toLowerCase().endsWith('.xlsx') ? 'xls' : file.name.toLowerCase().endsWith('.pptx') ? 'ppt' : 'file',
+                label: (i + 1).toString(),
+                url: file.url,
+                name: file.name
+              }))
+              : []),
             ...(canViewBackupPlan && backupPlan ? [{
               type: backupPlan.name.toLowerCase().endsWith('.xlsx') ? 'xls' : backupPlan.name.toLowerCase().endsWith('.pptx') ? 'ppt' : 'file',
               label: 'Back-Up',

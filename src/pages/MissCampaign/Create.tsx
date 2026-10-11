@@ -1,7 +1,7 @@
 /**
  * @file Create.tsx
  * @description Create pre-lead (miss campaign) record form.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -1185,8 +1185,8 @@ const Create: React.FC<MissCampaignCreateProps> = ({
                   {errors.productName}
                 </div>
               )}
-            </div> 
-            
+            </div>
+
             {/* Country */}
             <div className='w-full sm:w-[calc(50%-12px)]'>
               <label className="block text-sm font-medium mb-2 text-gray-800">
@@ -1438,7 +1438,7 @@ const Create: React.FC<MissCampaignCreateProps> = ({
 
       <ModalPopup
         show={quickModal === 'brand'}
-        onClose={quickBrandSaving ? () => {} : closeQuickBrandModal}
+        onClose={quickBrandSaving ? () => { } : closeQuickBrandModal}
         title="Create Brand"
       >
         <form onSubmit={handleQuickBrandSubmit} className="flex flex-col gap-3">
@@ -1487,7 +1487,7 @@ const Create: React.FC<MissCampaignCreateProps> = ({
 
       <ModalPopup
         show={quickModal === 'source'}
-        onClose={quickSourceSaving ? () => {} : closeQuickSourceModal}
+        onClose={quickSourceSaving ? () => { } : closeQuickSourceModal}
         title="Create Source"
       >
         <form onSubmit={handleQuickSourceSubmit} className="flex flex-col gap-3">
@@ -1535,7 +1535,7 @@ const Create: React.FC<MissCampaignCreateProps> = ({
 
       <ModalPopup
         show={quickModal === 'subSource'}
-        onClose={quickSubSourceSaving ? () => {} : closeQuickSubSourceModal}
+        onClose={quickSubSourceSaving ? () => { } : closeQuickSubSourceModal}
         title="Create Sub Source"
       >
         <form onSubmit={handleQuickSubSourceSubmit} className="flex flex-col gap-3">

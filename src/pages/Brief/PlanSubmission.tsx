@@ -1,7 +1,7 @@
 /**
  * @file PlanSubmission.tsx
  * @description Submit or upload a plan for a brief.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -14,6 +14,41 @@ import UploadCard from '../../components/ui/UploadCard';
 import { getBriefById, uploadPlanSubmission } from '../../services/PlanSubmission';
 import SweetAlert from '../../utils/SweetAlert';
 import type { BriefDetail } from '../../services/PlanSubmission';
+
+function getPlanSubmissionErrorMessage(error: unknown, planFiles: File[]): string {
+  if (!error || typeof error !== 'object') {
+    return 'Failed to submit plan.';
+  }
+
+  const responseData = (error as {
+    response?: {
+      data?: {
+        message?: unknown;
+        errors?: Record<string, unknown>;
+      };
+    };
+    message?: unknown;
+  }).response?.data;
+
+  if (responseData?.errors) {
+    const details = Object.entries(responseData.errors).flatMap(([field, rawMessages]) => {
+      const messages = (Array.isArray(rawMessages) ? rawMessages : [rawMessages])
+        .filter((message): message is string => typeof message === 'string');
+      const planIndex = /^submitted_plan(?:\.|\[)(\d+)\]?$/.exec(field);
+      const fieldLabel = planIndex
+        ? `Plan file "${planFiles[Number(planIndex[1])]?.name || `#${Number(planIndex[1]) + 1}`}"`
+        : field;
+      return messages.map((message) => `${fieldLabel}: ${message}`);
+    });
+
+    if (details.length) return details.join('\n');
+  }
+
+  if (typeof responseData?.message === 'string') return responseData.message;
+
+  const message = (error as { message?: unknown }).message;
+  return typeof message === 'string' ? message : 'Failed to submit plan.';
+}
 
 const PlanSubmission: React.FC = () => {
   const navigate = useNavigate();
@@ -349,8 +384,8 @@ const PlanSubmission: React.FC = () => {
                   setPlanFiles([]);
                   setBackupFiles([]);
                   navigate('/brief/log');
-                } catch (err: any) {
-                  const msg = err?.message || 'Failed to submit plan.';
+                } catch (err: unknown) {
+                  const msg = getPlanSubmissionErrorMessage(err, planFiles);
                   setSubmitError(msg);
                   // ensure any loading modal is closed then show error
                   SweetAlert.close();

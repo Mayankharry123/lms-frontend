@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -28,16 +28,17 @@ const parseLocalDate = (dateValue: string): Date | null => {
 const DashboardDateRangePicker: React.FC<DashboardDateRangePickerProps> = ({ value, onApply }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
 
   const [draftPreset, setDraftPreset] = useState<DatePreset>(value.preset);
   const [draftStart, setDraftStart] = useState<Date | null>(parseLocalDate(value.dateFrom));
   const [draftEnd, setDraftEnd] = useState<Date | null>(parseLocalDate(value.dateTo));
 
-  const syncDraftFromValue = () => {
+  const syncDraftFromValue = useCallback(() => {
     setDraftPreset(value.preset);
     setDraftStart(parseLocalDate(value.dateFrom));
     setDraftEnd(parseLocalDate(value.dateTo));
-  };
+  }, [value.preset, value.dateFrom, value.dateTo]);
 
   useEffect(() => {
     const onDocClick = (event: MouseEvent) => {
@@ -49,7 +50,34 @@ const DashboardDateRangePicker: React.FC<DashboardDateRangePickerProps> = ({ val
 
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
-  }, [value.preset, value.dateFrom, value.dateTo]);
+  }, [syncDraftFromValue]);
+
+  // Adjust popover position so it never overflows screen edges
+  useEffect(() => {
+    if (!open) return;
+
+    const adjustPosition = () => {
+      if (!popoverRef.current) return;
+      popoverRef.current.style.transform = 'translateX(-50%)';
+      const rect = popoverRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+
+      if (rect.left < 16) {
+        const offset = 16 - rect.left;
+        popoverRef.current.style.transform = `translateX(calc(-50% + ${offset}px))`;
+      } else if (rect.right > viewportWidth - 16) {
+        const offset = rect.right - (viewportWidth - 16);
+        popoverRef.current.style.transform = `translateX(calc(-50% - ${offset}px))`;
+      }
+    };
+
+    const animId = requestAnimationFrame(adjustPosition);
+    window.addEventListener('resize', adjustPosition);
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', adjustPosition);
+    };
+  }, [open]);
 
   const openPicker = () => {
     syncDraftFromValue();
@@ -105,12 +133,6 @@ const DashboardDateRangePicker: React.FC<DashboardDateRangePickerProps> = ({ val
     }
   };
 
-  const handleApplyCustom = () => {
-    applyDraft('custom', draftStart, draftEnd, true);
-  };
-
-  const canApplyCustom = Boolean(draftStart && draftEnd);
-
   return (
     <div ref={containerRef} className="dashboard-date-picker">
       <button
@@ -120,24 +142,27 @@ const DashboardDateRangePicker: React.FC<DashboardDateRangePickerProps> = ({ val
         aria-expanded={open}
         aria-haspopup="dialog"
       >
-        <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" />
+        <CalendarDays className="h-4 w-4 shrink-0 text-slate-400" />
         <span className="truncate">{formatDashboardDateLabel(value.dateFrom, value.dateTo)}</span>
-        <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="dashboard-date-picker__popover" role="dialog" aria-label="Date range picker">
+        <div ref={popoverRef} className="dashboard-date-picker__popover" role="dialog" aria-label="Date range picker">
           <aside className="dashboard-date-picker__presets">
-            {DATE_PRESET_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => applyPreset(option.id)}
-                className={`dashboard-date-picker__preset ${draftPreset === option.id ? 'is-active' : ''}`}
-              >
-                {option.label}
-              </button>
-            ))}
+            <span className="dashboard-date-picker__presets-title">Presets</span>
+            <div className="dashboard-date-picker__presets-list">
+              {DATE_PRESET_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => applyPreset(option.id)}
+                  className={`dashboard-date-picker__preset ${draftPreset === option.id ? 'is-active' : ''}`}
+                >
+                  <span>{option.label}</span>
+                </button>
+              ))}
+            </div>
           </aside>
 
           <div className="dashboard-date-picker__main">
@@ -157,38 +182,35 @@ const DashboardDateRangePicker: React.FC<DashboardDateRangePickerProps> = ({ val
 
             <div className="dashboard-date-picker__footer">
               <div className="dashboard-date-picker__range-inputs">
-                <label className="dashboard-date-picker__field">
-                  <span>From</span>
-                  <input
-                    type="text"
-                    readOnly
-                    value={draftStart ? formatSingleDashboardDate(formatLocalDate(draftStart)) : ''}
-                    placeholder="Select start date"
-                  />
-                </label>
-                <label className="dashboard-date-picker__field">
-                  <span>To</span>
-                  <input
-                    type="text"
-                    readOnly
-                    value={draftEnd ? formatSingleDashboardDate(formatLocalDate(draftEnd)) : ''}
-                    placeholder="Select end date"
-                  />
-                </label>
-              </div>
+                <div className="dashboard-date-picker__field">
+                  <span className="dashboard-date-picker__field-label">From</span>
+                  <div className="dashboard-date-picker__field-box">
+                    <CalendarDays className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden />
+                    <input
+                      type="text"
+                      readOnly
+                      value={draftStart ? formatSingleDashboardDate(formatLocalDate(draftStart)) : ''}
+                      placeholder="Start date"
+                    />
+                  </div>
+                </div>
 
-              <div className="dashboard-date-picker__actions">
-                <button type="button" className="dashboard-date-picker__btn dashboard-date-picker__btn--ghost" onClick={closePicker}>
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="dashboard-date-picker__btn dashboard-date-picker__btn--primary"
-                  onClick={handleApplyCustom}
-                  disabled={!canApplyCustom}
-                >
-                  Apply
-                </button>
+                <div className="dashboard-date-picker__field-separator" aria-hidden>
+                  →
+                </div>
+
+                <div className="dashboard-date-picker__field">
+                  <span className="dashboard-date-picker__field-label">To</span>
+                  <div className="dashboard-date-picker__field-box">
+                    <CalendarDays className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden />
+                    <input
+                      type="text"
+                      readOnly
+                      value={draftEnd ? formatSingleDashboardDate(formatLocalDate(draftEnd)) : ''}
+                      placeholder="End date"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>

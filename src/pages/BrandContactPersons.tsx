@@ -1,7 +1,7 @@
 /**
  * @file BrandContactPersons.tsx
  * @description Contact persons for a selected brand master record.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 

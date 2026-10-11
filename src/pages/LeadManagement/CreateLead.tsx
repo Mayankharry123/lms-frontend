@@ -1,7 +1,7 @@
 /**
  * @file CreateLead.tsx
  * @description Create new lead form and submission flow.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -271,9 +271,6 @@ const CreateLead: React.FC = () => {
           newContactErrors[firstContactId] = { ...(newContactErrors[firstContactId] || {}), mobileNo: 'Mobile number must be exactly 10 digits.' };
         }
       }
-      if (!lead.type) {
-        newContactErrors[firstContactId] = { ...(newContactErrors[firstContactId] || {}), type: 'Please select type.' };
-      }
       if (!lead.designation) {
         newContactErrors[firstContactId] = { ...(newContactErrors[firstContactId] || {}), designation: 'Please select designation.' };
       }
@@ -308,6 +305,11 @@ const CreateLead: React.FC = () => {
 
       if (Object.keys(newContactErrors).length > 0) {
         setContactErrors(newContactErrors);
+        return;
+      }
+      const typeValue = String(lead.type || Object.keys(leadTypeNameById)[0] || '').trim();
+      if (!typeValue) {
+        SweetAlert.showError('Unable to load the default contact type. Please refresh and try again.');
         return;
       }
       const normalizedMobile = normalizeMobileNumber(lead.mobileNo);
@@ -375,17 +377,13 @@ const CreateLead: React.FC = () => {
         organisation_id: organisation ? Number(String(organisation).replace(/\D/g, '')) || undefined : undefined,
       };
 
-      const typeValue = String(lead.type || '').trim();
-      if (typeValue) {
-        const numericTypeId = Number(typeValue);
-        const isNumericTypeValue =
-          !Number.isNaN(numericTypeId) && Number.isFinite(numericTypeId) && numericTypeId > 0;
-        // Keep backward compatibility: backend still validates "type" as required.
-        // Never send numeric ID in `type`; send label or omit if unresolved.
-        payload.type = leadTypeNameById[typeValue] || (isNumericTypeValue ? undefined : typeValue);
-        if (isNumericTypeValue) {
-          payload.lead_type_id = numericTypeId;
-        }
+      const numericTypeId = Number(typeValue);
+      const isNumericTypeValue =
+        !Number.isNaN(numericTypeId) && Number.isFinite(numericTypeId) && numericTypeId > 0;
+      // Preserve the required backend field while keeping Type out of the form.
+      payload.type = leadTypeNameById[typeValue] || (isNumericTypeValue ? undefined : typeValue);
+      if (isNumericTypeValue) {
+        payload.lead_type_id = numericTypeId;
       }
 
       if (selectedOption === 'brand') payload.brand_id = dropdownValue || undefined;
@@ -400,14 +398,13 @@ const CreateLead: React.FC = () => {
             const serverErrors = res.errors as Record<string, any>;
             const mapped: Record<string, Partial<Record<string, string>>> = {};
             const contactId = firstContactId;
+            let hiddenTypeError: string | null = null;
             Object.keys(serverErrors).forEach((k) => {
               const messages = Array.isArray(serverErrors[k]) ? serverErrors[k] : [serverErrors[k]];
               // map backend keys to contact field keys
               const keyMap: Record<string, string> = {
                 name: 'fullName',
                 mobile_number: 'mobileNo',
-                type: 'type',
-                lead_type_id: 'type',
                 designation_id: 'designation',
                 department_id: 'department',
                 lead_source_id: 'source',
@@ -416,9 +413,14 @@ const CreateLead: React.FC = () => {
                 country_id: 'country',
               };
               const target = keyMap[k] || k;
+              if (k === 'type' || k === 'lead_type_id') {
+                hiddenTypeError = String(messages[0]);
+                return;
+              }
               mapped[contactId] = { ...(mapped[contactId] || {}), [target]: String(messages[0]) };
             });
             setContactErrors(mapped);
+            if (hiddenTypeError) SweetAlert.showError(hiddenTypeError);
             return;
           }
           return;
@@ -471,7 +473,6 @@ const CreateLead: React.FC = () => {
             clearContactFieldError(id, 'fullName', lead.fullName);
             clearContactFieldError(id, 'mobileNo', lead.mobileNo);
             clearContactFieldError(id, 'mobileNo2', lead.mobileNo2);
-            clearContactFieldError(id, 'type', lead.type);
             clearContactFieldError(id, 'designation', lead.designation);
             clearContactFieldError(id, 'department', lead.department);
             clearContactFieldError(id, 'country', lead.country);

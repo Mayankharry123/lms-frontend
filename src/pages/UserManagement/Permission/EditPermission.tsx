@@ -1,7 +1,7 @@
 /**
  * @file EditPermission.tsx
  * @description Edit an existing permission.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -215,8 +215,8 @@ const EditPermission: React.FC = () => {
                   }}
                   placeholder="Please enter display name"
                   className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${errors.displayName
-                      ? 'border border-red-500 bg-red-50 focus:ring-red-500'
-                      : 'border border-gray-200 focus:ring-black'
+                    ? 'border border-red-500 bg-red-50 focus:ring-red-500'
+                    : 'border border-gray-200 focus:ring-black'
                     }`}
                   aria-invalid={errors.displayName ? 'true' : 'false'}
                   aria-describedby={errors.displayName ? 'displayName-error' : undefined}
@@ -249,8 +249,8 @@ const EditPermission: React.FC = () => {
                   }}
                   placeholder="Please enter name"
                   className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${errors.name
-                      ? 'border border-red-500 bg-red-50 focus:ring-red-500'
-                      : 'border border-gray-200 focus:ring-black'
+                    ? 'border border-red-500 bg-red-50 focus:ring-red-500'
+                    : 'border border-gray-200 focus:ring-black'
                     }`}
                   aria-invalid={errors.name ? 'true' : 'false'}
                   aria-describedby={errors.name ? 'name-error' : undefined}
@@ -298,8 +298,8 @@ const EditPermission: React.FC = () => {
                   onChange={handleChange}
                   placeholder="Please enter order"
                   className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${errors.order
-                      ? 'border border-red-500 bg-red-50 focus:ring-red-500'
-                      : 'border border-gray-200 focus:ring-black'
+                    ? 'border border-red-500 bg-red-50 focus:ring-red-500'
+                    : 'border border-gray-200 focus:ring-black'
                     }`}
                   aria-invalid={errors.order ? 'true' : 'false'}
                   aria-describedby={errors.order ? 'order-error' : undefined}
@@ -419,8 +419,8 @@ const EditPermission: React.FC = () => {
                 onChange={handleChange}
                 rows={4}
                 className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors resize-none ${errors.description
-                    ? 'border border-red-500 bg-red-50 focus:ring-red-500'
-                    : 'border border-gray-200 focus:ring-black'
+                  ? 'border border-red-500 bg-red-50 focus:ring-red-500'
+                  : 'border border-gray-200 focus:ring-black'
                   }`}
                 aria-invalid={errors.description ? 'true' : 'false'}
                 aria-describedby={errors.description ? 'description-error' : undefined}

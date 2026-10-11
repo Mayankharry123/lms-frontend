@@ -1,7 +1,7 @@
 /**
  * @file CreateRole.tsx
  * @description Create a new role with permission assignment.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -101,7 +101,7 @@ const CreateRole: React.FC<RbacFormPageProps> = ({ mode = 'create', initialData 
       } else {
         await apiCreateRole(payload);
       }
-      
+
       if (mode === 'edit') {
         SweetAlert.showUpdateSuccess();
       } else {
@@ -143,9 +143,9 @@ const CreateRole: React.FC<RbacFormPageProps> = ({ mode = 'create', initialData 
       transition={{ duration: 0.22 }}
       className="space-y-6"
     >
-      <MasterFormHeader 
-        onBack={handleBack} 
-        title={mode === 'edit' ? 'Edit Role' : 'Create Role'} 
+      <MasterFormHeader
+        onBack={handleBack}
+        title={mode === 'edit' ? 'Edit Role' : 'Create Role'}
       />
 
       <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -163,11 +163,10 @@ const CreateRole: React.FC<RbacFormPageProps> = ({ mode = 'create', initialData 
                   setErrors((prev) => ({ ...prev, name: '' }));
                 }}
                 placeholder="Please enter role name"
-                className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${
-                  errors.name
+                className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${errors.name
                     ? 'border border-red-500 bg-red-50 focus:ring-red-500'
                     : 'border border-gray-200 focus:ring-black'
-                }`}
+                  }`}
                 aria-invalid={errors.name ? 'true' : 'false'}
                 aria-describedby={errors.name ? 'name-error' : undefined}
               />
@@ -196,11 +195,10 @@ const CreateRole: React.FC<RbacFormPageProps> = ({ mode = 'create', initialData 
                 onChange={handleChange}
                 placeholder="Please enter role description"
                 rows={4}
-                className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors resize-none ${
-                  errors.description
+                className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors resize-none ${errors.description
                     ? 'border border-red-500 bg-red-50 focus:ring-red-500'
                     : 'border border-gray-200 focus:ring-black'
-                }`}
+                  }`}
                 aria-invalid={errors.description ? 'true' : 'false'}
                 aria-describedby={errors.description ? 'description-error' : undefined}
               />

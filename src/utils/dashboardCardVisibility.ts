@@ -22,6 +22,7 @@ export const DASHBOARD_CARD_DEFINITIONS: Record<DashboardView, DashboardCardDefi
     { id: 'overview.meetings', label: 'Meetings' },
   ],
   sales: [
+    { id: 'sales.notifications', label: 'Notifications' },
     { id: 'sales.total-leads', label: 'Total Leads' },
     { id: 'sales.total-briefs', label: 'Total Briefs' },
     { id: 'sales.business-forecast', label: 'Business Forecast' },
@@ -35,10 +36,12 @@ export const DASHBOARD_CARD_DEFINITIONS: Record<DashboardView, DashboardCardDefi
     { id: 'sales.recent-briefs', label: 'Recent Briefs' },
   ],
   planner: [
+    { id: 'planner.notifications', label: 'Notifications' },
+    { id: 'planner.total-plan', label: 'Total Plan' },
     { id: 'planner.active-briefs', label: 'Active Briefs' },
     { id: 'planner.plans-assigned', label: 'Plans Assigned' },
     { id: 'planner.avg-plan-submission-time', label: 'Avg Plan Submission Time' },
-    { id: 'planner.overdue-briefs', label: 'Overdue Briefs' },
+    { id: 'planner.overdue-briefs', label: 'Expired Brief' },
     { id: 'planner.briefs-analytics', label: 'Briefs Analytics' },
     { id: 'planner.assigned-plans-analytics', label: 'Plans Assigned Analytics' },
     { id: 'planner.avg-submission-analytics', label: 'Avg Plan Submission Analytics' },
@@ -47,6 +50,7 @@ export const DASHBOARD_CARD_DEFINITIONS: Record<DashboardView, DashboardCardDefi
     { id: 'planner.assigned-briefs', label: 'My Assigned Briefs' },
   ],
   operations: [
+    { id: 'operations.notifications', label: 'Notifications' },
     { id: 'operations.total', label: 'Total Operations' },
     { id: 'operations.pending', label: 'Pending Operations' },
     { id: 'operations.live', label: 'Live Operations' },
@@ -59,10 +63,10 @@ export const DASHBOARD_CARD_DEFINITIONS: Record<DashboardView, DashboardCardDefi
     { id: 'operations.recent', label: 'Recent Operations' },
   ],
   finance: [
+    { id: 'finance.notifications', label: 'Notifications' },
     { id: 'finance.cost-sheets', label: 'Cost Sheets' },
     { id: 'finance.pending', label: 'Pending Review' },
     { id: 'finance.approved', label: 'Approved' },
-    { id: 'finance.purchase-orders', label: 'Purchase Order Amount' },
     { id: 'finance.voucher-total', label: 'Voucher Total Amount' },
     { id: 'finance.proforma-invoice-total', label: 'Proforma Invoice Total Amount' },
     { id: 'finance.cost-sheets-analytics', label: 'Cost Sheets Analytics' },

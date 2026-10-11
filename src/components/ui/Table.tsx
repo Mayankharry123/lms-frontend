@@ -36,6 +36,7 @@ interface TableProps<T> {
   startIndex?: number; // starting index for Sr. No.
   loading?: boolean;
   onEdit?: (item: T) => void;
+  editLabel?: string;
   onView?: (item: T) => void;
   onDelete?: (item: T) => void;
   onUpload?: (item: T) => void;
@@ -75,7 +76,7 @@ interface TableProps<T> {
 }
 
 const Table = <T,>(props: TableProps<T>) => {
-  const { data, columns, startIndex = 0, loading = false, onEdit, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, briefCreationLabel, onCostSheet, onDownload, onApprove, onDecline, onCreatePo, canEdit, canBriefCreation, canApprove, canDecline, showViewWithoutPermission = false, emptyMessage = 'No records found', editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, createPoPermissionSlug, keyExtractor, compact = false, desktopOnMobile = true } = props;
+  const { data, columns, startIndex = 0, loading = false, onEdit, editLabel, onView, onDelete, onUpload, onChat, onCreateMeeting, onBriefCreation, briefCreationLabel, onCostSheet, onDownload, onApprove, onDecline, onCreatePo, canEdit, canBriefCreation, canApprove, canDecline, showViewWithoutPermission = false, emptyMessage = 'No records found', editPermissionSlug, viewPermissionSlug, deletePermissionSlug, uploadPermissionSlug, planSubmissionPermissionSlug, costSheetPermissionSlug, approvePermissionSlug, declinePermissionSlug, createPoPermissionSlug, keyExtractor, compact = false, desktopOnMobile = true } = props;
   const { show: showCellTooltip, hide: hideCellTooltip, TooltipLayer } = useTableCellTooltip();
 
   // responsive padding classes used for cells/headers; compact mode reduces padding further
@@ -240,6 +241,7 @@ const Table = <T,>(props: TableProps<T>) => {
                           isLast={index === data.length - 1}
                           rowIndex={index}
                           totalRows={data.length}
+                          editLabel={editLabel}
                           {...(onEdit && (!canEdit || canEdit(item)) && { onEdit: () => onEdit(item) })}
                           onView={() => onView?.(item)}
                           {...(onDelete && { onDelete: () => onDelete(item) })}
@@ -318,6 +320,7 @@ const Table = <T,>(props: TableProps<T>) => {
                   isLast={index === data.length - 1}
                   rowIndex={index}
                   totalRows={data.length}
+                  editLabel={editLabel}
                   {...(onEdit && (!canEdit || canEdit(item)) && { onEdit: () => onEdit(item) })}
                   onView={() => onView?.(item)}
                   {...(onDelete && { onDelete: () => onDelete(item) })}

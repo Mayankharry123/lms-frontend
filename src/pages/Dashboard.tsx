@@ -9,7 +9,6 @@ import { Users, FileCheck } from 'lucide-react';
 import { BsGraphUpArrow } from 'react-icons/bs';
 import DashboardMetricCard from '../components/dashboard/DashboardMetricCard';
 import DashboardFilterBar from '../components/dashboard/DashboardFilterBar';
-import DashboardSection from '../components/dashboard/DashboardSection';
 import DashboardChartsSection from '../components/dashboard/DashboardChartsSection';
 import DashboardTabNav from '../components/dashboard/DashboardTabNav';
 import OverviewPanels from '../components/dashboard/OverviewPanels';
@@ -25,7 +24,6 @@ import {
 import { getBusinessForecast } from '../services/BusinessForecast';
 import {
   createDefaultDashboardFilters,
-  serializeDashboardFilters,
   type DashboardFilterState,
 } from '../utils/dashboardFilters';
 import { formatDashboardCurrency } from '../utils/dashboardFormat';
@@ -82,11 +80,6 @@ const Dashboard: React.FC = () => {
       }),
     [dashboardPermissions],
   );
-
-  const hasPendingFilterChanges = useMemo(() => {
-    if (!appliedFilters) return false;
-    return serializeDashboardFilters(draftFilters) !== serializeDashboardFilters(appliedFilters);
-  }, [draftFilters, appliedFilters]);
 
   useEffect(() => {
     if (visibleTabs.length === 0) return;
@@ -181,12 +174,17 @@ const Dashboard: React.FC = () => {
     setMeetingsPage(1);
   }, [appliedFilters, activeView, fetchOverviewData]);
 
-  const handleApplyFilters = useCallback(() => {
-    setAppliedFilters({
-      ...draftFilters,
-      organisationIds: sanitizeDashboardOrganisationIds(user, draftFilters.organisationIds),
-    });
-  }, [draftFilters, user]);
+  const handleFilterChange = useCallback(
+    (nextFilters: DashboardFilterState) => {
+      const sanitized = {
+        ...nextFilters,
+        organisationIds: sanitizeDashboardOrganisationIds(user, nextFilters.organisationIds),
+      };
+      setDraftFilters(sanitized);
+      setAppliedFilters(sanitized);
+    },
+    [user],
+  );
 
   const handleDateApply = useCallback(
     (dateValue: Pick<DashboardFilterState, 'preset' | 'dateFrom' | 'dateTo'>) => {
@@ -281,10 +279,8 @@ const Dashboard: React.FC = () => {
       <div className="dashboard-toolbar">
         <DashboardFilterBar
           value={draftFilters}
-          onChange={setDraftFilters}
-          onApply={handleApplyFilters}
+          onChange={handleFilterChange}
           onDateApply={handleDateApply}
-          hasPendingChanges={hasPendingFilterChanges}
           activeView={activeView}
           cardPreferences={cardPreferences}
           onToggleCard={toggleCard}
@@ -304,39 +300,19 @@ const Dashboard: React.FC = () => {
           {activeView === 'overview' && dashboardPermissions.canViewOverviewTab() && renderOverview()}
 
           {activeView === 'sales' && dashboardPermissions.canViewSalesTab() && appliedFilters && (
-            <DashboardSection
-              title="Sales Performance"
-              description="Leads, briefs, follow-ups, and recent activity."
-            >
-              <SalesDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
-            </DashboardSection>
+            <SalesDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
           )}
 
           {activeView === 'planner' && dashboardPermissions.canViewPlannerTab() && appliedFilters && (
-            <DashboardSection
-              title="Planner Workspace"
-              description="Active briefs, planning metrics, and assigned submissions."
-            >
-              <PlannerDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
-            </DashboardSection>
+            <PlannerDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
           )}
 
           {activeView === 'operations' && dashboardPermissions.canViewOperationsTab() && appliedFilters && (
-            <DashboardSection
-              title="Operations Workspace"
-              description="Campaign operations, live and pending status, and assignments."
-            >
-              <OperationsDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
-            </DashboardSection>
+            <OperationsDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
           )}
 
           {activeView === 'finance' && dashboardPermissions.canViewFinanceTab() && appliedFilters && (
-            <DashboardSection
-              title="Finance Workspace"
-              description="Cost sheets, approvals, voucher and proforma invoice totals, and purchase orders."
-            >
-              <FinanceDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
-            </DashboardSection>
+            <FinanceDashboard embedded filters={appliedFilters} isCardVisible={isCardVisible} />
           )}
         </div>
       </div>

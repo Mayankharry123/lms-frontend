@@ -1,7 +1,7 @@
 /**
  * @file AllPermissions.tsx
  * @description Permissions list and management.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
@@ -140,13 +140,13 @@ const AllPermissions: React.FC = () => {
         {/* Table Header */}
         <TableHeader title="All Permissions">
           <SearchBar
-              placeholder="Search permissions..."
-              delay={0}
-              onSearch={(q: string) => {
-                setSearchQuery(q);
-                setCurrentPage(1);
-              }}
-            />
+            placeholder="Search permissions..."
+            delay={0}
+            onSearch={(q: string) => {
+              setSearchQuery(q);
+              setCurrentPage(1);
+            }}
+          />
         </TableHeader>
 
         <div className="pt-0 overflow-visible ">

@@ -1,7 +1,7 @@
 /**
  * @file Edit.tsx
  * @description Edit pre-lead (miss campaign) record form.
- * @author Sanjay Jangid <sanjay.jangid@dgtoohl.com>
+ * @author Aryan Sharma <aryan.sharma@dgtoohl.com>
  * @date 2026-05-25
  */
 
