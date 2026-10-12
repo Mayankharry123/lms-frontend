@@ -97,15 +97,6 @@ export default defineConfig(({ mode }) => {
               if (id.includes('framer-motion')) {
                 return 'vendor-motion';
               }
-              if (
-                id.includes('react') ||
-                id.includes('react-dom') ||
-                id.includes('react-router') ||
-                id.includes('@reduxjs/toolkit') ||
-                id.includes('react-redux')
-              ) {
-                return 'vendor-core';
-              }
               return 'vendor';
             }
           },
