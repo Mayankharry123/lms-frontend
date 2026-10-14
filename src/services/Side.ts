@@ -34,9 +34,13 @@ export function extractAllPaths(apiItems: ApiSidebarItem[]): string[] {
   }
   if (paths.includes(ROUTES.COST_SHEETS)) {
     paths.push(ROUTES.PROFORMA_INVOICES);
+    paths.push(ROUTES.CLIENT_PURCHASE_ORDERS);
   }
   if (paths.includes(ROUTES.PROFORMA_INVOICES)) {
     paths.push(ROUTES.PROFORMA_INVOICES_CREATE);
+  }
+  if (paths.includes(ROUTES.CLIENT_PURCHASE_ORDERS)) {
+    paths.push(ROUTES.CLIENT_PURCHASE_ORDERS_CREATE);
   }
   // Remove duplicates
   return [...new Set(paths)];
@@ -224,6 +228,23 @@ export function mapMenu(apiItems: ApiSidebarItem[]): NavigationItem[] {
       financeMenu.children.splice(costSheetsIndex + 1, 0, {
         name: 'Proforma Invoice',
         path: ROUTES.PROFORMA_INVOICES,
+        icon: null,
+      });
+    }
+
+    const hasClientPurchaseOrders = financeMenu.children.some(
+      (child) =>
+        child.path === ROUTES.CLIENT_PURCHASE_ORDERS ||
+        child.name.toLowerCase() === 'client purchase order'
+    );
+    if (!hasClientPurchaseOrders) {
+      const piIndex = financeMenu.children.findIndex(
+        (child) => child.path === ROUTES.PROFORMA_INVOICES
+      );
+      const insertIndex = piIndex >= 0 ? piIndex + 1 : costSheetsIndex + 1;
+      financeMenu.children.splice(insertIndex, 0, {
+        name: 'Client Purchase Order',
+        path: ROUTES.CLIENT_PURCHASE_ORDERS,
         icon: null,
       });
     }

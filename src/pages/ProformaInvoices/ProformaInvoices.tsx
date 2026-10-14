@@ -226,6 +226,12 @@ const ProformaInvoices: React.FC = () => {
   const detailFields: { label: string; value: React.ReactNode }[] = viewItem
     ? [
         { label: 'PI ID', value: viewItem.proformaInvoiceId || '-' },
+        ...(viewItem.briefId ? [{ label: 'Brief ID', value: viewItem.briefId }] : []),
+        ...(viewItem.briefName ? [{ label: 'Brief Name', value: viewItem.briefName }] : []),
+        ...(viewItem.planId ? [{ label: 'Plan ID', value: viewItem.planId }] : []),
+        ...(viewItem.plannerName ? [{ label: 'Planner Name', value: viewItem.plannerName }] : []),
+        ...(viewItem.assignBy ? [{ label: 'Assign By', value: viewItem.assignBy }] : []),
+        ...(viewItem.financeUser ? [{ label: 'Finance User', value: viewItem.financeUser }] : []),
         { label: 'File Name', value: fileCell(viewItem) },
         { label: 'Brand Name File Name', value: viewItem.brandNameFileName || '-' },
         { label: 'Sub Total Amount', value: formatCurrency(viewItem.subTotalAmount) },

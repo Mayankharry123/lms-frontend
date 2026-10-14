@@ -129,6 +129,11 @@ export const ENDPOINTS = {
     LIST: '/purchase-orders',
     CREATE: '/purchase-orders',
   },
+  CLIENT_PURCHASE_ORDERS: {
+    LIST: '/purchase-orders',
+    DETAIL: (id: string | number) => `/purchase-orders/${encodeURIComponent(String(id))}`,
+    CREATE: '/purchase-orders',
+  },
   PUBLISHERS: {
     LIST: '/publisher/list',
     DETAIL: (id: string | number) => `/publisher/details/${id}`,

@@ -14,6 +14,8 @@ export interface AuthUser {
   id: string;
   email: string;
   name?: string;
+  full_name?: string;
+  username?: string;
   firstName?: string;
   lastName?: string;
   phone?: string;

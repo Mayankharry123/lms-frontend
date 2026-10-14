@@ -41,6 +41,8 @@ export const ROUTE_SEGMENTS = {
   VOUCHERS_CREATE: 'vouchers/create',
   PROFORMA_INVOICES: 'proforma-invoices',
   PROFORMA_INVOICES_CREATE: 'proforma-invoices/create',
+  CLIENT_PURCHASE_ORDERS: 'client-purchase-orders',
+  CLIENT_PURCHASE_ORDERS_CREATE: 'client-purchase-orders/create',
   PURCHASE_ORDER: 'purchase-order',
   /** Matches backend permission paths; do not rename without updating permissions. */
   BRIEF_PIPELINE: 'Brief_Pipeline',
@@ -148,6 +150,8 @@ export const ROUTES = {
   VOUCHERS_CREATE: abs(ROUTE_SEGMENTS.VOUCHERS_CREATE),
   PROFORMA_INVOICES: abs(ROUTE_SEGMENTS.PROFORMA_INVOICES),
   PROFORMA_INVOICES_CREATE: abs(ROUTE_SEGMENTS.PROFORMA_INVOICES_CREATE),
+  CLIENT_PURCHASE_ORDERS: abs(ROUTE_SEGMENTS.CLIENT_PURCHASE_ORDERS),
+  CLIENT_PURCHASE_ORDERS_CREATE: abs(ROUTE_SEGMENTS.CLIENT_PURCHASE_ORDERS_CREATE),
   PURCHASE_ORDER: abs(ROUTE_SEGMENTS.PURCHASE_ORDER),
   COST_SHEETS_CREATE_PO: (costSheetId: string) =>
     `/cost-sheets/create-po/${encodeURIComponent(costSheetId)}`,

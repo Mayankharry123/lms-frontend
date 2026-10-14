@@ -61,6 +61,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobile = false, mobileOpen = false,
       '/user-management/role/create': '/user-management/role',
       '/user-management/user/create': '/user-management/user',
       '/brief/plan-submission': '/brief/log',
+      '/client-purchase-orders/create': '/client-purchase-orders',
+      '/vouchers/create': '/vouchers',
+      '/proforma-invoices/create': '/proforma-invoices',
     }),
     []
   );
