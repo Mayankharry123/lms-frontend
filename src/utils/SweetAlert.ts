@@ -30,6 +30,20 @@ function baseAlert(opts: SweetAlertOptions) {
 
 const SweetAlert = {
   // ============= Basic Alerts =============
+  showToast(override?: AlertOverride & { position?: SweetAlertOptions['position'] }) {
+    const opts: SweetAlertOptions = {
+      toast: true,
+      position: override?.position ?? 'top-end',
+      showConfirmButton: false,
+      timer: typeof override?.timer === 'number' ? override!.timer : DEFAULT_TIMER,
+      timerProgressBar: true,
+      icon: override?.icon ?? 'success',
+      title: override?.title ?? 'Success',
+      text: override?.text ?? undefined,
+    }
+    return Swal.fire(opts)
+  },
+
   showSuccess(override?: AlertOverride) {
     const opts: SweetAlertOptions = {
       icon: override?.icon ?? 'success',

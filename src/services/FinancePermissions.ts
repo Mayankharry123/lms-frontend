@@ -15,6 +15,12 @@ const FINANCE_PAGE_PERMISSIONS = [
     url: '/vouchers',
     description: 'Access the Voucher listing and upload pages.',
   },
+  {
+    display_name: 'Client Purchase Order',
+    name: 'client-purchase-order',
+    url: '/client-purchase-orders',
+    description: 'Access the Client Purchase Order listing and creation pages.',
+  },
 ] as const;
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>

@@ -26,6 +26,12 @@ export type ProformaInvoiceRow = {
   gstNumber?: string;
   address?: string;
   orderDetails?: ProformaInvoiceOrder[];
+  briefId?: string;
+  briefName?: string;
+  planId?: string;
+  plannerName?: string;
+  assignBy?: string;
+  financeUser?: string;
 };
 
 export type CreateProformaInvoiceInput = {
@@ -38,6 +44,12 @@ export type CreateProformaInvoiceInput = {
   igstRate: number;
   cgstRate: number;
   sgstRate: number;
+  briefId?: string;
+  briefName?: string;
+  planId?: string;
+  plannerName?: string;
+  assignBy?: string;
+  financeUser?: string;
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -122,6 +134,12 @@ export function mapProformaInvoice(value: unknown): ProformaInvoiceRow {
     gstNumber: asText(raw.gst_number ?? raw.gst_no) || undefined,
     address: asText(raw.address) || undefined,
     orderDetails,
+    briefId: asText(raw.brief_id ?? raw.briefId) || undefined,
+    briefName: asText(raw.brief_name ?? raw.briefName) || undefined,
+    planId: asText(raw.plan_id ?? raw.planId) || undefined,
+    plannerName: asText(raw.planner_name ?? raw.plannerName) || undefined,
+    assignBy: asText(raw.assign_by ?? raw.assignBy) || undefined,
+    financeUser: asText(raw.finance_user ?? raw.assign_to ?? raw.financeUser) || undefined,
   };
 }
 
@@ -153,6 +171,13 @@ export async function createProformaInvoice(
     brand_name: input.brandName,
     gst_number: input.gstNumber,
     address: input.address,
+    brief_id: input.briefId,
+    brief_name: input.briefName,
+    plan_id: input.planId,
+    planner_name: input.plannerName,
+    assign_by: input.assignBy,
+    assign_to: input.financeUser,
+    finance_user: input.financeUser,
     orders: input.orderDetails.map((order) => ({
       description: order.order,
       hsn_sac: order.hsnSac,

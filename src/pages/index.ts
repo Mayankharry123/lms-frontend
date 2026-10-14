@@ -25,3 +25,5 @@ export { default as EditSubmittedPlan } from './Brief/EditSubmittedPlan';
 export { default as Notifications } from './Notifications';
 export { default as BackupPlan } from './BackupPlan/BackupPlan';
 export { MissCampaignView, MissCampaignCreate } from './MissCampaign';
+export { default as ClientPurchaseOrder } from './ClientPurchaseOrder/ClientPurchaseOrder';
+export { default as CreateClientPurchaseOrder } from './ClientPurchaseOrder/CreateClientPurchaseOrder';
