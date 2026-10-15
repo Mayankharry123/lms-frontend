@@ -63,6 +63,10 @@ const EditLead: React.FC = () => {
     } : null);
   }, []);
 
+  const handleContactsChange = useCallback((contacts: any[]) => {
+    setLead(prev => (prev ? { ...prev, contacts } : null));
+  }, []);
+
   useEffect(() => {
     const fetchLead = async () => {
       try {
@@ -498,9 +502,7 @@ const EditLead: React.FC = () => {
 
         <ContactPersonsCard
           initialContacts={lead.contacts}
-          onChange={(contacts) => {
-            setLead(prev => prev ? { ...prev, contacts } : null);
-          }}
+          onChange={handleContactsChange}
           collapsible
         />
 

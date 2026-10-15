@@ -18,23 +18,21 @@ import { listLeadContacts } from '../../services/AllLeads';
 import { fetchBriefStatuses } from '../../services/BriefStatus';
 import { getPriorities } from '../../services/Priority';
 import { motion } from 'framer-motion';
-import { Button, MasterCreateHeader, MasterFormHeader, SelectField } from '../../components/ui';
+import { Button, MasterCreateHeader, SelectField } from '../../components/ui';
 import CollapsibleFormCard from '../../components/ui/CollapsibleFormCard';
 import SweetAlert from '../../utils/SweetAlert';
 import { apiClient } from '../../utils/apiClient';
 import FilePreviewModal from '../../components/ui/FilePreviewModal';
-import { CalendarRange, Eye, FileText, History } from 'lucide-react';
+import { CalendarRange, Eye, FileText, History, Paperclip, X } from 'lucide-react';
 import type { MasterFormWithSaveProps } from '../../types/pages/forms.types';
 
 const MAX_ATTACHMENT_SIZE_BYTES = 7 * 1024 * 1024;
 
 const EditSection: React.FC<{
-  edit: boolean;
   title: string;
   icon: React.ReactNode;
   children: React.ReactNode;
-}> = ({ edit, title, icon, children }) => {
-  if (!edit) return <>{children}</>;
+}> = ({ title, icon, children }) => {
   return (
     <CollapsibleFormCard title={title} collapsible icon={icon}>
       {children}
@@ -137,6 +135,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
   // Track which field was manually changed to prevent both auto-fill conditions from running
   const lastChangedFieldRef = useRef<'brand' | 'agency' | 'status' | 'priority' | null>(null);
   const briefDetailRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resizeBriefDetailTextarea = (textarea: HTMLTextAreaElement | null) => {
     if (!textarea) return;
@@ -1141,24 +1140,17 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.22 }}
-      className={isEdit ? 'space-y-3 sm:space-y-4' : 'space-y-6'}
+      className="space-y-3 sm:space-y-4"
     >
-      {isEdit ? (
-        <MasterCreateHeader onClose={onClose} />
-      ) : (
-        <MasterFormHeader onBack={onClose} title="Create Brief" />
-      )}
+      <MasterCreateHeader onClose={onClose} />
 
-      <div className={isEdit ? '' : 'w-full bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden'}>
-        <div className={isEdit ? '' : 'px-4 py-5 sm:p-6 bg-gray-50'}>
-          <form onSubmit={handleSubmit} className={isEdit ? 'space-y-3 sm:space-y-4' : 'space-y-6'}>
-            <div className={isEdit ? 'space-y-3 sm:space-y-4' : 'grid grid-cols-1 md:grid-cols-2 gap-4'}>
+      <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <EditSection
-                edit={isEdit}
                 title="Brief Information"
                 icon={<FileText className="h-5 w-5" strokeWidth={2} />}
               >
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-800 mb-1">Brief Name <span className="text-[#FF0000]">*</span></label>
                     <input name="briefName" value={form.briefName} onChange={(e) => { handleChange(e); setErrors(prev => ({ ...prev, briefName: '' })); }}
@@ -1251,7 +1243,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                   </div>
                   <div>
                     <label className="block text-sm text-gray-800 mb-1">Mode Of Campaign</label>
-                    <div className="flex gap-4 mt-1">
+                    <div className="flex items-center gap-6 min-h-[42px]">
                       <label className="flex items-center cursor-pointer">
                         <input
                           type="radio"
@@ -1287,51 +1279,89 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                       inputClassName="border border-[var(--border-color)] focus:ring-blue-500"
                     />
                   </div>
-                  <div>
+                  <div className={!canAssignTo ? 'md:col-span-2' : ''}>
                     <label className="block text-sm text-gray-800 mb-1">Attach File</label>
-                    <div className={`border rounded-lg bg-white p-3 transition-colors ${errors.attachmentFile ? 'border-red-500 bg-red-50' : 'border border-gray-200'}`}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-gray-900">
-                            {form.attachmentFile
+                    <div
+                      className={`relative flex items-center h-11 w-full rounded-lg bg-white border transition-colors ${
+                        errors.attachmentFile ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center min-w-0 flex-1 px-3 gap-2">
+                        <Paperclip className="w-4 h-4 text-gray-400 shrink-0" />
+                        <span
+                          className={`text-sm truncate ${
+                            form.attachmentFile || existingAttachmentName
+                              ? 'text-gray-800 font-medium'
+                              : 'text-gray-400'
+                          }`}
+                          title={
+                            form.attachmentFile
                               ? form.attachmentFile.name
-                              : existingAttachmentName
-                                ? existingAttachmentName
-                                : 'No file selected'}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-0.5">
-                            {form.attachmentFile
-                              ? `${Math.round((form.attachmentFile.size / 1024) * 10) / 10} KB`
-                              : existingAttachmentUrl
-                                ? 'Current file attached'
-                                : 'PDF, JPG, PNG, DOCX'}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {existingAttachmentUrl && !form.attachmentFile && (
-                            <button
-                              type="button"
-                              className="inline-flex items-center justify-center w-10 h-10 rounded-md border border-gray-300 bg-white text-blue-700 hover:bg-gray-50"
-                              onClick={() => {
-                                setAttachmentModalSource({ kind: 'remote', url: existingAttachmentUrl, name: existingAttachmentName || undefined });
-                                setIsAttachmentModalOpen(true);
-                              }}
-                              aria-label="View current attachment"
-                              title="View current attachment"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                          )}
-                          <label
-                            htmlFor="attachmentFile"
-                            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 cursor-pointer"
-                          >
-                            {existingAttachmentUrl ? 'Replace' : 'Choose file'}
-                          </label>
-                        </div>
+                              : existingAttachmentName || undefined
+                          }
+                        >
+                          {form.attachmentFile
+                            ? form.attachmentFile.name
+                            : existingAttachmentName
+                              ? existingAttachmentName
+                              : 'No file chosen'}
+                        </span>
+                        {form.attachmentFile && (
+                          <span className="text-xs text-gray-400 shrink-0">
+                            ({Math.round((form.attachmentFile.size / 1024) * 10) / 10} KB)
+                          </span>
+                        )}
+                        {!form.attachmentFile && existingAttachmentUrl && (
+                          <span className="text-[11px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-medium shrink-0">
+                            Current
+                          </span>
+                        )}
                       </div>
+
+                      <div className="flex items-center gap-1 pr-1.5 shrink-0">
+                        {existingAttachmentUrl && !form.attachmentFile && (
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                            onClick={() => {
+                              setAttachmentModalSource({
+                                kind: 'remote',
+                                url: existingAttachmentUrl,
+                                name: existingAttachmentName || undefined,
+                              });
+                              setIsAttachmentModalOpen(true);
+                            }}
+                            aria-label="View current attachment"
+                            title="View current attachment"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        )}
+                        {form.attachmentFile && (
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            onClick={() => {
+                              setForm(prev => ({ ...prev, attachmentFile: null }));
+                              if (fileInputRef.current) fileInputRef.current.value = '';
+                            }}
+                            aria-label="Remove chosen file"
+                            title="Remove chosen file"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                        <label
+                          htmlFor="attachmentFile"
+                          className="inline-flex items-center justify-center h-8 px-3 rounded-md border border-gray-200 bg-gray-50 hover:bg-gray-100 text-xs font-medium text-gray-700 cursor-pointer transition-colors shadow-sm"
+                        >
+                          {existingAttachmentUrl ? 'Replace' : 'Browse'}
+                        </label>
+                      </div>
+
                       <input
                         id="attachmentFile"
+                        ref={fileInputRef}
                         type="file"
                         name="attachmentFile"
                         accept=".pdf,.jpg,.jpeg,.png,.docx,.doc,application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
@@ -1366,8 +1396,12 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                         className="hidden"
                       />
                     </div>
+                    <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1 px-0.5">
+                      <span>Supported: PDF, JPG, PNG, DOCX</span>
+                      <span>Max: 7 MB</span>
+                    </div>
                     {errors.attachmentFile && (
-                      <div id="attachmentFile-error" className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                      <div id="attachmentFile-error" className="text-xs text-red-600 mt-1 flex items-center gap-1" role="alert">
                         <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
@@ -1375,15 +1409,13 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                       </div>
                     )}
                   </div>
-
                 </div>
               </EditSection>
               <EditSection
-                edit={isEdit}
                 title="Campaign Details"
                 icon={<CalendarRange className="h-5 w-5" strokeWidth={2} />}
               >
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-800 mb-1">Contact Person Name <span className="text-[#FF0000]">*</span></label>
                     <SelectField
@@ -1447,7 +1479,25 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                       </div>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-800 mb-1">Priority</label>
+                    <SelectField
+                      name="priority"
+                      placeholder={priorityLoading ? 'Loading priorities...' : 'Select Priority'}
+                      options={priorityOptions}
+                      value={form.priority}
+                      onChange={(v: any) => {
+                        const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v;
+                        lastChangedFieldRef.current = 'priority';
+                        setForm(prev => ({ ...prev, priority: val }));
+                        setTimeout(() => { if (lastChangedFieldRef.current === 'priority') lastChangedFieldRef.current = null; }, 500);
+                      }}
+                      inputClassName={priorityLoading ? 'border border-gray-300 bg-gray-50' : 'border border-gray-200 focus:ring-blue-500'}
+                      disabled={priorityLoading}
+                    />
+                    {priorityError && <div className="text-xs text-red-600 mt-1">{priorityError}</div>}
+                  </div>
+                  <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="w-full">
                       <label className="block text-sm text-gray-800 mb-1">Submission Date <span className="text-[#FF0000]">*</span></label>
                       <DatePicker
@@ -1539,7 +1589,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                       )}
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="w-full">
                       <label className="block text-sm text-gray-800 mb-1">Campaign Start Date <span className="text-[#FF0000]">*</span></label>
                       <DatePicker
@@ -1634,25 +1684,7 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm text-[var(--text-secondary)] mb-1">Priority</label>
-                    <SelectField
-                      name="priority"
-                      placeholder={priorityLoading ? 'Loading priorities...' : 'Select Priority'}
-                      options={priorityOptions}
-                      value={form.priority}
-                      onChange={(v: any) => {
-                        const val = (typeof v === 'object') ? (v.value ?? v.id ?? v) : v;
-                        lastChangedFieldRef.current = 'priority';
-                        setForm(prev => ({ ...prev, priority: val }));
-                        setTimeout(() => { if (lastChangedFieldRef.current === 'priority') lastChangedFieldRef.current = null; }, 500);
-                      }}
-                      inputClassName={priorityLoading ? 'border border-gray-300 bg-gray-50' : 'border border-[var(--border-color)] focus:ring-blue-500'}
-                      disabled={priorityLoading}
-                    />
-                    {priorityError && <div className="text-xs text-red-600 mt-1">{priorityError}</div>}
-                  </div>
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm text-gray-800 mb-1">Brief Detail</label>
                     <textarea
                       ref={briefDetailRef}
@@ -1668,32 +1700,19 @@ const CreateBriefForm: React.FC<MasterFormWithSaveProps> = ({ onClose, onSave, i
                       style={{ overflow: 'hidden' }}
                     />
                   </div>
-
-
-                  {/* Brief Detail moved to pair with Select Type for aligned row */}
                 </div>
               </EditSection>
             </div>
 
-            <div className={isEdit ? 'flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:space-x-4 pt-1' : 'flex items-center justify-end'}>
-              {isEdit ? (
-                <>
-                  <Button type="button" onClick={onClose}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={saving}>
-                    {saving ? 'Saving...' : 'Update'}
-                  </Button>
-                </>
-              ) : (
-                <button type="submit" className="px-4 py-2 rounded-lg btn-primary text-white shadow-sm disabled:opacity-60" disabled={saving}>
-                  {saving ? 'Saving...' : 'Save'}
-                </button>
-              )}
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:space-x-4 pt-1">
+              <Button type="button" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? 'Saving...' : isEdit ? 'Update' : 'Save'}
+              </Button>
             </div>
           </form>
-        </div>
-      </div>
 
       <FilePreviewModal
         isOpen={isAttachmentModalOpen}

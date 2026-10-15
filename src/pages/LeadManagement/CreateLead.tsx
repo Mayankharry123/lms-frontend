@@ -5,7 +5,7 @@
  * @date 2026-05-25
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import LeadManagementSection from '../../components/forms/CreateLead/LeadManagementSection';
 import ContactPersonsCard from '../../components/forms/CreateLead/ContactPersonsCard';
 import AssignPriorityCard from '../../components/forms/CreateLead/AssignPriorityCard';
@@ -82,7 +82,7 @@ const CreateLead: React.FC = () => {
   const [contactErrors, setContactErrors] = useState<Record<string, Partial<Record<string, string>>>>({});
 
   // Helper to clear error for a field as soon as it is valid
-  const clearContactFieldError = (contactId: string, field: string, value: any) => {
+  const clearContactFieldError = useCallback((contactId: string, field: string, value: any) => {
     setContactErrors(prev => {
       if (!prev[contactId] || !prev[contactId][field]) return prev;
       let valid = true;
@@ -106,7 +106,22 @@ const CreateLead: React.FC = () => {
       }
       return prev;
     });
-  };
+  }, []);
+
+  const handleContactsChange = useCallback((c: any[]) => {
+    const updated = c && c.length > 0 ? c : [{ id: '1', fullName: '', profileUrl: '', email: '', mobileNo: '', mobileNo2: '', showSecondMobile: false, type: '', designation: '', agencyBrand: '', source: '', subSource: '', department: '', country: '', state: '', city: '', zone: '', postalCode: '' }];
+    setContacts(updated);
+    const lead = updated[0];
+    const id = lead.id || '1';
+    clearContactFieldError(id, 'fullName', lead.fullName);
+    clearContactFieldError(id, 'mobileNo', lead.mobileNo);
+    clearContactFieldError(id, 'mobileNo2', lead.mobileNo2);
+    clearContactFieldError(id, 'designation', lead.designation);
+    clearContactFieldError(id, 'department', lead.department);
+    clearContactFieldError(id, 'country', lead.country);
+    clearContactFieldError(id, 'source', lead.source);
+    clearContactFieldError(id, 'subSource', lead.subSource);
+  }, [clearContactFieldError]);
   const [comment, setComment] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [leadTypeNameById, setLeadTypeNameById] = useState<Record<string, string>>({});
@@ -465,20 +480,7 @@ const CreateLead: React.FC = () => {
 
         <ContactPersonsCard
           initialContacts={contacts}
-          onChange={(c) => {
-            const updated = c && c.length > 0 ? c : [{ id: '1', fullName: '', profileUrl: '', email: '', mobileNo: '', mobileNo2: '', showSecondMobile: false, type: '', designation: '', agencyBrand: '', source: '', subSource: '', department: '', country: '', state: '', city: '', zone: '', postalCode: '' }];
-            setContacts(updated);
-            const lead = updated[0];
-            const id = lead.id || '1';
-            clearContactFieldError(id, 'fullName', lead.fullName);
-            clearContactFieldError(id, 'mobileNo', lead.mobileNo);
-            clearContactFieldError(id, 'mobileNo2', lead.mobileNo2);
-            clearContactFieldError(id, 'designation', lead.designation);
-            clearContactFieldError(id, 'department', lead.department);
-            clearContactFieldError(id, 'country', lead.country);
-            clearContactFieldError(id, 'source', lead.source);
-            clearContactFieldError(id, 'subSource', lead.subSource);
-          }}
+          onChange={handleContactsChange}
           errors={contactErrors}
           collapsible
           defaultOpen

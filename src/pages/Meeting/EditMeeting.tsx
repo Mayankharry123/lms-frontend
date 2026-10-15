@@ -7,17 +7,18 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Breadcrumb from '../../components/ui/Breadcrumb';
 import { showSuccess } from '../../utils/notifications';
 import SelectField from '../../components/ui/SelectField';
 import MultiSelectDropdown from '../../components/ui/MultiSelectDropdown';
+import CollapsibleFormCard from '../../components/ui/CollapsibleFormCard';
+import { Button, MasterCreateHeader } from '../../components/ui';
+import { Calendar } from 'lucide-react';
 import {
   fetchMeetingById,
   fetchLeadsDropdownOptions,
   fetchAttendeesDropdownOptions,
   updateMeeting
 } from '../../services/EditMeeting';
-import { IoIosArrowBack } from 'react-icons/io';
 
 
 const EditMeeting: React.FC = () => {
@@ -190,33 +191,29 @@ const EditMeeting: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 !animate-none !transition-none">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <Breadcrumb
-          items={[
-            { label: 'Lead Management', path: '/lead-management' },
-            { label: 'Edit Meeting', isActive: true },
-          ]}
-        />
+    <div className="flex-1 w-full max-w-full overflow-x-hidden">
+      <MasterCreateHeader
+        onClose={() => navigate(-1)}
+        breadcrumbItems={[
+          { label: 'Lead Management', path: '/lead-management' },
+          { label: 'Edit Meeting', isActive: true },
+        ]}
+      />
 
-        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="font-semibold px-3 py-1 rounded-md flex items-center text-sm btn-primary text-white"
+      <div className="space-y-3 sm:space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+          <CollapsibleFormCard
+            title="Edit Meeting"
+            collapsible
+            defaultOpen
+            icon={<Calendar className="h-5 w-5" strokeWidth={2} />}
           >
-            <IoIosArrowBack size={16} className="mr-1" />
-            Go Back
-          </button>
-        </div>
-      </div>
-
-      <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-5 bg-gray-50">
-          <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-6">
-            <div className="flex flex-wrap gap-4">
-              <div className='w-full sm:w-[calc(50%-15px)]'>
-                <label className="block text-sm text-gray-800 mb-1">Lead <span className="text-red-600">*</span></label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Lead */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">
+                  Lead <span className="text-red-600">*</span>
+                </label>
                 <SelectField
                   placeholder="Select Lead"
                   options={leadOptions}
@@ -225,13 +222,25 @@ const EditMeeting: React.FC = () => {
                     setLead(String(v));
                     if (errors.lead && v) setErrors({ ...errors, lead: undefined });
                   }}
-                  inputClassName="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-600"
+                  inputClassName={`px-3 py-2 rounded-lg bg-white text-gray-800 border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    errors.lead ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200'
+                  }`}
                 />
-                {errors.lead && <div className="text-red-500 text-xs mt-1">{errors.lead}</div>}
+                {errors.lead && (
+                  <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.lead}
+                  </div>
+                )}
               </div>
 
-              <div className='w-full sm:w-[calc(50%-15px)]'>
-                <label className="block text-sm text-gray-800 mb-1">Meeting Type <span className="text-[#FF0000]">*</span></label>
+              {/* Meeting Type */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">
+                  Meeting Type <span className="text-[#FF0000]">*</span>
+                </label>
                 <SelectField
                   placeholder="Select Type"
                   options={meetingTypeOptions}
@@ -240,19 +249,31 @@ const EditMeeting: React.FC = () => {
                     setMeetingType(String(v));
                     if (errors.meetingType && v) setErrors({ ...errors, meetingType: undefined });
                   }}
-                  inputClassName="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-600"
+                  inputClassName={`px-3 py-2 rounded-lg bg-white text-gray-800 border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    errors.meetingType ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200'
+                  }`}
                 />
-                {errors.meetingType && <div className="text-red-500 text-xs mt-1">{errors.meetingType}</div>}
+                {errors.meetingType && (
+                  <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.meetingType}
+                  </div>
+                )}
               </div>
 
-              <div className='w-full sm:w-[calc(50%-15px)]'>
-                <label className="block text-sm text-gray-800 mb-1">Attendees <span className="text-[#FF0000]">*</span></label>
+              {/* Attendees */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">
+                  Attendees <span className="text-[#FF0000]">*</span>
+                </label>
                 <MultiSelectDropdown
                   name="attendees"
                   value={attendeeIds}
                   onChange={(v) => {
                     const selectedAttendees = v.map((id) => {
-                      const existing = attendees.find(att => att.id === id);
+                      const existing = attendees.find((att) => att.id === id);
                       if (existing) return existing;
                       return {
                         id: String(id),
@@ -269,49 +290,81 @@ const EditMeeting: React.FC = () => {
                   multi={true}
                   horizontalScroll={true}
                 />
-                {errors.attendees && <div className="text-red-500 text-xs mt-1">{errors.attendees}</div>}
+                {errors.attendees && (
+                  <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.attendees}
+                  </div>
+                )}
               </div>
 
-              <div className='w-full sm:w-[calc(50%-15px)]'>
+              {/* Agenda */}
+              <div>
                 <label className="block text-sm text-gray-800 mb-1">Agenda</label>
                 <input
                   type="text"
-                  placeholder="Please Fill Meeting Agenda "
+                  placeholder="Please Fill Meeting Agenda"
                   value={agenda}
                   onChange={(e) => setAgenda(e.target.value)}
-                  className="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-600"
+                  className="w-full px-3 py-2 rounded-lg bg-white text-gray-800 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 />
               </div>
 
-              <div className='w-full sm:w-[calc(50%-15px)]'>
-                <label className="block text-sm text-gray-800 mb-1">Start Date & Time <span className="text-[#FF0000]">*</span></label>
+              {/* Start Date & Time */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">
+                  Start Date & Time <span className="text-[#FF0000]">*</span>
+                </label>
                 <input
                   type="text"
                   placeholder="yyyy-mm-dd HH:mm"
                   value={startDateTime}
                   onChange={(e) => setStartDateTime(e.target.value)}
-                  className="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-600"
+                  className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    errors.startDateTime ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200'
+                  }`}
                 />
-                {errors.startDateTime && <div className="text-red-500 text-xs mt-1">{errors.startDateTime}</div>}
+                {errors.startDateTime && (
+                  <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.startDateTime}
+                  </div>
+                )}
               </div>
 
-              <div className='w-full sm:w-[calc(50%-15px)]'>
-                <label className="block text-sm text-gray-800 mb-1">End Date & Time <span className="text-[#FF0000]">*</span></label>
+              {/* End Date & Time */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">
+                  End Date & Time <span className="text-[#FF0000]">*</span>
+                </label>
                 <input
                   type="text"
                   placeholder="yyyy-mm-dd HH:mm"
                   value={endDateTime}
                   onChange={(e) => setEndDateTime(e.target.value)}
-                  className="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-600"
+                  className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    errors.endDateTime ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200'
+                  }`}
                 />
-                {errors.endDateTime && <div className="text-red-500 text-xs mt-1">{errors.endDateTime}</div>}
+                {errors.endDateTime && (
+                  <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.endDateTime}
+                  </div>
+                )}
               </div>
 
-
-
-              <div className='w-full sm:w-[calc(50%-15px)]'>
-
-                <label className="block text-sm text-gray-800 mb-1">Add Title <span className="text-[#FF0000]">*</span></label>
+              {/* Add Title */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">
+                  Add Title <span className="text-[#FF0000]">*</span>
+                </label>
                 <input
                   type="text"
                   placeholder="Please Fill Meeting Title"
@@ -320,35 +373,45 @@ const EditMeeting: React.FC = () => {
                     setTitle(e.target.value);
                     if (errors.title && e.target.value) setErrors({ ...errors, title: undefined });
                   }}
-                  className="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-600"
+                  className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    errors.title ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200'
+                  }`}
                 />
-                {errors.title && <div className="text-red-500 text-xs mt-1">{errors.title}</div>}
+                {errors.title && (
+                  <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.title}
+                  </div>
+                )}
               </div>
 
-              <div className='w-full sm:w-[calc(50%-15px)]'>
+              {/* Meeting Location */}
+              <div>
                 <label className="block text-sm text-gray-800 mb-1">Meeting Location</label>
                 <input
                   type="text"
                   placeholder="Please Fill Meeting Location"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-600"
+                  className="w-full px-3 py-2 rounded-lg bg-white text-gray-800 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 />
               </div>
             </div>
-            <div className="flex justify-end pt-6">
-              <button
-                type="submit"
-                className="px-6 py-2 btn-primary text-white rounded-lg shadow-sm"
-                data-btn-label="Save"
-              >
-                Save
-              </button>
-            </div>
-          </form>
-        </div>
-      </div >
-    </div >
+          </CollapsibleFormCard>
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:space-x-4 pt-4">
+            <Button type="button" onClick={() => navigate(-1)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit">
+              Update
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };
 

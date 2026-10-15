@@ -8,16 +8,17 @@
 import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import Breadcrumb from '../../components/ui/Breadcrumb';
 import SweetAlert from '../../utils/SweetAlert';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import SelectField from '../../components/ui/SelectField';
 import { createMeeting } from '../../services/MeetingSchedule';
-import { listAttendees } from '../../services/AllUsers';
+import { getAllUsers } from '../../services/AllUsers';
 import { getLeadById, listLeads } from '../../services/AllLeads';
 import { getCallStatuses, updateCallStatus } from '../../services/CallStatus';
 import MultiSelectDropdown from '../../components/ui/MultiSelectDropdown';
-import { IoIosArrowBack } from 'react-icons/io';
+import CollapsibleFormCard from '../../components/ui/CollapsibleFormCard';
+import { Button, MasterCreateHeader } from '../../components/ui';
+import { Calendar } from 'lucide-react';
 
 const MeetingSchedule: React.FC = () => {
   const navigate = useNavigate();
@@ -128,10 +129,10 @@ const MeetingSchedule: React.FC = () => {
         }
 
         // Fetch attendees
-        const { data: usersData } = await listAttendees(1, 100);
+        const usersData = await getAllUsers();
         const attendeeOpts = usersData.map((user: any) => ({
           value: String(user.id),
-          label: `${user.name || user.email || 'Unknown'} #${user.id}`,
+          label: user.name || `User ${user.id}`,
         }));
         if (isMounted) {
           setAttendeesOptions(attendeeOpts);
@@ -259,33 +260,29 @@ const MeetingSchedule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <Breadcrumb
-          items={[
-            { label: 'Lead Management', path: '/lead-management' },
-            { label: 'Meeting Schedule', isActive: true },
-          ]}
-        />
+    <div className="flex-1 w-full max-w-full overflow-x-hidden">
+      <MasterCreateHeader
+        onClose={() => navigate(-1)}
+        breadcrumbItems={[
+          { label: 'Lead Management', path: '/lead-management' },
+          { label: 'Meeting Schedule', isActive: true },
+        ]}
+      />
 
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="font-semibold px-3 py-1 rounded-md flex items-center text-sm btn-primary text-white">
-
-          <IoIosArrowBack size={16} className="mr-1" />
-          Go Back
-        </button>
-      </div>
-
-
-      <div className="w-full bg-white rounded-2xl shadow-sm border border-[var(--border-color)] overflow-hidden">
-        <div className="px-4 py-5 sm:p-5 bg-gray-50">
-          <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Lead, Meeting Type, Attendees */}
-              <div className="col-span-2 lg:col-span-1">
-                <label className="block text-sm text-gray-800 mb-1">Lead <span className="text-[#FF0000]">*</span></label>
+      <div className="space-y-3 sm:space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+          <CollapsibleFormCard
+            title="Meeting Schedule"
+            collapsible
+            defaultOpen
+            icon={<Calendar className="h-5 w-5" strokeWidth={2} />}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Lead */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">
+                  Lead <span className="text-[#FF0000]">*</span>
+                </label>
                 <SelectField
                   placeholder="Select Lead"
                   options={leadOptions}
@@ -294,12 +291,25 @@ const MeetingSchedule: React.FC = () => {
                     setLead(String(v));
                     if (errors.lead && v) setErrors({ ...errors, lead: undefined });
                   }}
-                  inputClassName="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-800"
+                  inputClassName={`px-3 py-2 rounded-lg bg-white text-gray-800 border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    errors.lead ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200'
+                  }`}
                 />
-                {errors.lead && <div className="text-red-500 text-xs mt-1">{errors.lead}</div>}
+                {errors.lead && (
+                  <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.lead}
+                  </div>
+                )}
               </div>
-              <div className="col-span-2 lg:col-span-1">
-                <label className="block text-sm text-gray-800 mb-1">Meeting Type <span className="text-[#FF0000]">*</span></label>
+
+              {/* Meeting Type */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">
+                  Meeting Type <span className="text-[#FF0000]">*</span>
+                </label>
                 <SelectField
                   placeholder="Select Type"
                   options={meetingTypeOptions}
@@ -308,93 +318,136 @@ const MeetingSchedule: React.FC = () => {
                     setMeetingType(String(v));
                     if (errors.meetingType && v) setErrors({ ...errors, meetingType: undefined });
                   }}
-                  inputClassName="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-800"
+                  inputClassName={`px-3 py-2 rounded-lg bg-white text-gray-800 border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    errors.meetingType ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200'
+                  }`}
                 />
-                {errors.meetingType && <div className="text-red-500 text-xs mt-1">{errors.meetingType}</div>}
+                {errors.meetingType && (
+                  <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.meetingType}
+                  </div>
+                )}
               </div>
-              <div className="col-span-2">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-gray-800 mb-1">Attendees <span className="text-[#FF0000]">*</span></label>
-                    <MultiSelectDropdown
-                      name="attendees"
-                      value={attendees}
-                      onChange={(v) => {
-                        setAttendees(v);
-                        if (errors.attendees && v.length) setErrors({ ...errors, attendees: undefined });
-                      }}
-                      options={attendeesOptions}
-                      placeholder={attendeesOptions.length ? 'Please Search And Select Attendees' : 'Loading attendees...'}
-                      multi={true}
-                      horizontalScroll={true}
-                    />
-                    {errors.attendees && <div className="text-red-500 text-xs mt-1">{errors.attendees}</div>}
+
+              {/* Attendees */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">
+                  Attendees <span className="text-[#FF0000]">*</span>
+                </label>
+                <MultiSelectDropdown
+                  name="attendees"
+                  value={attendees}
+                  onChange={(v) => {
+                    setAttendees(v);
+                    if (errors.attendees && v.length) setErrors({ ...errors, attendees: undefined });
+                  }}
+                  options={attendeesOptions}
+                  placeholder={attendeesOptions.length ? 'Please Search And Select Attendees' : 'Loading attendees...'}
+                  multi={true}
+                  horizontalScroll={true}
+                />
+                {errors.attendees && (
+                  <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.attendees}
                   </div>
-                  <div>
-                    <label className="block text-sm text-gray-800 mb-1">Agenda</label>
-                    <input
-                      type="text"
-                      placeholder="Please Fill Meeting Agenda "
-                      value={agenda}
-                      onChange={(e) => setAgenda(e.target.value)}
-                      className="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-800"
-                    />
-                  </div>
-                </div>
+                )}
               </div>
-              {/* Start and End DateTime pickers */}
-              <div className="col-span-2">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-gray-800 mb-1">Start Date & Time <span className="text-[#FF0000]">*</span></label>
-                    <DatePicker
-                      selected={startDateTime}
-                      onChange={(dt: Date | null) => {
-                        setStartDateTime(dt);
-                        if (errors.startDateTime && dt) setErrors({ ...errors, startDateTime: undefined });
-                      }}
-                      showTimeSelect
-                      timeIntervals={15}
-                      dateFormat="yyyy-MM-dd HH:mm"
-                      timeFormat="HH:mm"
-                      placeholderText="yyyy-mm-dd HH:mm"
-                      className="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-800 w-full"
-                      wrapperClassName="w-full"
-                      popperPlacement="bottom-start"
-                      showMonthDropdown
-                      showYearDropdown
-                      dropdownMode="select"
-                      minDate={new Date()}
-                    />
-                    {errors.startDateTime && <div className="text-red-500 text-xs mt-1">{errors.startDateTime}</div>}
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-800 mb-1">End Date & Time <span className="text-[#FF0000]">*</span></label>
-                    <DatePicker
-                      selected={endDateTime}
-                      onChange={(dt: Date | null) => {
-                        setEndDateTime(dt);
-                        if (errors.endDateTime && dt) setErrors({ ...errors, endDateTime: undefined });
-                      }}
-                      showTimeSelect
-                      timeIntervals={15}
-                      dateFormat="yyyy-MM-dd HH:mm"
-                      timeFormat="HH:mm"
-                      placeholderText="yyyy-mm-dd HH:mm"
-                      className="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-800 w-full"
-                      wrapperClassName="w-full"
-                      popperPlacement="bottom-start"
-                      showMonthDropdown
-                      showYearDropdown
-                      dropdownMode="select"
-                      minDate={startDateTime || new Date()}
-                    />
-                    {errors.endDateTime && <div className="text-red-500 text-xs mt-1">{errors.endDateTime}</div>}
-                  </div>
-                </div>
+
+              {/* Agenda */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">Agenda</label>
+                <input
+                  type="text"
+                  placeholder="Please Fill Meeting Agenda"
+                  value={agenda}
+                  onChange={(e) => setAgenda(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-white text-gray-800 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                />
               </div>
-              <div className="col-span-2 lg:col-span-1">
-                <label className="block text-sm text-gray-800 mb-1">Add Title <span className="text-[#FF0000]">*</span></label>
+
+              {/* Start Date & Time */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">
+                  Start Date & Time <span className="text-[#FF0000]">*</span>
+                </label>
+                <DatePicker
+                  selected={startDateTime}
+                  onChange={(dt: Date | null) => {
+                    setStartDateTime(dt);
+                    if (errors.startDateTime && dt) setErrors({ ...errors, startDateTime: undefined });
+                  }}
+                  showTimeSelect
+                  timeIntervals={15}
+                  dateFormat="yyyy-MM-dd HH:mm"
+                  timeFormat="HH:mm"
+                  placeholderText="yyyy-mm-dd HH:mm"
+                  className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    errors.startDateTime ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200'
+                  }`}
+                  wrapperClassName="w-full"
+                  popperPlacement="bottom-start"
+                  showMonthDropdown
+                  showYearDropdown
+                  dropdownMode="select"
+                  minDate={new Date()}
+                />
+                {errors.startDateTime && (
+                  <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.startDateTime}
+                  </div>
+                )}
+              </div>
+
+              {/* End Date & Time */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">
+                  End Date & Time <span className="text-[#FF0000]">*</span>
+                </label>
+                <DatePicker
+                  selected={endDateTime}
+                  onChange={(dt: Date | null) => {
+                    setEndDateTime(dt);
+                    if (errors.endDateTime && dt) setErrors({ ...errors, endDateTime: undefined });
+                  }}
+                  showTimeSelect
+                  timeIntervals={15}
+                  dateFormat="yyyy-MM-dd HH:mm"
+                  timeFormat="HH:mm"
+                  placeholderText="yyyy-mm-dd HH:mm"
+                  className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    errors.endDateTime ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200'
+                  }`}
+                  wrapperClassName="w-full"
+                  popperPlacement="bottom-start"
+                  showMonthDropdown
+                  showYearDropdown
+                  dropdownMode="select"
+                  minDate={startDateTime || new Date()}
+                />
+                {errors.endDateTime && (
+                  <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.endDateTime}
+                  </div>
+                )}
+              </div>
+
+              {/* Add Title */}
+              <div>
+                <label className="block text-sm text-gray-800 mb-1">
+                  Add Title <span className="text-[#FF0000]">*</span>
+                </label>
                 <input
                   type="text"
                   placeholder="Please Fill Meeting Title"
@@ -403,35 +456,43 @@ const MeetingSchedule: React.FC = () => {
                     setTitle(e.target.value);
                     if (errors.title && e.target.value) setErrors({ ...errors, title: undefined });
                   }}
-                  className="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-800"
+                  className={`w-full px-3 py-2 rounded-lg bg-white text-gray-800 border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                    errors.title ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200'
+                  }`}
                 />
-                {errors.title && <div className="text-red-500 text-xs mt-1">{errors.title}</div>}
+                {errors.title && (
+                  <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.title}
+                  </div>
+                )}
               </div>
-              {/* Meeting Location and Agenda side by side */}
-              <div className="col-span-2 lg:col-span-1">
+
+              {/* Meeting Location */}
+              <div>
                 <label className="block text-sm text-gray-800 mb-1">Meeting Location</label>
                 <input
                   type="text"
                   placeholder="Please Fill Meeting Location"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="border border-gray-200 focus:ring-blue-500 w-full px-3 py-2 rounded-lg bg-white text-gray-800"
+                  className="w-full px-3 py-2 rounded-lg bg-white text-gray-800 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 />
               </div>
+            </div>
+          </CollapsibleFormCard>
 
-            </div>
-            <div className="flex justify-end pt-6">
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-6 py-2 btn-primary text-white rounded-lg shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                data-btn-label="Save"
-              >
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </form>
-        </div>
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:space-x-4 pt-4">
+            <Button type="button" onClick={() => navigate(-1)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={saving}>
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -66,9 +66,13 @@ const ViewUser: React.FC = () => {
   const departmentLabel = (() => {
     const departments = (user as any)?.departments;
     if (Array.isArray(departments) && departments.length > 0) {
-      return departments.map((d: any) => d?.name ?? d).filter(Boolean).join(', ');
+      return departments
+        .map((d: any) => d?.name ?? d?.departments_name ?? d?.department_name ?? (typeof d === 'string' ? d : ''))
+        .filter(Boolean)
+        .join(', ');
     }
     return String(
+      (user as any)?.departments_name ??
       (user as any)?.department_name ??
       (user as any)?.department?.name ??
       (user as any)?.department ??

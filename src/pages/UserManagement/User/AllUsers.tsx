@@ -135,7 +135,15 @@ const AllUsers: React.FC = () => {
   };
 
   const handleOrganisationsClick = (user: User) => {
-    const organisations = user.organisations ?? (user.origination ? [{ name: user.origination }] : []);
+    const rawOrganisations =
+      user.organisations ?? (user.origination ? [{ name: user.origination }] : []);
+    const organisations = rawOrganisations
+      .map((org: any) => ({
+        ...org,
+        name: org?.name ?? org?.organisations_name ?? org?.organisation_name ?? String(org ?? ''),
+      }))
+      .filter((org: any) => Boolean(org.name));
+
     if (organisations.length > 0) {
       setSelectedOrganisations(organisations);
       setOrganisationsContextName(user.name);
@@ -150,7 +158,15 @@ const AllUsers: React.FC = () => {
   };
 
   const handleDepartmentsClick = (user: User) => {
-    const departments = user.departments ?? (user.department ? [{ name: user.department }] : []);
+    const rawDepartments =
+      user.departments ?? (user.department ? [{ name: user.department }] : []);
+    const departments = rawDepartments
+      .map((d: any) => ({
+        ...d,
+        name: d?.name ?? d?.departments_name ?? d?.department_name ?? String(d ?? ''),
+      }))
+      .filter((d: any) => Boolean(d.name));
+
     if (departments.length > 0) {
       setSelectedDepartments(departments);
       setDepartmentsContextName(user.name);
@@ -319,18 +335,25 @@ const AllUsers: React.FC = () => {
       key: 'origination',
       header: 'Organisation',
       render: (it: User) => {
-        const organisations =
+        const rawOrganisations =
           it.organisations ?? (it.origination ? [{ name: it.origination }] : []);
+        const organisations = rawOrganisations.filter(
+          (org: any) => Boolean(org?.name ?? org?.organisations_name ?? org?.organisation_name)
+        );
+        const firstOrgName =
+          organisations[0]?.name ||
+          (organisations[0] as any)?.organisations_name ||
+          (organisations[0] as any)?.organisation_name;
 
         return (
           <div
             className="flex gap-2 justify-start items-center cursor-pointer hover:opacity-80 transition-opacity"
             onClick={() => organisations.length > 0 && handleOrganisationsClick(it)}
           >
-            {organisations.length > 0 ? (
+            {organisations.length > 0 && firstOrgName ? (
               <>
                 <span className="inline-flex items-center justify-center h-7 px-3 border border-indigo-300 rounded-full text-xs font-medium leading-tight whitespace-nowrap bg-indigo-50 text-indigo-700 max-w-[140px] overflow-hidden text-ellipsis">
-                  {organisations[0].name}
+                  {firstOrgName}
                 </span>
                 {organisations.length > 1 && (
                   <span className="inline-flex items-center justify-center h-7 px-2 border border-gray-200 rounded-full text-xs font-medium leading-tight whitespace-nowrap bg-gray-50 text-gray-700">
@@ -350,18 +373,25 @@ const AllUsers: React.FC = () => {
       key: 'department',
       header: 'Department',
       render: (it: User) => {
-        const departments =
+        const rawDepartments =
           it.departments ?? (it.department ? [{ name: it.department }] : []);
+        const departments = rawDepartments.filter(
+          (dept: any) => Boolean(dept?.name ?? dept?.departments_name ?? dept?.department_name)
+        );
+        const firstDeptName =
+          departments[0]?.name ||
+          (departments[0] as any)?.departments_name ||
+          (departments[0] as any)?.department_name;
 
         return (
           <div
             className="flex gap-2 justify-start items-center cursor-pointer hover:opacity-80 transition-opacity"
             onClick={() => departments.length > 0 && handleDepartmentsClick(it)}
           >
-            {departments.length > 0 ? (
+            {departments.length > 0 && firstDeptName ? (
               <>
                 <span className="inline-flex items-center justify-center h-7 px-3 border border-teal-300 rounded-full text-xs font-medium leading-tight whitespace-nowrap bg-teal-50 text-teal-700 max-w-[140px] overflow-hidden text-ellipsis">
-                  {departments[0].name}
+                  {firstDeptName}
                 </span>
                 {departments.length > 1 && (
                   <span className="inline-flex items-center justify-center h-7 px-2 border border-gray-200 rounded-full text-xs font-medium leading-tight whitespace-nowrap bg-gray-50 text-gray-700">

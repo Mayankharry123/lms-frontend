@@ -207,67 +207,79 @@ const MasterEdit: React.FC<Props> = ({ item, onClose, onSave, hideSource = false
         transition={{ duration: 0.18 }}
         className="w-full bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
       >
-        <div className="p-4 bg-gray-50 space-y-4 h-[50dvh] ">
+        <div className="p-6 bg-gray-50 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.entries(form).filter(([k]) => k !== 'id' && k !== 'dateTime' && k !== 'date_time' && !(hideSource && k === 'source')).map(([k]) => (
-              <div key={k}>
-                <label className="block text-sm text-gray-800 mb-1">
-                  {(k === 'name' && nameLabel)
-                    ? nameLabel
-                    : k.replace(/([A-Z])/g, ' $1')
-                      .split(' ')
-                      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                      .join(' ')}
-                </label>
-                {k === 'source' && !sourceAsInput ? (
-                  <>
-                    <SelectField
-                      name={k}
-                      value={String(form[k] ?? '')}
-                      onChange={(value) => handleChange(k, typeof value === 'string' ? value : value[0] ?? '')}
-                      options={options.map(o => ({ value: String(o.id), label: o.name }))}
-                      placeholder={loadingOptions ? 'Loading...' : 'Search or select option'}
-                      disabled={loadingOptions}
-                      inputClassName={errors[k] ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-black'}
-                    />
-                    {errors[k] && (
-                      <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                        <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        {errors[k]}
-                      </div>
+            {(() => {
+              const visibleEntries = Object.entries(form).filter(
+                ([k]) => k !== 'id' && k !== 'dateTime' && k !== 'date_time' && !(hideSource && k === 'source')
+              );
+              return visibleEntries.map(([k]) => {
+                const label = (k === 'name' && nameLabel)
+                  ? nameLabel
+                  : k.replace(/([A-Z])/g, ' $1')
+                    .split(' ')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+                const isSingleField = visibleEntries.length === 1;
+
+                return (
+                  <div key={k} className={isSingleField ? 'md:col-span-2' : ''}>
+                    <label className="block text-sm font-medium text-gray-800 mb-1.5">
+                      {label} <span className="text-[#FF0000]">*</span>
+                    </label>
+                    {k === 'source' && !sourceAsInput ? (
+                      <>
+                        <SelectField
+                          name={k}
+                          value={String(form[k] ?? '')}
+                          onChange={(value) => handleChange(k, typeof value === 'string' ? value : value[0] ?? '')}
+                          options={options.map(o => ({ value: String(o.id), label: o.name }))}
+                          placeholder={loadingOptions ? 'Loading...' : 'Search or select option'}
+                          disabled={loadingOptions}
+                          inputClassName={errors[k] ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-black'}
+                        />
+                        {errors[k] && (
+                          <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                            <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            {errors[k]}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          value={form[k] ?? ''}
+                          onChange={(e) => handleChange(k, e.target.value)}
+                          readOnly={k === 'source' && sourceAsInput}
+                          placeholder={`Please Enter ${label}`}
+                          className={`w-full px-3 py-2 border rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-1 transition-colors ${
+                            errors[k] ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-black'
+                          }`}
+                        />
+                        {errors[k] && (
+                          <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
+                            <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            {errors[k]}
+                          </div>
+                        )}
+                      </>
                     )}
-                  </>
-                ) : (
-                  <>
-                    <input
-                      value={form[k] ?? ''}
-                      onChange={(e) => handleChange(k, e.target.value)}
-                      readOnly={k === 'source' && sourceAsInput}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-1 transition-colors ${errors[k] ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-black'
-                        }`}
-                    />
-                    {errors[k] && (
-                      <div className="text-xs text-red-600 mt-1.5 flex items-center gap-1" role="alert">
-                        <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        {errors[k]}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            ))}
+                  </div>
+                );
+              });
+            })()}
 
             {errors.form && (
-              <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              <div className="md:col-span-2 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
                 {errors.form}
               </div>
             )}
-
           </div>
+
           <div className="flex items-center justify-end space-x-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
             <button
