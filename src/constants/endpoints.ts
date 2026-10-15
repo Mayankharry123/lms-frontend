@@ -12,6 +12,7 @@ export const ENDPOINTS = {
   },
   USERS: {
     LIST: '/users',
+    ALL_USERS: '/all-users',
     DETAIL: (id: string | number) => `/users/${id}`,
     CREATE: '/users',
     UPDATE: (id: string | number) => `/users/${id}`,

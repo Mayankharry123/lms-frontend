@@ -7,11 +7,19 @@ export interface UserParent {
 export interface UserOrganisation {
   id?: number | string;
   name: string;
+  organisation_id?: number | string;
+  organisation_name?: string;
+  organisations_id?: number | string;
+  organisations_name?: string;
 }
 
 export interface UserDepartment {
   id?: number | string;
   name: string;
+  department_id?: number | string;
+  department_name?: string;
+  departments_id?: number | string;
+  departments_name?: string;
 }
 
 export interface AppUser {

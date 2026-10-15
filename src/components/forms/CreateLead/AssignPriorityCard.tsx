@@ -26,14 +26,17 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
   const priorityRef = useRef(priority);
   const assignToRef = useRef(assignTo);
   const organisationRef = useRef(organisation);
+  const callFeedbackRef = useRef(callFeedback);
   const onChangeRef = useRef(onChange);
+  const prevCallFeedbackRef = useRef<string | undefined>(callFeedback);
 
   useEffect(() => {
     priorityRef.current = priority;
     assignToRef.current = assignTo;
     organisationRef.current = organisation;
+    callFeedbackRef.current = callFeedback;
     onChangeRef.current = onChange;
-  }, [priority, assignTo, organisation, onChange]);
+  }, [priority, assignTo, organisation, callFeedback, onChange]);
 
   // Assign To dropdown state
   const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
@@ -100,9 +103,9 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
         if (mode === 'edit') return;
 
         if (options.length === 1) {
-          onChangeRef.current?.({ organisation: options[0].id, assignTo: assignToRef.current, priority: priorityRef.current, callFeedback });
+          onChangeRef.current?.({ organisation: options[0].id, assignTo: assignToRef.current, priority: priorityRef.current, callFeedback: callFeedbackRef.current });
         } else if (options.length > 1 && !organisationRef.current) {
-          onChangeRef.current?.({ organisation: '', assignTo: assignToRef.current, priority: priorityRef.current, callFeedback });
+          onChangeRef.current?.({ organisation: '', assignTo: assignToRef.current, priority: priorityRef.current, callFeedback: callFeedbackRef.current });
         }
       } catch (err: any) {
         if (isMounted) {
@@ -119,7 +122,7 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [callFeedback, mode]);
+  }, [mode]);
 
   // Preselect organisation if current user profile is assigned to exactly one (create only)
   useEffect(() => {
@@ -136,12 +139,12 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
           if (orgs.length === 1) {
             const singleOrgId = String(orgs[0].id ?? orgs[0].organisation_id ?? orgs[0].value ?? '');
             if (singleOrgId) {
-              onChangeRef.current?.({ organisation: singleOrgId, assignTo: assignToRef.current, priority: priorityRef.current, callFeedback });
+              onChangeRef.current?.({ organisation: singleOrgId, assignTo: assignToRef.current, priority: priorityRef.current, callFeedback: callFeedbackRef.current });
             }
           } else if (orgs.length > 1) {
-            onChangeRef.current?.({ organisation: '', assignTo: assignToRef.current, priority: priorityRef.current, callFeedback });
+            onChangeRef.current?.({ organisation: '', assignTo: assignToRef.current, priority: priorityRef.current, callFeedback: callFeedbackRef.current });
           } else if (user.organisation_id) {
-            onChangeRef.current?.({ organisation: String(user.organisation_id), assignTo: assignToRef.current, priority: priorityRef.current, callFeedback });
+            onChangeRef.current?.({ organisation: String(user.organisation_id), assignTo: assignToRef.current, priority: priorityRef.current, callFeedback: callFeedbackRef.current });
           }
         }
       } catch (err) {
@@ -152,7 +155,7 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [callFeedback, mode]);
+  }, [mode]);
 
   const organisationSelectOptions = useMemo(() => {
     const base = organisationOptions.map((o) => ({ value: String(o.id), label: o.name }));
@@ -248,30 +251,91 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
     setPriorityLoading(true);
     setPriorityError(null);
 
+    const callFeedbackChanged = prevCallFeedbackRef.current !== callFeedback;
+    prevCallFeedbackRef.current = callFeedback;
+
     const fetchFn = callFeedback ? getPrioritiesByCallStatus(callFeedback) : getPriorities();
 
     fetchFn
       .then((data: any) => {
         if (!isMounted) return;
 
-        const fetched = Array.isArray(data)
-          ? data.map((item: any) => ({ value: String(item.id), label: item.name }))
+        const rawList = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data?.priorities)
+          ? data.priorities
           : [];
+
+        interface PriorityOptionItem {
+          value: string;
+          label: string;
+          isDefault?: boolean;
+        }
+
+        const fetched: PriorityOptionItem[] = rawList.map((item: any) => ({
+          value: String(item.id),
+          label: item.name,
+          isDefault: Boolean(item.is_default || item.pivot?.is_default || item.default),
+        }));
         setPriorityOptions(fetched);
 
-        const currentPriorityIsValid = fetched.some(
-          (option) => option.value === priorityRef.current
-        );
-        if (!currentPriorityIsValid) {
-          const defaultPriority =
-            fetched.find((option) => option.label.trim().toLowerCase() === 'high') ??
-            fetched[0];
-          onChangeRef.current?.({
-            organisation: organisationRef.current,
-            assignTo: assignToRef.current,
-            priority: defaultPriority?.value,
-            callFeedback,
-          });
+        if (callFeedback) {
+          // When Call Feedback is selected: Auto-select Priority based on Call Feedback
+          const currentPriorityIsValid = fetched.some(
+            (option) => option.value === priorityRef.current
+          );
+
+          // In edit mode on initial mount with an existing valid priority, preserve it
+          const shouldPreserveExisting =
+            mode === 'edit' && !callFeedbackChanged && currentPriorityIsValid;
+
+          if (!shouldPreserveExisting && fetched.length > 0) {
+            const defaultPriority =
+              fetched.find((option) => option.isDefault) ??
+              fetched.find((option) => option.label.trim().toLowerCase() === 'high') ??
+              fetched[0];
+
+            onChangeRef.current?.({
+              organisation: organisationRef.current,
+              assignTo: assignToRef.current,
+              priority: defaultPriority?.value,
+              callFeedback,
+            });
+          } else if (!currentPriorityIsValid && !shouldPreserveExisting) {
+            onChangeRef.current?.({
+              organisation: organisationRef.current,
+              assignTo: assignToRef.current,
+              priority: '',
+              callFeedback,
+            });
+          }
+        } else {
+          // When NO Call Feedback is selected (default initial state):
+          // Priority should NOT be auto-selected by default.
+          if (callFeedbackChanged) {
+            // User explicitly cleared Call Feedback, reset Priority
+            onChangeRef.current?.({
+              organisation: organisationRef.current,
+              assignTo: assignToRef.current,
+              priority: '',
+              callFeedback: '',
+            });
+          } else {
+            // Initial mount without Call Feedback - keep Priority unselected
+            const currentPriorityIsValid = fetched.some(
+              (option) => option.value === priorityRef.current
+            );
+            if (priorityRef.current && !currentPriorityIsValid) {
+              onChangeRef.current?.({
+                organisation: organisationRef.current,
+                assignTo: assignToRef.current,
+                priority: '',
+                callFeedback,
+              });
+            }
+          }
         }
 
         setPriorityLoading(false);
@@ -286,7 +350,7 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [callFeedback]); // Only fetch when callFeedback changes
+  }, [callFeedback, mode]); // Re-fetch when callFeedback changes
 
   return (
     <CollapsibleFormCard
@@ -352,7 +416,10 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
               options={callStatusOptions}
               placeholder="Please Select Feedback"
               value={callFeedback}
-              onChange={(value: any) => onChange?.({ organisation, assignTo, priority, callFeedback: value })}
+              onChange={(value: any) => {
+                const feedbackVal = typeof value === 'string' ? value : value?.[0] ?? '';
+                onChange?.({ organisation, assignTo, priority, callFeedback: feedbackVal });
+              }}
               inputClassName="px-3 py-2 rounded-lg bg-white text-[var(--text-primary)] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               disabled={callStatusLoading}
             />
@@ -369,8 +436,8 @@ const AssignPriorityCard: React.FC<AssignPriorityCardProps> = ({
               placeholder="Select Priority"
               value={priority}
               onChange={(value) => onChange?.({ organisation, assignTo, priority: typeof value === 'string' ? value : value[0] ?? '', callFeedback })}
-              inputClassName="px-3 py-2 rounded-lg bg-white text-[var(--text-primary)] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-              disabled={priorityLoading}
+              inputClassName="px-3 py-2 rounded-lg bg-gray-50 text-[var(--text-primary)] border border-gray-200 cursor-not-allowed opacity-60"
+              disabled={true}
             />
             {priorityLoading && <div className="text-xs text-gray-400 mt-1">Loading...</div>}
             {priorityError && <div className="text-xs text-red-500 mt-1">{priorityError}</div>}

@@ -28,20 +28,29 @@ function parseOrganisations(it: Record<string, unknown>): UserOrganisation[] {
   if (Array.isArray(it.organisations) && it.organisations.length > 0) {
     return it.organisations
       .map((org) => {
+        if (typeof org === 'string') {
+          const name = org.trim();
+          return name ? { name } : null;
+        }
         const item = org as Record<string, unknown>;
         const name = String(
-          item.name ?? item.organisation_name ?? item.label ?? item.title ?? ''
+          item.name ??
+            item.organisations_name ??
+            item.organisation_name ??
+            item.label ??
+            item.title ??
+            ''
         ).trim();
         if (!name) return null;
         return {
-          id: (item.id ?? item.organisation_id) as number | string | undefined,
+          id: (item.id ?? item.organisations_id ?? item.organisation_id) as number | string | undefined,
           name,
         };
       })
       .filter((org): org is NonNullable<typeof org> => Boolean(org));
   }
 
-  const organisationName = it.organisation_name;
+  const organisationName = it.organisation_name ?? it.organisations_name;
   if (typeof organisationName === 'string' && organisationName.includes(',')) {
     return organisationName
       .split(',')
@@ -53,9 +62,12 @@ function parseOrganisations(it: Record<string, unknown>): UserOrganisation[] {
   const singleName = String(
     (it.origination as { name?: string })?.name ??
       (it.orientation as { name?: string })?.name ??
+      (it.organisation as { name?: string })?.name ??
       it.origination ??
       it.orientation ??
+      it.organisation ??
       it.organisation_name ??
+      it.organisations_name ??
       ''
   ).trim();
 
@@ -66,20 +78,29 @@ function parseDepartments(it: Record<string, unknown>): UserDepartment[] {
   if (Array.isArray(it.departments) && it.departments.length > 0) {
     return it.departments
       .map((dept) => {
+        if (typeof dept === 'string') {
+          const name = dept.trim();
+          return name ? { name } : null;
+        }
         const item = dept as Record<string, unknown>;
         const name = String(
-          item.name ?? item.department_name ?? item.label ?? item.title ?? ''
+          item.name ??
+            item.departments_name ??
+            item.department_name ??
+            item.label ??
+            item.title ??
+            ''
         ).trim();
         if (!name) return null;
         return {
-          id: (item.id ?? item.department_id) as number | string | undefined,
+          id: (item.id ?? item.departments_id ?? item.department_id) as number | string | undefined,
           name,
         };
       })
       .filter((dept): dept is NonNullable<typeof dept> => Boolean(dept));
   }
 
-  const departmentName = it.department_name;
+  const departmentName = it.department_name ?? it.departments_name;
   if (typeof departmentName === 'string' && departmentName.includes(',')) {
     return departmentName
       .split(',')
@@ -89,9 +110,12 @@ function parseDepartments(it: Record<string, unknown>): UserDepartment[] {
   }
 
   const singleName = String(
-    (it.department as { name?: string })?.name ??
+    (it.department as { name?: string; departments_name?: string; department_name?: string })?.name ??
+      (it.department as { name?: string; departments_name?: string; department_name?: string })?.departments_name ??
+      (it.department as { name?: string; departments_name?: string; department_name?: string })?.department_name ??
       it.department ??
       it.department_name ??
+      it.departments_name ??
       ''
   ).trim();
 
@@ -216,6 +240,20 @@ export async function listAttendees(
   return { data: items, meta: res.meta };
 }
 
+export interface AllUserItem {
+  id: number | string;
+  name: string;
+}
+
+export async function getAllUsers(): Promise<AllUserItem[]> {
+  const res = await apiClient.get<AllUserItem[]>(ENDPOINTS.USERS.ALL_USERS);
+  const raw = Array.isArray(res.data) ? res.data : [];
+  return raw.map((item: any) => ({
+    id: item.id,
+    name: String(item.name || `User ${item.id}`),
+  }));
+}
+
 export async function getUser(id: string): Promise<AppUser> {
   const res = await apiClient.get<AppUser>(ENDPOINTS.USERS.DETAIL(stripIdPrefix(id)));
   return assertSuccess(res);
@@ -296,8 +334,8 @@ export async function listDepartmentsForSelect(perPage = 100): Promise<SelectOpt
     `${ENDPOINTS.MASTER.DEPARTMENTS.LIST}${buildPaginationQuery(1, perPage)}`
   );
   return mapToSelectOptions(extractListItems(res), {
-    idKeys: ['id', 'department_id'],
-    labelKeys: ['name', 'department_name', 'label'],
+    idKeys: ['id', 'department_id', 'departments_id'],
+    labelKeys: ['name', 'department_name', 'departments_name', 'label'],
   });
 }
 

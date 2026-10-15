@@ -3,7 +3,7 @@ import type { LeadItem } from './AllLeads';
 import type { User as UserItem } from './AllUsers';
 import { apiClient } from '../utils/apiClient';
 import { listLeads } from './AllLeads';
-import { listAttendees } from './AllUsers';
+import { getAllUsers } from './AllUsers';
 
 export interface MeetingFormData {
   lead: LeadItem;
@@ -42,17 +42,17 @@ export const fetchMeetingById = async (id: string): Promise<MeetingFormData> => 
         } else if (Array.isArray(rawMeetingData.attendees_id) && rawMeetingData.attendees_id.length > 0) {
           // If only attendees_id array is returned, fetch attendee details
           try {
-            const allAttendees = await listAttendees(1, 1000);
+            const allAttendees = await getAllUsers();
             const attendeeMap = new Map(
-              (allAttendees.data || []).map((user: any) => [String(user.id), user])
+              allAttendees.map((user: any) => [String(user.id), user])
             );
             
             attendeesData = rawMeetingData.attendees_id.map((attendeeId: number | string) => {
               const attendeeInfo = attendeeMap.get(String(attendeeId));
               return {
                 id: String(attendeeId),
-                name: attendeeInfo?.name || attendeeInfo?.full_name || `User ${attendeeId}`,
-                email: attendeeInfo?.email || '',
+                name: attendeeInfo?.name || `User ${attendeeId}`,
+                email: '',
               };
             });
           } catch (err) {
@@ -115,8 +115,8 @@ export const fetchLeadsDropdownOptions = async () => {
 
 export const fetchAttendeesDropdownOptions = async () => {
     try {
-        const response = await listAttendees(1, 100);
-        return (response.data || []).map((user) => ({
+        const allUsers = await getAllUsers();
+        return allUsers.map((user) => ({
           value: String(user.id),
           label: user.name || `User ${user.id}`,
         }));
@@ -128,9 +128,9 @@ export const fetchAttendeesDropdownOptions = async () => {
 
 export const getAttendeeNameMap = async () => {
     try {
-        const response = await listAttendees(1, 100);
+        const allUsers = await getAllUsers();
         const nameMap: Record<string, string> = {};
-        (response.data || []).forEach((user) => {
+        allUsers.forEach((user) => {
           nameMap[String(user.id)] = user.name || `User ${user.id}`;
         });
         return nameMap;

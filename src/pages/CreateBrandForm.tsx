@@ -164,6 +164,19 @@ const CreateBrandForm: React.FC<MasterInlineFormProps> = ({ onClose, initialData
     if (postalCodeTrimmed && !/^[0-9]{6}$/.test(postalCodeTrimmed)) {
       next.postalCode = 'Postal code must be 6 digits';
     }
+    // GST No.: optional, but if provided each must be exactly 15 digits/characters
+    for (const gst of form.gstNumbers) {
+      const trimmed = String(gst || '').trim();
+      if (trimmed && trimmed.length !== 15) {
+        next.gstNumbers = 'GST No. must be 15 digits';
+        break;
+      }
+    }
+    const nonBlankGsts = form.gstNumbers.map(g => String(g || '').trim().toUpperCase()).filter(Boolean);
+    const hasDuplicateGst = nonBlankGsts.some((val, idx) => nonBlankGsts.indexOf(val) !== idx);
+    if (!next.gstNumbers && hasDuplicateGst) {
+      next.gstNumbers = 'Duplicate GST numbers are not allowed';
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -631,49 +644,70 @@ const CreateBrandForm: React.FC<MasterInlineFormProps> = ({ onClose, initialData
         <div>
           <label className="block text-sm text-gray-800 mb-1">GST No.</label>
           <div className="space-y-2">
-            {form.gstNumbers.map((gstNumber, index) => (
-              <div key={index} className="flex gap-2">
-                <input
-                  value={gstNumber}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setForm((prev) => ({
-                      ...prev,
-                      gstNumbers: prev.gstNumbers.map((current, currentIndex) =>
-                        currentIndex === index ? value : current
-                      ),
-                    }));
-                    setErrors((prev) => ({ ...prev, gstNumbers: '' }));
-                  }}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-black"
-                  placeholder="Please Enter GST No."
-                />
-                {index === form.gstNumbers.length - 1 ? (
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, gstNumbers: [...prev.gstNumbers, ''] }))}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                    aria-label="Add GST number"
-                    title="Add GST number"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({
-                      ...prev,
-                      gstNumbers: prev.gstNumbers.filter((_, currentIndex) => currentIndex !== index),
-                    }))}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                    aria-label={`Remove GST number ${index + 1}`}
-                    title="Remove GST number"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            ))}
+            {form.gstNumbers.map((gstNumber, index) => {
+              const isInvalid = Boolean(errors.gstNumbers && gstNumber.trim() && gstNumber.trim().length !== 15);
+              return (
+                <div key={index} className="flex gap-2">
+                  <input
+                    value={gstNumber}
+                    maxLength={15}
+                    onChange={(e) => {
+                      const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
+                      setForm((prev) => ({
+                        ...prev,
+                        gstNumbers: prev.gstNumbers.map((current, currentIndex) =>
+                          currentIndex === index ? value : current
+                        ),
+                      }));
+                      setErrors((prev) => ({ ...prev, gstNumbers: '' }));
+                    }}
+                    onBlur={() => {
+                      const trimmed = gstNumber.trim();
+                      if (trimmed && trimmed.length !== 15) {
+                        setErrors((prev) => ({ ...prev, gstNumbers: 'GST No. must be 15 digits' }));
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-1 ${
+                      isInvalid
+                        ? 'border-red-500 bg-red-50 focus:ring-red-500'
+                        : 'border border-gray-200 focus:ring-black'
+                    }`}
+                    placeholder="Please Enter GST No."
+                  />
+                  {index === form.gstNumbers.length - 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const lastGst = form.gstNumbers[form.gstNumbers.length - 1]?.trim();
+                        if (lastGst && lastGst.length !== 15) {
+                          setErrors((prev) => ({ ...prev, gstNumbers: 'GST No. must be 15 digits' }));
+                          return;
+                        }
+                        setForm((prev) => ({ ...prev, gstNumbers: [...prev.gstNumbers, ''] }));
+                      }}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                      aria-label="Add GST number"
+                      title="Add GST number"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setForm((prev) => ({
+                        ...prev,
+                        gstNumbers: prev.gstNumbers.filter((_, currentIndex) => currentIndex !== index),
+                      }))}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                      aria-label={`Remove GST number ${index + 1}`}
+                      title="Remove GST number"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
           {errors.gstNumbers && (
             <div className="text-xs text-red-500 mt-1">{errors.gstNumbers}</div>
