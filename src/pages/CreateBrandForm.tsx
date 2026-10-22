@@ -429,8 +429,18 @@ const CreateBrandForm: React.FC<MasterInlineFormProps> = ({ onClose, initialData
     ]).then(([zonesData, countriesData, brandTypesData, agenciesResp]) => {
       if (!mounted) return;
       setZones(zonesData || []);
-      setCountries(countriesData || []);
+      const countriesList = countriesData || [];
+      setCountries(countriesList);
       setBrandTypes(brandTypesData || []);
+      if (!initialData || !initialData.country) {
+        const india = countriesList.find((c: any) => c.name?.trim().toLowerCase() === 'india');
+        if (india) {
+          setForm((prev) => {
+            if (prev.country && prev.country !== 'Please Select Country') return prev;
+            return { ...prev, country: String(india.id) };
+          });
+        }
+      }
       // agenciesResp is AgencyListResponse { data, meta }
       try {
         const items = (agenciesResp && agenciesResp.data) ? agenciesResp.data : [];

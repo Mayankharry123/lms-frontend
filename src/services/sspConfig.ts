@@ -40,6 +40,7 @@ export function applySspAuthHeaders(
 
   if (SSP_API_KEY) {
     next['X-API-Key'] = SSP_API_KEY;
+    next['X-DGPlay-Api-Key'] = SSP_API_KEY;
   }
 
   return next;

@@ -10,7 +10,7 @@
     "verbatimModuleSyntax": false,
     "skipLibCheck": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["jest", "@testing-library/jest-dom"],
+    "types": ["vite/client", "jest", "@testing-library/jest-dom"],
     "resolveJsonModule": true,
     "allowJs": true,
     "noImplicitAny": false,

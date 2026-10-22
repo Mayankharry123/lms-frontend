@@ -17,6 +17,7 @@ export interface BrandItem {
   brandType?: string;
   address?: string;
   gstNumbers?: string[];
+  gstNumber?: string;
   contactPerson?: string;
   industry?: string;
   country?: string;
@@ -281,14 +282,19 @@ export async function listBrands(page = 1, perPage = 10, search?: string): Promi
     const cityVal = (raw['city'] as any)?.name ?? '';
     const zoneVal = (raw['zone'] as any)?.name ?? '';
     const pinCodeVal = raw['pin_code'] ?? raw['postal_code'] ?? raw['postalCode'] ?? '';
-    const addressVal = raw['address'] ?? '';
+    const addressVal = String(raw['address'] ?? '').trim();
     const gstNumbersRaw =
       raw['gst_numbers'] ?? raw['gstNumbers'] ?? raw['gst_number'] ?? raw['gst_no'] ?? raw['gstNumber'] ?? raw['gstNo'];
-    const gstNumbersVal = Array.isArray(gstNumbersRaw)
-      ? gstNumbersRaw.map(String)
-      : gstNumbersRaw == null || gstNumbersRaw === ''
-        ? []
-        : [String(gstNumbersRaw)];
+    const gstNumbersVal = (
+      Array.isArray(gstNumbersRaw)
+        ? gstNumbersRaw
+        : gstNumbersRaw == null || gstNumbersRaw === ''
+          ? []
+          : [gstNumbersRaw]
+    )
+      .map((s) => String(s ?? '').trim())
+      .filter(Boolean);
+    const gstNumberVal = gstNumbersVal[0] ?? '';
     const dateTimeVal = raw['created_at'] ?? raw['date_time'] ?? raw['dateTime'] ?? '';
 
     return {
@@ -296,8 +302,9 @@ export async function listBrands(page = 1, perPage = 10, search?: string): Promi
       name: String(nameVal ?? ''),
       agencyName: String(agencyNameVal ?? ''),
       brandType: String(brandTypeVal ?? ''),
-      address: String(addressVal ?? ''),
+      address: addressVal,
       gstNumbers: gstNumbersVal,
+      gstNumber: gstNumberVal,
       contactPerson: String(contactPersonVal ?? ''),
       industry: String(industryVal ?? ''),
       country: String(countryVal ?? ''),

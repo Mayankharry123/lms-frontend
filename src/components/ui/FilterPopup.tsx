@@ -315,6 +315,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       mainCategory: getSelectedOptionValues('mainCategory', values.mainCategory),
       category: getSelectedOptionValues('category', values.category),
       subCategory: getSelectedOptionValues('categorySub', values.categorySub),
+      property: getSelectedOptionValues('property', values.property),
     };
     const modeOfMedia = getSelectedOptionValues('modeOfMedia', values.modeOfMedia);
     const publisherOptions = await fetchPublishers(modeOfMedia, filters);
@@ -542,6 +543,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
             subZone: splitCsvTokens(appliedValues.subZoneArea),
             pincode: splitCsvTokens(appliedValues.pincode),
             arterialRoute: splitCsvTokens(appliedValues.arterialRoute),
+            property: splitCsvTokens(appliedValues.property),
           };
           const initialDeviceFilters = { ...initialCategoryFilters };
 
@@ -849,12 +851,14 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
         setFieldLoading('publisher', Boolean(value));
         const modeSelection = getSelectedOptionIds('modeOfMedia', value);
         const categoryFilters = {
+          country: newDraft.country ? [newDraft.country] : undefined,
           state: getSelectedOptionValues('state', newDraft.state),
           city: getSelectedOptionValues('city', newDraft.city),
           zone: getSelectedOptionValues('zoneArea', newDraft.zoneArea),
           subZone: getSelectedOptionValues('subZoneArea', newDraft.subZoneArea),
           pincode: getSelectedOptionValues('pincode', newDraft.pincode),
           arterialRoute: getSelectedOptionValues('arterialRoute', newDraft.arterialRoute),
+          property: getSelectedOptionValues('property', newDraft.property),
         };
         try {
           const publisherOptions = value
@@ -928,6 +932,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       if (fieldName === 'property') {
         emitAppliedFilters(newDraft);
         const propertySelection = getSelectedOptionIds('property', value);
+        const effectivePropertySelection = propertySelection.length > 0 ? propertySelection : splitCsvTokens(value);
         const propertyFilters = {
           state: getSelectedOptionValues('state', newDraft.state),
           city: getSelectedOptionValues('city', newDraft.city),
@@ -936,33 +941,76 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
           pincode: getSelectedOptionValues('pincode', newDraft.pincode),
           arterialRoute: getSelectedOptionValues('arterialRoute', newDraft.arterialRoute),
           publisher: getSelectedOptionIds('publisher', newDraft.publisher),
-          property: propertySelection,
+          property: effectivePropertySelection,
           mainCategory: getSelectedOptionValues('mainCategory', newDraft.mainCategory),
           category: getSelectedOptionValues('category', newDraft.category),
           subCategory: getSelectedOptionValues('categorySub', newDraft.categorySub),
         };
+        const publisherFilters = {
+          country: newDraft.country ? [newDraft.country] : undefined,
+          state: getSelectedOptionValues('state', newDraft.state),
+          city: getSelectedOptionValues('city', newDraft.city),
+          zone: getSelectedOptionValues('zoneArea', newDraft.zoneArea),
+          subZone: getSelectedOptionValues('subZoneArea', newDraft.subZoneArea),
+          pincode: getSelectedOptionValues('pincode', newDraft.pincode),
+          arterialRoute: getSelectedOptionValues('arterialRoute', newDraft.arterialRoute),
+          mainCategory: getSelectedOptionValues('mainCategory', newDraft.mainCategory),
+          category: getSelectedOptionValues('category', newDraft.category),
+          subCategory: getSelectedOptionValues('categorySub', newDraft.categorySub),
+          property: effectivePropertySelection,
+        };
+        setFieldLoading('publisher', true);
         setFieldLoading('locationType', true);
         setFieldLoading('orientation', true);
         setFieldLoading('resolution', true);
         setFieldLoading('screenLocation', true);
         setFieldLoading('stretch', true);
-        const [locationTypeOptions, orientationOptions, resolutionOptions, screenLocationOptions, stretchOptions] = await Promise.all([
+        const modeOfMedia = getSelectedOptionValues('modeOfMedia', newDraft.modeOfMedia);
+        const [
+          publisherOptions,
+          locationTypeOptions,
+          orientationOptions,
+          resolutionOptions,
+          screenLocationOptions,
+          stretchOptions,
+        ] = await Promise.all([
+          fetchPublishers(modeOfMedia, publisherFilters),
           fetchLocationTypes(undefined, propertyFilters),
           fetchOrientations(undefined, propertyFilters),
           fetchResolutions(undefined, propertyFilters),
           fetchScreenLocations(undefined, propertyFilters),
           fetchStretches(undefined, propertyFilters),
         ]);
+        if (controller.signal.aborted) return;
+        updateFieldOptions('publisher', publisherOptions);
         updateFieldOptions('locationType', locationTypeOptions);
         updateFieldOptions('orientation', orientationOptions);
         updateFieldOptions('resolution', resolutionOptions);
         updateFieldOptions('screenLocation', screenLocationOptions);
         updateFieldOptions('stretch', stretchOptions);
+        setFieldLoading('publisher', false);
         setFieldLoading('locationType', false);
         setFieldLoading('orientation', false);
         setFieldLoading('resolution', false);
         setFieldLoading('screenLocation', false);
         setFieldLoading('stretch', false);
+
+        if (newDraft.publisher) {
+          const validPublisherIds = new Set(publisherOptions.map((opt) => String(opt.id)));
+          const validPublisherLabels = new Set(publisherOptions.map((opt) => getNormalizedOptionLabel(opt)));
+          const currentTokens = splitCsvTokens(newDraft.publisher);
+          const validTokens = currentTokens.filter((token) => validPublisherIds.has(token) || validPublisherLabels.has(token));
+          const nextPublisherVal = joinCsvTokens(validTokens);
+
+          if (nextPublisherVal !== newDraft.publisher) {
+            const updatedDraft = {
+              ...newDraft,
+              publisher: nextPublisherVal,
+            };
+            setDraft(updatedDraft);
+            emitAppliedFilters(updatedDraft);
+          }
+        }
         return;
       }
 
@@ -1080,6 +1128,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
     [
       draft,
       emitAppliedFilters,
+      getNormalizedOptionLabel,
       getSelectedOptionIds,
       getSelectedOptionValues,
       refreshOptionsForLocation,

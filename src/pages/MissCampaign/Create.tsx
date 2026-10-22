@@ -364,6 +364,19 @@ const Create: React.FC<MissCampaignCreateProps> = ({
           name: country.name,
         }));
         setCountryOptions(options);
+
+        // Default country to India if not already set (e.g. in create mode)
+        const india = options.find((c) => c.name?.trim().toLowerCase() === 'india');
+        if (india) {
+          setFormData((prev) => {
+            if (prev.country) return prev;
+            if (mode === 'edit' && (initialData?.country || initialData?.country_id)) return prev;
+            return {
+              ...prev,
+              country: String(india.id),
+            };
+          });
+        }
       } catch (err) {
         console.error('Failed to fetch countries:', err);
         setCountryOptions([]);
@@ -372,7 +385,7 @@ const Create: React.FC<MissCampaignCreateProps> = ({
       }
     };
     fetchCountries();
-  }, []);
+  }, [mode, initialData]);
 
   useEffect(() => {
     if (!formData.country) {
@@ -508,13 +521,25 @@ const Create: React.FC<MissCampaignCreateProps> = ({
           return;
         }
 
-        const countryId: any = initialData.country?.id || initialData.country_id || initialData.country;
+        let countryId: any = initialData.country?.id || initialData.country_id || initialData.country;
         let stateId: any = initialData.state?.id || initialData.state_id || initialData.state;
         let cityId: any = initialData.city?.id || initialData.city_id || initialData.city;
 
         const isNumeric = (val: any) => !isNaN(Number(val));
 
         try {
+          // ✅ Resolve Country (if name)
+          if (countryId && !isNumeric(countryId)) {
+            const countries = await listCountries();
+            const foundCountry = countries?.find(
+              (c: any) =>
+                String(c.name).toLowerCase() === String(countryId).toLowerCase()
+            );
+            if (foundCountry) {
+              countryId = String(foundCountry.id);
+            }
+          }
+
           // ✅ Resolve State (if name)
           if (countryId && stateId && !isNumeric(stateId)) {
             const states = await listStates({ country_id: countryId });

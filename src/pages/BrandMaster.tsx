@@ -17,6 +17,7 @@ import SearchBar from '../components/ui/SearchBar';
 import { matchesQuery } from '../utils/index.tsx';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import AgenciesModal from '../components/ui/AgenciesModal';
+import GstNumbersModal from '../components/ui/GstNumbersModal';
 import { deleteBrand } from '../services/BrandMaster';
 import { listBrands, getBrand } from '../services/BrandMaster';
 import type { BrandItem } from '../types/master/master.types';
@@ -53,8 +54,12 @@ const BrandMaster: React.FC = () => {
   const currentData = (() => {
     if (searchQuery && brands.length > 0) {
       const filtered = brands.filter((b: Brand) => {
-        const fields = Object.keys(b).filter(k => typeof (b as any)[k] === 'string');
-        return matchesQuery(b as unknown as Record<string, unknown>, searchQuery, { fields, useStartsWith: false });
+        const searchableRecord = {
+          ...b,
+          gstNumbersSearch: Array.isArray(b.gstNumbers) ? b.gstNumbers.join(' ') : '',
+        };
+        const fields = Object.keys(searchableRecord).filter(k => typeof (searchableRecord as any)[k] === 'string');
+        return matchesQuery(searchableRecord as unknown as Record<string, unknown>, searchQuery, { fields, useStartsWith: false });
       });
       return filtered.slice(startIndex, startIndex + itemsPerPage);
     }
@@ -79,6 +84,9 @@ const BrandMaster: React.FC = () => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [showAgenciesModal, setShowAgenciesModal] = useState(false);
   const [modalAgencies, setModalAgencies] = useState<any[]>([]);
+  const [showGstModal, setShowGstModal] = useState(false);
+  const [modalGstNumbers, setModalGstNumbers] = useState<string[]>([]);
+  const [modalGstBrandName, setModalGstBrandName] = useState<string>('');
 
   const handleDelete = (id: string) => {
     const found = brands.find(b => b.id === id);
@@ -218,13 +226,35 @@ const BrandMaster: React.FC = () => {
         onClose={() => setShowAgenciesModal(false)}
         title="Agencies"
       />
+
+      <GstNumbersModal
+        isOpen={showGstModal}
+        gstNumbers={modalGstNumbers}
+        brandName={modalGstBrandName}
+        onClose={() => setShowGstModal(false)}
+      />
       {isCreateRoute ? (
         <CreateBrandForm inline onClose={() => navigate(ROUTES.BRAND_MASTER)} />
       ) : viewItem ? (
         <MasterView
           item={viewItem}
           onClose={() => navigate(ROUTES.BRAND_MASTER)}
-          excludeFields={['agency', 'industry_id', 'slug', 'brand_type_id', 'city_id', 'state_id', 'status', 'country_id', 'zone_id']}
+          excludeFields={[
+            '_raw',
+            'agency',
+            'industry_id',
+            'slug',
+            'brand_type_id',
+            'city_id',
+            'state_id',
+            'status',
+            'country_id',
+            'zone_id',
+            'gst_no',
+            'gst_number',
+            'gstNumber',
+            'gstNo',
+          ]}
         />
       ) : editItem ? (
         <CreateBrandForm
@@ -329,6 +359,60 @@ const BrandMaster: React.FC = () => {
                     }
                   },
                   { key: 'industry', header: 'Industry', render: (it: Brand) => it.industry || '-' },
+                  {
+                    key: 'address',
+                    header: 'Address',
+                    minWidth: 160,
+                    render: (it: Brand) => {
+                      const addr = String(it.address ?? (it as any)._raw?.address ?? '').trim();
+                      return addr || '-';
+                    }
+                  },
+                  {
+                    key: 'gstNumbers',
+                    header: 'GST No.',
+                    minWidth: 160,
+                    render: (it: Brand) => {
+                      const raw = (it as any)._raw as Record<string, unknown> | undefined;
+                      const rawGsts =
+                        it.gstNumbers ??
+                        raw?.['gst_numbers'] ??
+                        raw?.['gstNumbers'] ??
+                        raw?.['gst_number'] ??
+                        raw?.['gst_no'] ??
+                        (it as any).gst_numbers ??
+                        (it as any).gst_no ??
+                        (it as any).gst_number;
+                      const gsts = (Array.isArray(rawGsts) ? rawGsts : [rawGsts])
+                        .map((g) => String(g ?? '').trim())
+                        .filter(Boolean);
+
+                      if (gsts.length === 0) {
+                        return '-';
+                      }
+
+                      if (gsts.length === 1) {
+                        return <span className="font-mono text-xs">{gsts[0]}</span>;
+                      }
+
+                      return (
+                        <span
+                          className="inline-flex items-center gap-1.5 cursor-pointer text-black hover:text-[#007b83] transition-colors"
+                          title={gsts.join(', ')}
+                          onClick={() => {
+                            setModalGstNumbers(gsts);
+                            setModalGstBrandName(it.name || 'Brand');
+                            setShowGstModal(true);
+                          }}
+                        >
+                          <span className="font-mono text-xs">{gsts[0]}</span>
+                          <span className="bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs font-semibold">
+                            +{gsts.length - 1}
+                          </span>
+                        </span>
+                      );
+                    }
+                  },
                   { key: 'country', header: 'Country', render: (it: Brand) => it.country || '-' },
                   { key: 'state', header: 'State', render: (it: Brand) => it.state || '-' },
                   { key: 'city', header: 'City', render: (it: Brand) => it.city || '-' },

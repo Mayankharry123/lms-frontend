@@ -487,13 +487,14 @@ const ContactPersonsCard: React.FC<ContactPersonsCardProps> = ({
     const india = countryOptions.find((option) => option.label.trim().toLowerCase() === 'india');
     if (!india) return;
 
-    const next = contacts.map((contact) =>
-      contact.country ? contact : { ...contact, country: india.value }
-    );
-    if (next.every((contact, index) => contact === contacts[index])) return;
-
-    setContacts(next);
-    onChangeRef.current?.(next);
+    setContacts((prev) => {
+      const next = prev.map((contact) =>
+        contact.country ? contact : { ...contact, country: india.value }
+      );
+      if (next.every((contact, index) => contact === prev[index])) return prev;
+      onChangeRef.current?.(next);
+      return next;
+    });
   }, [countrySelectionKey, countryOptions]);
 
   // Fetch states per contact when that contact's country changes

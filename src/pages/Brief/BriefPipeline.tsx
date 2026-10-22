@@ -66,7 +66,7 @@ const BriefPipeline: React.FC = () => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [isAttachmentModalOpen, setIsAttachmentModalOpen] = useState(false);
-  const [attachmentModalSource, setAttachmentModalSource] = useState<{ kind: 'remote'; url: string; name?: string } | null>(null);
+  const [attachmentModalSource, setAttachmentModalSource] = useState<{ kind: 'remote'; url: string; name?: string; submissionDate?: string } | null>(null);
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = briefs;
@@ -379,7 +379,11 @@ const BriefPipeline: React.FC = () => {
 
     // Fallback to filename from URL if no name provided
     if (!name) {
-      name = url.split('/').pop() || 'attachment';
+      try {
+        name = decodeURIComponent(url.split('/').pop() || 'attachment');
+      } catch {
+        name = url.split('/').pop() || 'attachment';
+      }
     }
 
     // Validate URL protocol to prevent XSS attacks
@@ -388,7 +392,16 @@ const BriefPipeline: React.FC = () => {
       return;
     }
 
-    setAttachmentModalSource({ kind: 'remote', url, name });
+    let safeUrl = url;
+    try {
+      safeUrl = encodeURI(decodeURI(url));
+    } catch {
+      safeUrl = encodeURI(url);
+    }
+
+    const submissionDate = it.submissionDate || (it as any).submission_date || (it as any)._raw?.submission_date || '';
+
+    setAttachmentModalSource({ kind: 'remote', url: safeUrl, name, submissionDate });
     setIsAttachmentModalOpen(true);
   };
 
