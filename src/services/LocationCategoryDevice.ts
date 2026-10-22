@@ -437,6 +437,7 @@ export async function fetchArterialRoutes(
 // ============ CATEGORY APIs ============
 
 type CategoryFilters = {
+  country?: CategorySelection;
   state?: CategorySelection;
   city?: CategorySelection;
   zone?: CategorySelection;
@@ -446,11 +447,13 @@ type CategoryFilters = {
   mainCategory?: CategorySelection;
   category?: CategorySelection;
   subCategory?: CategorySelection;
+  property?: CategorySelection;
 };
 
 export async function fetchModeOfMedia(filters: CategoryFilters = {}): Promise<LocationOption[]> {
   try {
     return await makeApiRequest('/category/mode-of-media', {
+      ...categorySelectionPayload('country', filters.country),
       ...categorySelectionPayload('state', filters.state),
       ...categorySelectionPayload('city', filters.city),
       ...categorySelectionPayload('zone', filters.zone),
@@ -481,6 +484,7 @@ export async function fetchPublishers(
 ): Promise<LocationOption[]> {
   try {
     return await makeApiRequest('/category/publishers', {
+      ...categorySelectionPayload('country', filters.country),
       ...categorySelectionPayload('mode_of_media', modeOfMedia),
       ...categorySelectionPayload('state', filters.state),
       ...categorySelectionPayload('city', filters.city),
@@ -491,6 +495,7 @@ export async function fetchPublishers(
       ...categorySelectionPayload('main_category', filters.mainCategory),
       ...categorySelectionPayload('category', filters.category),
       ...categorySelectionPayload('sub_category', filters.subCategory),
+      ...categorySelectionPayload('property', filters.property),
     });
   } catch (error) {
     console.warn('Warning: Could not fetch publishers:', error);

@@ -31,7 +31,14 @@ const MasterView: React.FC<Props> = ({ title, item, onClose, excludeFields = [] 
       .join(' ');
 
     // special casing
-    const label = title.toLowerCase() === 'datetime' || title.toLowerCase() === 'date time' ? 'Date & Time' : title;
+    const label =
+      title.toLowerCase() === 'datetime' || title.toLowerCase() === 'date time'
+        ? 'Date & Time'
+        : title.toLowerCase() === 'gst numbers' || title.toLowerCase() === 'gstnumbers'
+        ? 'GST Numbers'
+        : title.toLowerCase() === 'gst no' || title.toLowerCase() === 'gst number'
+        ? 'GST No.'
+        : title;
 
     // Handle different value types
     let displayValue: string;

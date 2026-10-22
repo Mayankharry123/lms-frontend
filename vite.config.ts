@@ -52,7 +52,7 @@ export default defineConfig(({ mode }) => {
         '/ssp-api': {
           target: sspApiProxy.target,
           changeOrigin: true,
-          secure: true,
+          secure: sspApiProxy.target.startsWith('https://'),
           rewrite: (path) => path.replace(/^\/ssp-api/, sspApiProxy.basePath || ''),
         },
         '/dgplay-api': {

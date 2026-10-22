@@ -405,6 +405,9 @@ const DeviceInventoryCloneFilterPanel: React.FC<CloneFilterPanelProps> = ({
       if (value.trim() && following) {
         scheduleFieldLoad(following);
       }
+      if (fieldName === 'property') {
+        scheduleFieldLoad('publisher');
+      }
 
       draftRef.current = next;
       setDraft(next);

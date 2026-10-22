@@ -5,6 +5,7 @@ export interface BrandItem {
   brandType?: string;
   address?: string;
   gstNumbers?: string[];
+  gstNumber?: string;
   contactPerson?: string;
   industry?: string;
   country?: string;
