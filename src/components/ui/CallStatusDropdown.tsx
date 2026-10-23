@@ -1,9 +1,13 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { Check, Search } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import CallStatusButton from './CallStatusButton';
 import ConfirmDialog from './ConfirmDialog';
 
-const DROPDOWN_MIN_WIDTH = 180;
-const DROPDOWN_EST_HEIGHT = 220;
+const DROPDOWN_MIN_WIDTH = 200;
+const DROPDOWN_MAX_WIDTH = 260;
+const DROPDOWN_EST_HEIGHT = 260;
 
 interface CallStatusDropdownProps {
   value: string;
@@ -14,60 +18,157 @@ interface CallStatusDropdownProps {
   onIntercept?: (option: string) => boolean;
 }
 
-const CallStatusDropdown: React.FC<CallStatusDropdownProps> = ({ value, options, onChange, onConfirm, onIntercept }) => {
+interface DropdownPosition {
+  top?: number;
+  bottom?: number;
+  left: number;
+  width: number;
+  openAbove: boolean;
+}
+
+const CallStatusDropdown: React.FC<CallStatusDropdownProps> = ({
+  value,
+  options,
+  onChange,
+  onConfirm,
+  onIntercept,
+}) => {
   const [open, setOpen] = useState(false);
-  const [openAbove, setOpenAbove] = useState(false);
+  const [position, setPosition] = useState<DropdownPosition | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
 
-  const computePlacement = () => {
-    const el = ref.current;
-    if (!el) return;
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const computePosition = useCallback((): DropdownPosition | null => {
+    const el = triggerRef.current;
+    if (!el) return null;
 
     const rect = el.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
+    if (rect.width === 0 && rect.height === 0) return null;
+
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
-    setOpenAbove(spaceBelow < DROPDOWN_EST_HEIGHT && spaceAbove > spaceBelow);
-  };
 
-  useLayoutEffect(() => {
+    const openAbove = spaceBelow < DROPDOWN_EST_HEIGHT && spaceAbove > spaceBelow;
+
+    // Calculate width: between min and max width, at least trigger width
+    const targetWidth = Math.min(
+      Math.max(rect.width, DROPDOWN_MIN_WIDTH),
+      DROPDOWN_MAX_WIDTH
+    );
+
+    // Keep horizontally within the viewport (minimum 12px margin)
+    let left = Math.round(rect.left);
+    if (left + targetWidth > viewportWidth - 12) {
+      left = Math.max(12, viewportWidth - targetWidth - 12);
+    }
+    if (left < 12) {
+      left = 12;
+    }
+
+    if (openAbove) {
+      return {
+        bottom: Math.round(viewportHeight - rect.top + 6),
+        left,
+        width: targetWidth,
+        openAbove: true,
+      };
+    }
+
+    return {
+      top: Math.round(rect.bottom + 6),
+      left,
+      width: targetWidth,
+      openAbove: false,
+    };
+  }, []);
+
+  const updatePosition = useCallback(() => {
     if (!open) return;
-    computePlacement();
-  }, [open]);
+    const pos = computePosition();
+    if (pos) {
+      setPosition(pos);
+    }
+  }, [open, computePosition]);
 
+  // Handle position recalculation on open, scroll and resize
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+    if (!open) {
+      setPosition(null);
+      setSearchQuery('');
+      return;
+    }
+
+    // Initial position calculation
+    const initialPos = computePosition();
+    setPosition(initialPos);
+
+    // Focus search input if search is present
+    const focusTimer = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 50);
+
+    const handleScrollOrResize = () => {
+      updatePosition();
+    };
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+
+    return () => {
+      clearTimeout(focusTimer);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [open, computePosition, updatePosition]);
+
+  // Click outside and escape key handling
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(target) &&
+        menuRef.current &&
+        !menuRef.current.contains(target)
+      ) {
         setOpen(false);
       }
     };
-    if (open) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+      }
+    };
 
-    const handleReposition = () => computePlacement();
-    window.addEventListener('resize', handleReposition);
-    window.addEventListener('scroll', handleReposition, true);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      window.removeEventListener('resize', handleReposition);
-      window.removeEventListener('scroll', handleReposition, true);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [open]);
 
   const handleToggle = () => {
     if (open) {
       setOpen(false);
-      return;
+    } else {
+      const pos = computePosition();
+      setPosition(pos);
+      setOpen(true);
     }
-
-    computePlacement();
-    setOpen(true);
   };
 
   const handleOptionSelect = (opt: string) => {
@@ -107,51 +208,125 @@ const CallStatusDropdown: React.FC<CallStatusDropdownProps> = ({ value, options,
     setSelectedOption(null);
   };
 
+  const filteredOptions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((opt) => opt.toLowerCase().includes(q));
+  }, [options, searchQuery]);
+
   return (
-    <div ref={ref} className="relative inline-block w-full">
+    <div ref={triggerRef} className="relative inline-block max-w-full">
       <CallStatusButton
         value={value}
         onClick={handleToggle}
         isActive={open}
       />
 
-      {open && (
-        <div
-          className={`absolute left-0 z-[200] w-max max-w-[min(100vw-1rem,240px)] rounded-xl border border-gray-200 bg-white shadow-lg ${
-            openAbove ? 'bottom-full mb-1' : 'top-full mt-1'
-          }`}
-          style={{ minWidth: `${DROPDOWN_MIN_WIDTH}px` }}
-        >
-          <ul
-            tabIndex={-1}
-            role="listbox"
-            className="max-h-56 overflow-y-auto focus:outline-none"
-            style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb #fff' }}
-          >
-            {options.map((opt) => (
-              <li
-                key={opt}
-                role="option"
-                aria-selected={opt === value}
-                className={`px-4 py-2 cursor-pointer transition-all hover:bg-blue-50/60 ${
-                  opt === value ? 'bg-blue-50/80 text-blue-700 font-semibold' : 'text-gray-700'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleOptionSelect(opt);
+      {/* Portal dropdown to document.body so it is never clipped by table overflow */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {open && position && (
+              <motion.div
+                ref={menuRef}
+                initial={{
+                  opacity: 0,
+                  scale: 0.95,
+                  y: position.openAbove ? 6 : -6,
                 }}
+                animate={{
+                  opacity: 1,
+                  scale: 1,
+                  y: 0,
+                }}
+                exit={{
+                  opacity: 0,
+                  scale: 0.95,
+                  y: position.openAbove ? 6 : -6,
+                }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                style={{
+                  position: 'fixed',
+                  ...(position.top != null ? { top: `${position.top}px` } : {}),
+                  ...(position.bottom != null ? { bottom: `${position.bottom}px` } : {}),
+                  left: `${position.left}px`,
+                  width: `${position.width}px`,
+                  zIndex: 9999,
+                }}
+                className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl shadow-slate-300/40 focus:outline-none"
               >
-                {opt}
-              </li>
-            ))}
-          </ul>
-          <style>{`
-            ul::-webkit-scrollbar { width: 6px; }
-            ul::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
-            ul::-webkit-scrollbar-track { background: #fff; }
-          `}</style>
-        </div>
-      )}
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-gray-100 bg-slate-50/80 px-3.5 py-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    Call Status
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-400">
+                    {options.length} {options.length === 1 ? 'option' : 'options'}
+                  </span>
+                </div>
+
+                {/* Search Filter (shown if options > 5) */}
+                {options.length > 5 && (
+                  <div className="border-b border-gray-100 p-2">
+                    <div className="relative flex items-center">
+                      <Search className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-gray-400" />
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder="Filter status..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="h-8 w-full rounded-md border border-gray-200 bg-gray-50/60 pl-8 pr-2.5 text-xs text-gray-800 placeholder-gray-400 outline-none transition-colors focus:border-gray-400 focus:bg-white focus:ring-1 focus:ring-gray-200"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Options List */}
+                <ul
+                  tabIndex={-1}
+                  role="listbox"
+                  aria-label="Call Status Options"
+                  className="max-h-56 overflow-y-auto py-1 text-xs focus:outline-none"
+                  style={{ scrollbarWidth: 'thin', scrollbarColor: '#e5e7eb #fff' }}
+                >
+                  {filteredOptions.length === 0 ? (
+                    <li className="px-4 py-3 text-center text-xs text-gray-400">
+                      No matching status
+                    </li>
+                  ) : (
+                    filteredOptions.map((opt) => {
+                      const isSelected = opt.trim().toLowerCase() === (value || '').trim().toLowerCase();
+                      return (
+                        <li
+                          key={opt}
+                          role="option"
+                          aria-selected={isSelected}
+                          className={`flex cursor-pointer items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors ${
+                            isSelected
+                              ? 'bg-gray-100 text-gray-900 font-semibold'
+                              : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOptionSelect(opt);
+                          }}
+                        >
+                          <span className="truncate">{opt}</span>
+                          {isSelected && (
+                            <Check className="ml-2 h-3.5 w-3.5 shrink-0 text-gray-700" aria-hidden="true" />
+                          )}
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+
       <ConfirmDialog
         isOpen={confirmDialogOpen}
         title="Change Call Status"
@@ -168,3 +343,4 @@ const CallStatusDropdown: React.FC<CallStatusDropdownProps> = ({ value, options,
 };
 
 export default CallStatusDropdown;
+

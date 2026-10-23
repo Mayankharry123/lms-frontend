@@ -26,10 +26,11 @@ import {
   createClientPurchaseOrder,
   formatSubmittedDate,
   getClientPurchaseOrderLookups,
-  getFinanceUsersForBrief,
+  getFinanceUserEntitiesForBrief,
   getNextPoNumber,
   listClientPurchaseOrders,
   type BriefOptionItem,
+  type FinanceUserOption,
   type PlanOption,
 } from '../../services/ClientPurchaseOrders';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
@@ -128,9 +129,26 @@ const CreateClientPurchaseOrder: React.FC = () => {
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [plannerName, setPlannerName] = useState('');
   const [assignBy, setAssignBy] = useState(String(loggedInUserName));
+  const [selectedFinanceUserId, setSelectedFinanceUserId] = useState('');
   const [financeUser, setFinanceUser] = useState('');
-  const [financeUserOptions, setFinanceUserOptions] = useState<string[]>([]);
+  const [financeUserOptions, setFinanceUserOptions] = useState<FinanceUserOption[]>([]);
   const [submittedDate] = useState(() => formatSubmittedDate());
+
+  // Client Details State
+  const [clientName, setClientName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [primaryEmail, setPrimaryEmail] = useState('');
+  const [gstNumber, setGstNumber] = useState('');
+  const [panNumber, setPanNumber] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [country, setCountry] = useState('India');
+  const [pincode, setPincode] = useState('');
+
+  // Campaign Details State
+  const [campaign, setCampaign] = useState('');
+  const [period, setPeriod] = useState('');
 
   // Approval Statuses (Read-Only)
   const [costSheetStatus, setCostSheetStatus] = useState('');
@@ -173,7 +191,10 @@ const CreateClientPurchaseOrder: React.FC = () => {
       .then(([briefs, existingPos]) => {
         if (!mounted) return;
         setBriefOptions(briefs);
-        setPurchaseOrderId(getNextPoNumber(existingPos.length));
+        const existingCount = Array.isArray(existingPos)
+          ? existingPos.length
+          : (existingPos?.pagination?.total ?? existingPos?.rows?.length ?? 0);
+        setPurchaseOrderId(getNextPoNumber(existingCount));
         setLoadingLookups(false);
       })
       .catch((err) => {
@@ -225,7 +246,7 @@ const CreateClientPurchaseOrder: React.FC = () => {
       setCurrentFinanceRecordId(undefined);
 
       // Load finance users for this brief (without auto-selecting any)
-      getFinanceUsersForBrief(matchedBrief.briefId).then((users) => {
+      getFinanceUserEntitiesForBrief(matchedBrief.briefId).then((users) => {
         setFinanceUserOptions(users);
       });
     }
@@ -429,8 +450,10 @@ const CreateClientPurchaseOrder: React.FC = () => {
         planId: selectedPlanId,
         plannerName: plannerName || 'Planner',
         assignBy: assignBy || 'Current User',
-        financeUser: financeUser || 'Unassigned',
+        financeUser: financeUser || undefined,
+        assignToId: selectedFinanceUserId ? Number(selectedFinanceUserId) : undefined,
         submittedDate,
+        poDate: new Date().toISOString().split('T')[0],
         file: poFile!,
         costSheetStatus,
         financeStatus,
@@ -443,6 +466,18 @@ const CreateClientPurchaseOrder: React.FC = () => {
         },
         subtotal,
         totalAmount: grandTotal,
+        clientName: clientName.trim() || undefined,
+        companyName: companyName.trim() || undefined,
+        primaryEmail: primaryEmail.trim() || undefined,
+        gstNumber: gstNumber.trim() || undefined,
+        panNumber: panNumber.trim() || undefined,
+        address: address.trim() || undefined,
+        city: city.trim() || undefined,
+        state: state.trim() || undefined,
+        country: country.trim() || undefined,
+        pincode: pincode.trim() || undefined,
+        campaign: campaign.trim() || undefined,
+        period: period.trim() || undefined,
       });
 
       // Clear draft on successful submission
@@ -608,19 +643,162 @@ const CreateClientPurchaseOrder: React.FC = () => {
               <FieldLabel htmlFor="finance-user">Finance User</FieldLabel>
               <FormSelect
                 id="finance-user"
-                value={financeUser}
-                onChange={(e) => setFinanceUser(e.target.value)}
+                value={selectedFinanceUserId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedFinanceUserId(val);
+                  const matched = financeUserOptions.find((u) => String(u.id) === val);
+                  setFinanceUser(matched ? matched.name : '');
+                }}
               >
                 <option value="">Select Finance User (or leave unassigned)</option>
                 {financeUserOptions.map((user) => (
-                  <option key={user} value={user}>
-                    {user}
+                  <option key={user.id} value={user.id}>
+                    {user.name}
                   </option>
                 ))}
-                {financeUser && !financeUserOptions.includes(financeUser) ? (
-                  <option value={financeUser}>{financeUser}</option>
-                ) : null}
               </FormSelect>
+            </div>
+          </div>
+        </section>
+
+        {/* Section: Client Information */}
+        <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs">
+          <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 via-white to-gray-50/60 px-5 py-4">
+            <h2 className="text-base font-semibold text-gray-900">Client Information</h2>
+            <p className="text-xs text-gray-500">Billing entity, registration numbers, and address details</p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <FieldLabel htmlFor="client-name">Client Name</FieldLabel>
+              <input
+                id="client-name"
+                className={inputClass}
+                placeholder="e.g. Samsung India Pvt Ltd"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="company-name">Company Name</FieldLabel>
+              <input
+                id="company-name"
+                className={inputClass}
+                placeholder="e.g. Samsung Electronics"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="primary-email">Primary Email</FieldLabel>
+              <input
+                id="primary-email"
+                type="email"
+                className={inputClass}
+                placeholder="e.g. billing@samsung.com"
+                value={primaryEmail}
+                onChange={(e) => setPrimaryEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="gst-number">GST Number</FieldLabel>
+              <input
+                id="gst-number"
+                className={inputClass}
+                placeholder="e.g. 07AAAAA0000A1Z5"
+                value={gstNumber}
+                onChange={(e) => setGstNumber(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="pan-number">PAN Number</FieldLabel>
+              <input
+                id="pan-number"
+                className={inputClass}
+                placeholder="e.g. AAAAA0000A"
+                value={panNumber}
+                onChange={(e) => setPanNumber(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="pincode">Pincode</FieldLabel>
+              <input
+                id="pincode"
+                className={inputClass}
+                placeholder="e.g. 201301"
+                value={pincode}
+                onChange={(e) => setPincode(e.target.value)}
+              />
+            </div>
+            <div className="sm:col-span-2 lg:col-span-3">
+              <FieldLabel htmlFor="address">Registered Address</FieldLabel>
+              <input
+                id="address"
+                className={inputClass}
+                placeholder="e.g. Sector 18, Noida"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="city">City</FieldLabel>
+              <input
+                id="city"
+                className={inputClass}
+                placeholder="e.g. Noida"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="state">State</FieldLabel>
+              <input
+                id="state"
+                className={inputClass}
+                placeholder="e.g. Uttar Pradesh"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="country">Country</FieldLabel>
+              <input
+                id="country"
+                className={inputClass}
+                placeholder="e.g. India"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Section: Campaign Details */}
+        <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs">
+          <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 via-white to-gray-50/60 px-5 py-4">
+            <h2 className="text-base font-semibold text-gray-900">Campaign Details</h2>
+            <p className="text-xs text-gray-500">Marketing campaign title and broadcast period</p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+            <div>
+              <FieldLabel htmlFor="campaign">Campaign Name</FieldLabel>
+              <input
+                id="campaign"
+                className={inputClass}
+                placeholder="e.g. Diwali Launch 2026"
+                value={campaign}
+                onChange={(e) => setCampaign(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="period">Period / Timeline</FieldLabel>
+              <input
+                id="period"
+                className={inputClass}
+                placeholder="e.g. Oct - Nov 2026"
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+              />
             </div>
           </div>
         </section>
