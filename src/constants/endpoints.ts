@@ -131,9 +131,20 @@ export const ENDPOINTS = {
     CREATE: '/purchase-orders',
   },
   CLIENT_PURCHASE_ORDERS: {
-    LIST: '/purchase-orders',
-    DETAIL: (id: string | number) => `/purchase-orders/${encodeURIComponent(String(id))}`,
-    CREATE: '/purchase-orders',
+    LIST: '/sales-purchase-orders',
+    DETAIL: (id: string | number) => `/sales-purchase-orders/${encodeURIComponent(String(id))}`,
+    CREATE: '/sales-purchase-orders',
+    UPDATE: (id: string | number) => `/sales-purchase-orders/${encodeURIComponent(String(id))}`,
+    DELETE: (id: string | number) => `/sales-purchase-orders/${encodeURIComponent(String(id))}`,
+    UPLOAD: (id: string | number) => `/sales-purchase-orders/${encodeURIComponent(String(id))}/upload-file`,
+  },
+  SALES_PURCHASE_ORDERS: {
+    LIST: '/sales-purchase-orders',
+    DETAIL: (id: string | number) => `/sales-purchase-orders/${encodeURIComponent(String(id))}`,
+    CREATE: '/sales-purchase-orders',
+    UPDATE: (id: string | number) => `/sales-purchase-orders/${encodeURIComponent(String(id))}`,
+    DELETE: (id: string | number) => `/sales-purchase-orders/${encodeURIComponent(String(id))}`,
+    UPLOAD: (id: string | number) => `/sales-purchase-orders/${encodeURIComponent(String(id))}/upload-file`,
   },
   PUBLISHERS: {
     LIST: '/publisher/list',
